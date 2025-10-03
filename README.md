@@ -1,37 +1,55 @@
 <a id="top"></a>
-# IMIR
-> _Infra Metrics Insight Renderer_
+<h1>IMIR</h1>
+<blockquote><em>Infra Metrics Insight Renderer</em></blockquote>
 
----
+<hr />
 
-[![Hits-of-Code](https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer?branch=main)](https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer/view?branch=main)
+<p>
+  <a href="https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer/view?branch=main">
+    <img src="https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer?branch=main" alt="Hits-of-Code" />
+  </a>
+</p>
 
-This repository hosts reusable GitHub Actions workflows for rendering [lowlighter/metrics](https://github.com/lowlighter/metrics)
-dashboards used across RAprogramm projects.
+<p>
+  This repository hosts reusable GitHub Actions workflows for rendering
+  <a href="https://github.com/lowlighter/metrics">lowlighter/metrics</a>
+  dashboards used across RAprogramm projects.
+</p>
 
-## Table of contents
+<h2>Table of contents</h2>
+<ul>
+  <li><a href="#repository-metrics-workflow">Repository metrics workflow</a>
+    <ul>
+      <li><a href="#open-source-repositories-bundle">Open-source repositories bundle</a></li>
+    </ul>
+  </li>
+  <li><a href="#unified-target-configuration">Unified target configuration</a></li>
+  <li><a href="#imir-badge-integration">IMIR badge integration</a>
+    <ul>
+      <li><a href="#badge-catalogue">Badge catalogue</a>
+        <ul>
+          <li><a href="#open-source-badges">🟩 Open-source badges</a></li>
+          <li><a href="#private-project-badges">🟦 Private project badges</a></li>
+          <li><a href="#profile-badges">🟪 Profile badges</a></li>
+          <li><a href="#color-reference">Color reference</a></li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li><a href="#metrics-orchestrator-cli">metrics-orchestrator CLI</a></li>
+  <li><a href="#local-development-workflow">Local development workflow</a></li>
+</ul>
 
-- [Repository metrics workflow](#repository-metrics-workflow)
-  - [Open-source repositories bundle](#open-source-repositories-bundle)
-- [Unified target configuration](#unified-target-configuration)
-- [IMIR badge integration](#imir-badge-integration)
-  - [Badge catalogue](#badge-catalogue)
-    - [🟩 Open-source badges](#open-source-badges)
-    - [🟦 Private project badges](#private-project-badges)
-    - [🟪 Profile badges](#profile-badges)
-    - [Color reference](#color-reference)
-- [metrics-orchestrator CLI](#metrics-orchestrator-cli)
-- [Local development workflow](#local-development-workflow)
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-_[Back to top](#top)_
+<h2 id="repository-metrics-workflow">Repository metrics workflow</h2>
 
-## Repository metrics workflow
+<p>
+  Use <code>.github/workflows/render-repository.yml</code> to refresh repository dashboards based on the "repository" template. Supply the
+  repository handle and optional overrides for the owner, target branch name, artifact filename, or destination path.
+</p>
 
-Use `.github/workflows/render-repository.yml` to refresh repository dashboards based on the "repository" template. Supply the
-repository handle and optional overrides for the owner, target branch name, artifact filename, or destination path.
-
-```yaml
-jobs:
+<pre><code class="language-yaml">jobs:
   example:
     uses: RAprogramm/infra-metrics-insight-renderer/.github/workflows/render-repository.yml@main
     with:
@@ -42,148 +60,188 @@ jobs:
       # target_path: metrics/my-repository.svg
       # temp_artifact: .metrics-tmp/my-repository.svg
     secrets:
-      CLASSIC: ${{ secrets.METRICS_TOKEN }}
-```
+      CLASSIC: ${{ secrets.METRICS_TOKEN }}</code></pre>
 
-The workflow automatically renders the repository metrics card, commits the refreshed SVG to the configured path, and opens an
-idempotent pull request when changes are detected.
+<p>
+  The workflow automatically renders the repository metrics card, commits the refreshed SVG to the configured path, and opens an
+  idempotent pull request when changes are detected.
+</p>
 
-_[Back to top](#top)_
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-### Open-source repositories bundle
+<h3 id="open-source-repositories-bundle">Open-source repositories bundle</h3>
 
-Workflows targeting public repositories that live under the `RAprogramm` organization can reuse `.github/workflows/render-open-source.yml`.
-The workflow accepts a JSON array with repository names and renders the standard repository dashboard for each entry. The list is
-validated through the `metrics-orchestrator open-source` subcommand, ensuring the matrix only includes non-empty repository names.
+<p>
+  Workflows targeting public repositories that live under the <code>RAprogramm</code> organization can reuse
+  <code>.github/workflows/render-open-source.yml</code>. The workflow accepts a JSON array with repository names and renders the standard repository dashboard for each entry. The list is validated through the <code>metrics-orchestrator open-source</code> subcommand, ensuring the matrix only includes non-empty repository names.
+</p>
 
-```yaml
-jobs:
+<pre><code class="language-yaml">jobs:
   open_source:
     uses: RAprogramm/infra-metrics-insight-renderer/.github/workflows/render-open-source.yml@main
     with:
       repositories: '["masterror", "telegram-webapp-sdk"]'
     secrets:
-      CLASSIC: ${{ secrets.METRICS_TOKEN }}
-```
+      CLASSIC: ${{ secrets.METRICS_TOKEN }}</code></pre>
 
-Providing a custom list of repositories allows a single job to refresh multiple metrics cards without duplicating boilerplate workflow definitions.
+<p>
+  Providing a custom list of repositories allows a single job to refresh multiple metrics cards without duplicating boilerplate workflow definitions.
+</p>
 
-_[Back to top](#top)_
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-## Unified target configuration
+<h2 id="unified-target-configuration">Unified target configuration</h2>
 
-The [`targets/targets.yaml`](targets/targets.yaml) file defines every metrics target that should be refreshed on the regular
-schedule. Each entry requires the GitHub account (`owner`), an optional `repository`, and the `type` of metrics card to render:
+<p>
+  The <a href="targets/targets.yaml"><code>targets/targets.yaml</code></a> file defines every metrics target that should be refreshed on the regular
+  schedule. Each entry requires the GitHub account (<code>owner</code>), an optional <code>repository</code>, and the <code>type</code> of metrics card to render:
+</p>
 
-- `profile` – render a classic GitHub profile card.
-- `open_source` – render the repository template for public projects.
-- `private_project` – render the repository template for private projects.
+<ul>
+  <li><code>profile</code> – render a classic GitHub profile card.</li>
+  <li><code>open_source</code> – render the repository template for public projects.</li>
+  <li><code>private_project</code> – render the repository template for private projects.</li>
+</ul>
 
-When the scheduled [`render-all.yml`](.github/workflows/render-all.yml) workflow runs it executes the
-`metrics-orchestrator` CLI to transform the YAML into a matrix consumed by the rendering jobs. New targets can be tested locally
-with:
+<p>
+  When the scheduled <a href=".github/workflows/render-all.yml"><code>render-all.yml</code></a> workflow runs it executes the
+  <code>metrics-orchestrator</code> CLI to transform the YAML into a matrix consumed by the rendering jobs. New targets can be tested locally
+  with:
+</p>
 
-```bash
-cargo run --manifest-path metrics-orchestrator/Cargo.toml -- --config targets/targets.yaml --pretty
-```
+<pre><code class="language-bash">cargo run --manifest-path metrics-orchestrator/Cargo.toml -- --config targets/targets.yaml --pretty</code></pre>
 
-Use the open-source helper to normalize ad-hoc repository lists for the bundled workflow:
+<p>
+  Use the open-source helper to normalize ad-hoc repository lists for the bundled workflow:
+</p>
 
-```bash
-cargo run --manifest-path metrics-orchestrator/Cargo.toml -- open-source --input '["masterror", "telegram-webapp-sdk"]'
-```
+<pre><code class="language-bash">cargo run --manifest-path metrics-orchestrator/Cargo.toml -- open-source --input '["masterror", "telegram-webapp-sdk"]'</code></pre>
 
-The command outputs the normalized JSON document that the workflow uses. The same CLI is invoked during CI, so validation errors
-must be resolved locally before a workflow run succeeds.
+<p>
+  The command outputs the normalized JSON document that the workflow uses. The same CLI is invoked during CI, so validation errors
+  must be resolved locally before a workflow run succeeds.
+</p>
 
-Optional per-target overrides include:
+<p>Optional per-target overrides include:</p>
+<ul>
+  <li><code>branch_name</code> (or the alias <code>branch</code>) – select the Git branch used for the metrics refresh pull request.</li>
+  <li><code>target_path</code> – change where the rendered SVG is stored.</li>
+  <li><code>temp_artifact</code> – adjust the temporary filename produced by the renderer before moving it into place.</li>
+  <li><code>contributors_branch</code> – specify the repository branch analyzed by the contributors plugin.</li>
+  <li><code>time_zone</code> – customize the time zone passed to the renderer.</li>
+  <li><code>slug</code> – override the derived slug used for filenames and workflow dispatch names.</li>
+</ul>
 
-- `branch_name` (or the alias `branch`) – select the Git branch used for the metrics refresh pull request.
-- `target_path` – change where the rendered SVG is stored.
-- `temp_artifact` – adjust the temporary filename produced by the renderer before moving it into place.
-- `contributors_branch` – specify the repository branch analyzed by the contributors plugin.
-- `time_zone` – customize the time zone passed to the renderer.
-- `slug` – override the derived slug used for filenames and workflow dispatch names.
+<p>
+  Unset overrides fall back to deterministic defaults chosen by the orchestrator, so adding a new target only requires the owner,
+  repository (when applicable), and target type.
+</p>
 
-Unset overrides fall back to deterministic defaults chosen by the orchestrator, so adding a new target only requires the owner,
-repository (when applicable), and target type.
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-_[Back to top](#top)_
+<h2 id="imir-badge-integration">IMIR badge integration</h2>
 
-## IMIR badge integration
+<p>
+  Register a repository or profile by adding a new entry to
+  <a href="targets/targets.yaml"><code>targets/targets.yaml</code></a>. The orchestrator normalizes the identifier into a slug that becomes the SVG filename and forms the basis for badge embeds. Scheduled renders run on the cadence defined in the repository workflows, so dashboards refresh automatically once the target is listed.
+</p>
 
-Register a repository or profile by adding a new entry to [`targets/targets.yaml`](targets/targets.yaml). The orchestrator
-normalizes the identifier into a slug that becomes the SVG filename and forms the basis for badge embeds. Scheduled renders run
-on the cadence defined in the repository workflows, so dashboards refresh automatically once the target is listed.
+<p>
+  After the initial registration lands in <code>main</code>, trigger the on-demand workflow named <code>render-&lt;slug&gt;.yml</code> to produce the first
+  badge artifact. This pre-populates the SVG before linking to it in documentation.
+</p>
 
-After the initial registration lands in `main`, trigger the on-demand workflow named `render-<slug>.yml` to produce the first
-badge artifact. This pre-populates the SVG before linking to it in documentation.
+<p>Embed the rendered badge in Markdown using the slugged artifact path:</p>
 
-Embed the rendered badge in Markdown using the slugged artifact path:
+<pre><code class="language-markdown">![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/&lt;slug&gt;.svg)</code></pre>
 
-```markdown
-![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/<slug>.svg)
-```
+<p>
+  Replace <code>&lt;slug&gt;</code> with the normalized identifier emitted for the target (for example, <code>owner-repository</code> for repository cards or
+  <code>owner</code> for profile cards). Once the slug exists under <code>metrics/</code>, the badge can be referenced from any README or documentation
+  page.
+</p>
 
-Replace `<slug>` with the normalized identifier emitted for the target (for example, `owner-repository` for repository cards or
-`owner` for profile cards). Once the slug exists under `metrics/`, the badge can be referenced from any README or documentation
-page.
+<h3 id="badge-catalogue">Badge catalogue</h3>
 
-### Badge catalogue
+<p>
+  The published badges are grouped by color so their category is obvious at a glance. Reuse the badges directly from the
+  repository to avoid stale snapshots.
+</p>
 
-The published badges are grouped by color so their category is obvious at a glance. Reuse the badges directly from the
-repository to avoid stale snapshots.
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-_[Back to top](#top)_
+<h4 id="open-source-badges">🟩 Open-source badges</h4>
 
-<a id="open-source-badges"></a>
-#### 🟩 Open-source badges
+<table>
+  <thead>
+    <tr><th>Repository</th><th>Badge</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>RAprogramm/masterror</code></td>
+      <td><img alt="masterror metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/masterror.svg" /></td>
+    </tr>
+    <tr>
+      <td><code>RAprogramm/telegram-webapp-sdk</code></td>
+      <td><img alt="telegram-webapp-sdk metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg" /></td>
+    </tr>
+  </tbody>
+</table>
 
-| Repository | Badge |
-| --- | --- |
-| `RAprogramm/masterror` | ![masterror metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/masterror.svg) |
-| `RAprogramm/telegram-webapp-sdk` | ![telegram-webapp-sdk metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg) |
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-_[Back to top](#top)_
+<h4 id="private-project-badges">🟦 Private project badges</h4>
 
-<a id="private-project-badges"></a>
-#### 🟦 Private project badges
+<p>
+  Private dashboards follow the same embedding rules. Publish badges from this section once private projects are registered.
+</p>
 
-Private dashboards follow the same embedding rules. Publish badges from this section once private projects are registered.
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-_[Back to top](#top)_
+<h4 id="profile-badges">🟪 Profile badges</h4>
 
-<a id="profile-badges"></a>
-#### 🟪 Profile badges
+<table>
+  <thead>
+    <tr><th>Account</th><th>Badge</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>RAprogramm</code></td>
+      <td><img alt="RAprogramm profile metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/profile.svg" /></td>
+    </tr>
+  </tbody>
+</table>
 
-| Account | Badge |
-| --- | --- |
-| `RAprogramm` | ![RAprogramm profile metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/profile.svg) |
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-_[Back to top](#top)_
+<h4 id="color-reference">Color reference</h4>
+<ul>
+  <li>🟩 Green badges indicate open-source repositories.</li>
+  <li>🟦 Blue badges denote private repositories.</li>
+  <li>🟪 Purple badges represent GitHub profile dashboards.</li>
+</ul>
 
-#### Color reference
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-- 🟩 Green badges indicate open-source repositories.
-- 🟦 Blue badges denote private repositories.
-- 🟪 Purple badges represent GitHub profile dashboards.
+<h2 id="metrics-orchestrator-cli">metrics-orchestrator CLI</h2>
 
-_[Back to top](#top)_
+<p>
+  The <code>metrics-orchestrator</code> crate lives in
+  <a href="metrics-orchestrator"><code>metrics-orchestrator</code></a>. It validates the target configuration,
+  applies deterministic defaults for filenames, branch names, and time zones, and serializes the normalized targets in JSON form.
+  Unit tests cover slug normalization, configuration validation, and duplicate detection to ensure predictable behaviour when new
+  targets are added.
+</p>
 
-## metrics-orchestrator CLI
+<p align="right"><em><a href="#top">Back to top</a></em></p>
 
-The `metrics-orchestrator` crate lives in [`metrics-orchestrator`](metrics-orchestrator). It validates the target configuration,
-applies deterministic defaults for filenames, branch names, and time zones, and serializes the normalized targets in JSON form.
-Unit tests cover slug normalization, configuration validation, and duplicate detection to ensure predictable behaviour when new
-targets are added.
+<h2 id="local-development-workflow">Local development workflow</h2>
 
-_[Back to top](#top)_
+<p>
+  Use <a href="scripts/ci-check.sh"><code>scripts/ci-check.sh</code></a> to run the full validation pipeline locally. The helper script formats the code
+  with the nightly toolchain, executes Clippy, builds all targets, runs tests, generates documentation, and invokes <a href="https://crates.io/crates/cargo-audit">cargo audit</a>
+  and <a href="https://crates.io/crates/cargo-deny">cargo deny</a> to ensure dependency health. Install
+  <a href="https://crates.io/crates/cargo-audit">cargo-audit</a> and <a href="https://crates.io/crates/cargo-deny">cargo-deny</a> beforehand to enable the security checks.
+</p>
 
-## Local development workflow
-
-Use [`scripts/ci-check.sh`](scripts/ci-check.sh) to run the full validation pipeline locally. The helper script formats the code
-with the nightly toolchain, executes Clippy, builds all targets, runs tests, generates documentation, and invokes `cargo audit`
-and `cargo deny` to ensure dependency health. Install [`cargo-audit`](https://crates.io/crates/cargo-audit) and
-[`cargo-deny`](https://crates.io/crates/cargo-deny) beforehand to enable the security checks.
-
-_[Back to top](#top)_
+<p align="right"><em><a href="#top">Back to top</a></em></p>
