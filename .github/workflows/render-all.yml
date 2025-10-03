@@ -10,7 +10,32 @@ permissions:
   pull-requests: write
 
 jobs:
+  build_cli:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache metrics-orchestrator build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "metrics-orchestrator -> target"
+
+      - name: Build metrics-orchestrator CLI
+        run: cargo build --release --locked --manifest-path metrics-orchestrator/Cargo.toml
+
+      - name: Upload orchestrator binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-orchestrator
+          path: metrics-orchestrator/target/release/metrics-orchestrator
+          if-no-files-found: error
+
   prepare:
+    needs: build_cli
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
@@ -18,12 +43,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Download orchestrator binary
+        uses: actions/download-artifact@v4
+        with:
+          name: metrics-orchestrator
+          path: dist
+
       - name: Generate render targets
         id: generate
         run: |
           set -euo pipefail
-          MATRIX="$(cargo run --quiet --manifest-path metrics-orchestrator/Cargo.toml -- --config targets/targets.yaml)"
-          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+          ORCHESTRATOR="dist/metrics-orchestrator"
+          chmod +x "${ORCHESTRATOR}"
+          MATRIX="$(${ORCHESTRATOR} --config targets/targets.yaml)"
+          printf 'matrix=%s\n' "${MATRIX}" >> "${GITHUB_OUTPUT}"
 
   render:
     needs: prepare

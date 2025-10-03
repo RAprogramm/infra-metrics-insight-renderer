@@ -100,13 +100,13 @@ runs:
         mkdir -p "$(dirname "${TEMP_ARTIFACT}")"
 
     - name: Metrics embed
-      uses: lowlighter/metrics@v3.34
+      uses: lowlighter/metrics@latest
       with:
         use_prebuilt_image: yes
         token: ${{ inputs.classic_token }}
         user: ${{ env.TARGET_USER }}
         template: classic
-        use_prebuilt_image: ghcr.io/lowlighter/metrics:v3.34.0
+        use_prebuilt_image: ghcr.io/lowlighter/metrics:latest
         filename: ${{ env.TEMP_ARTIFACT }}
         base: "header, activity, community, repositories, metadata"
         base_hireable: yes
