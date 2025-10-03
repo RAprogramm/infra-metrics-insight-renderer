@@ -2,7 +2,18 @@ name: Render metrics for telegram-webapp-sdk repository
 
 on:
   workflow_dispatch:
+    inputs:
+      branch_name:
+        description: "Branch name used for the metrics refresh PR."
+        required: false
+        default: "ci/metrics-refresh-telegram-webapp-sdk"
   workflow_call:
+    inputs:
+      branch_name:
+        description: "Branch name used for the metrics refresh PR."
+        required: false
+        default: "ci/metrics-refresh-telegram-webapp-sdk"
+        type: string
     secrets:
       CLASSIC:
         required: true
@@ -16,7 +27,7 @@ jobs:
 
     env:
       TZ: Asia/Ho_Chi_Minh
-      BRANCH_NAME: ci/metrics-refresh
+      BRANCH_NAME: ${{ inputs.branch_name }}
       TARGET_OWNER: RAprogramm
       TARGET_REPO: telegram-webapp-sdk
       TARGET_PATH: metrics/telegram-webapp-sdk.svg

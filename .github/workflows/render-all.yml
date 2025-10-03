@@ -12,15 +12,21 @@ permissions:
 jobs:
   masterror:
     uses: ./.github/workflows/render-masterror.yml
+    with:
+      branch_name: ci/metrics-refresh-masterror
     secrets:
       CLASSIC: ${{ secrets.CLASSIC }}
 
   profile:
     uses: ./.github/workflows/render-profile.yml
+    with:
+      branch_name: ci/metrics-refresh-profile
     secrets:
       CLASSIC: ${{ secrets.CLASSIC }}
 
   telegram_webapp_sdk:
     uses: ./.github/workflows/render-telegram-webapp-sdk.yml
+    with:
+      branch_name: ci/metrics-refresh-telegram-webapp-sdk
     secrets:
       CLASSIC: ${{ secrets.CLASSIC }}
