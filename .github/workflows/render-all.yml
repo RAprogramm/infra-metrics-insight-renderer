@@ -59,7 +59,7 @@ jobs:
       - name: Clone target repo, update branch and file
         id: update
         run: |
-          set -eu
+          set -euo pipefail
 
           REPO="${{ matrix.target.owner }}/${{ matrix.target.repo }}"
           URL="https://x-access-token:${{ secrets.CLASSIC }}@github.com/${REPO}.git"
@@ -76,31 +76,50 @@ jobs:
           if [ -z "${DEFAULT_REF}" ]; then DEFAULT_REF="main"; fi
           echo "default_base=${DEFAULT_REF}" >> "$GITHUB_OUTPUT"
 
-          # Если удалённая ci-ветка уже есть — тянем её в remote-tracking и чекаутим локальную от неё
           if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
-            git fetch --no-tags --prune --depth=1 origin \
-              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
-            git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
+            BRANCH_EXISTS=true
           else
-            # Иначе создаём локальную ветку от дефолтной базы
-            git fetch --no-tags --prune --depth=1 origin \
-              "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}"
-            git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}"
+            BRANCH_EXISTS=false
           fi
 
-          # Обновляем файл
           mkdir -p "$(dirname "${{ matrix.target.path }}")"
-          cp "$GITHUB_WORKSPACE/repo.tmp.svg" "${{ matrix.target.path }}"
 
-          if git status --porcelain | grep .; then
+          PUSHED=false
+          for ATTEMPT in 1 2 3; do
+            if [ "${BRANCH_EXISTS}" = true ]; then
+              git fetch --no-tags --prune --depth=1 origin \
+                "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
+              git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
+            else
+              git fetch --no-tags --prune --depth=1 origin \
+                "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}"
+              git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}"
+            fi
+
+            cp "$GITHUB_WORKSPACE/repo.tmp.svg" "${{ matrix.target.path }}"
+
+            if ! git status --porcelain | grep -q .; then
+              echo "No changes to commit."
+              echo "pushed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
             git add "${{ matrix.target.path }}"
             git commit -m "chore(metrics): refresh ${{ matrix.target.path }}"
-            # Служебная ветка — форсим с защитой
-            git push --force-with-lease origin "${BRANCH_NAME}"
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "No changes to commit."
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
+
+            if git push --force-with-lease origin "${BRANCH_NAME}"; then
+              PUSHED=true
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+
+            echo "Push attempt ${ATTEMPT} failed, refreshing branch and retrying..." >&2
+            BRANCH_EXISTS=true
+          done
+
+          if [ "${PUSHED}" != true ]; then
+            echo "Unable to push metrics update after multiple attempts." >&2
+            exit 1
           fi
 
       # 3) Создаём PR через gh CLI, если его ещё нет. Без ребейсов и лишних манипуляций веткой
