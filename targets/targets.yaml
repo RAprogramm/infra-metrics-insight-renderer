@@ -1,0 +1,13 @@
+# List of metrics targets rendered by automation. Add new entries with the owner,
+# optional repository, and a type of `profile`, `open_source`, or
+# `private_project`.
+targets:
+  - owner: RAprogramm
+    type: profile
+    slug: profile
+  - owner: RAprogramm
+    repository: masterror
+    type: open_source
+  - owner: RAprogramm
+    repository: telegram-webapp-sdk
+    type: open_source
