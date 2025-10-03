@@ -1,15 +1,92 @@
-name: Render metrics (skeleton)
+name: Render metrics for selected repos
 
 on:
+  schedule:
+    - cron: "19 3 * * *" 
   workflow_dispatch:
 
 jobs:
-  test:
+  render:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - { owner: "RAprogramm", repo: "masterror",            path: "docs/metrics.svg" }
+          - { owner: "RAprogramm", repo: "telegram-webapp-sdk",  path: "metrics.svg" }
+
+    env:
+      GH_USER: RAprogramm
+      TZ: Asia/Ho_Chi_Minh
+
     steps:
-      - name: Checkout
+      - name: Checkout renderer
         uses: actions/checkout@v5
 
-      - name: Say hello
-        run: echo "Metrics center is alive!"
+      # Генерим один SVG (минимум плагинов = стабильнее, быстрее, чище)
+      - name: Generate metrics SVG
+        uses: lowlighter/metrics@latest
+        with:
+          token: ${{ secrets.METRICS_PAT }}     # fine-grained PAT с RW на эти 2 репозитория
+          user: ${{ env.GH_USER }}
+          template: classic
+          filename: metrics.tmp.svg
+          base: ""                              # не тянем базовые спам-блоки
+          config_timezone: ${{ env.TZ }}
+          cache: 12h
+          plugin_isocalendar: yes
+          plugin_isocalendar_duration: half-year
+          plugin_languages: yes
+          plugin_languages_limit: 8
+          plugin_languages_sections: most-used
+          plugin_languages_details: bytes-size, percentage
+          plugin_languages_ignored: html, css, scss
+
+      # Клоним целевой репозиторий, кладём файл в нужный путь, пушим ветку
+      - name: Clone target repo and prepare branch
+        run: |
+          set -eu
+          REPO="${{ matrix.target.owner }}/${{ matrix.target.repo }}"
+          URL="https://${GITHUB_ACTOR}:${{ secrets.METRICS_PAT }}@github.com/${REPO}.git"
+
+          git clone --depth=1 "$URL" "target-repo"
+          cd target-repo
+
+          BR="ci/metrics-refresh"
+          if git rev-parse --verify "$BR" >/dev/null 2>&1; then
+            git checkout "$BR"
+          else
+            git checkout -b "$BR"
+          fi
+
+          mkdir -p "$(dirname "${{ matrix.target.path }}")"
+          cp ../metrics.tmp.svg "${{ matrix.target.path }}"
+
+          if git status --porcelain | grep .; then
+            git add "${{ matrix.target.path }}"
+            git commit -m "chore(metrics): refresh ${{ matrix.target.path }}"
+            git push -u origin "$BR" || git push origin "$BR"
+          else
+            echo "No changes to commit."
+          fi
+
+      - name: Open PR to target repo
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.METRICS_PAT }}
+          path: target-repo
+          branch: ci/metrics-refresh
+          base: main
+          title: "chore(metrics): refresh"
+          body: "Auto-generated metrics update"
+          commit-message: "chore(metrics): refresh"
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          labels: |
+            ci
+            metrics
 
