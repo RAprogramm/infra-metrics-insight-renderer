@@ -23,6 +23,7 @@ jobs:
     uses: ./.github/workflows/render-repository.yml
     with:
       branch_name: ${{ inputs.branch_name }}
+      contributors_branch: main
       target_owner: RAprogramm
       target_repo: telegram-webapp-sdk
       target_path: metrics/telegram-webapp-sdk.svg

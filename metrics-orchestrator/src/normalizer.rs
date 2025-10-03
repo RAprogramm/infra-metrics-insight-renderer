@@ -25,6 +25,7 @@ const DEFAULT_TEMP_DIR: &str = ".metrics-tmp";
 const DEFAULT_EXTENSION: &str = "svg";
 /// Default time zone for renderer execution when none is provided.
 const DEFAULT_TIME_ZONE: &str = "Asia/Ho_Chi_Minh";
+const DEFAULT_CONTRIBUTORS_BRANCH: &str = "main";
 
 /// Normalized representation of a metrics target used by automation workflows.
 #[derive(Debug, Serialize, Clone, PartialEq, Eq)]
@@ -46,7 +47,9 @@ pub struct RenderTarget {
     /// Time zone passed to the renderer.
     pub time_zone: String,
     /// Display name used in commit messages and logs.
-    pub display_name: String,
+    pub display_name:        String,
+    /// Branch analyzed by the contributors plugin.
+    pub contributors_branch: String,
 }
 
 /// Document containing all normalized targets.
@@ -186,6 +189,13 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
         .resolved_display_name()
         .ok_or_else(|| Error::validation("unable to derive display name for target"))?;
 
+    let contributors_branch = entry
+        .contributors_branch
+        .as_ref()
+        .map(|value| normalize_identifier(value, "contributors_branch",))
+        .transpose()?
+        .unwrap_or_else(|| DEFAULT_CONTRIBUTORS_BRANCH.to_owned(),);
+
     Ok(RenderTarget {
         slug,
         owner,
@@ -196,7 +206,8 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
         temp_artifact,
         time_zone,
         display_name,
-    })
+        contributors_branch,
+    },)
 }
 
 /// Validates identifier-like fields such as owners or repositories.
@@ -246,12 +257,13 @@ mod tests {
 
     fn repository_entry() -> TargetEntry {
         TargetEntry {
-            owner: "RAprogramm".to_owned(),
-            repository: Some("metrics".to_owned()),
-            target_type: TargetKind::OpenSource,
-            slug: None,
-            branch_name: None,
-            target_path: None,
+            owner:         "RAprogramm".to_owned(),
+            repository:    Some("metrics".to_owned(),),
+            target_type:   TargetKind::OpenSource,
+            slug:          None,
+            branch_name:   None,
+            contributors_branch: None,
+            target_path:   None,
             temp_artifact: None,
             time_zone: None,
             display_name: None,
@@ -268,17 +280,19 @@ mod tests {
         assert_eq!(target.target_path, "metrics/metrics.svg");
         assert_eq!(target.temp_artifact, ".metrics-tmp/metrics.svg");
         assert_eq!(target.display_name, "metrics");
+        assert_eq!(target.contributors_branch, "main");
     }
 
     #[test]
     fn normalizes_infra_metrics_insight_renderer_target() {
         let entry = TargetEntry {
-            owner: "RAprogramm".to_owned(),
-            repository: Some("infra-metrics-insight-renderer".to_owned()),
-            target_type: TargetKind::OpenSource,
-            slug: Some("infra-metrics-insight-renderer".to_owned()),
-            branch_name: None,
-            target_path: None,
+            owner:         "RAprogramm".to_owned(),
+            repository:    Some("infra-metrics-insight-renderer".to_owned(),),
+            target_type:   TargetKind::OpenSource,
+            slug:          Some("infra-metrics-insight-renderer".to_owned(),),
+            branch_name:   None,
+            contributors_branch: None,
+            target_path:   None,
             temp_artifact: None,
             time_zone: None,
             display_name: Some("Infra Metrics Insight Renderer".to_owned()),
@@ -300,20 +314,22 @@ mod tests {
         );
         assert_eq!(target.time_zone, "Asia/Ho_Chi_Minh");
         assert_eq!(target.display_name, "Infra Metrics Insight Renderer");
+        assert_eq!(target.contributors_branch, "main");
     }
 
     #[test]
     fn normalizes_profile_entry_with_overrides() {
         let entry = TargetEntry {
-            owner: " Octocat ".to_owned(),
-            repository: None,
-            target_type: TargetKind::Profile,
-            slug: Some(" Custom.Profile ".to_owned()),
-            branch_name: Some("  feature/metrics  ".to_owned()),
-            target_path: Some("  dashboards/profile.svg  ".to_owned()),
-            temp_artifact: Some("  tmp/profile.svg  ".to_owned()),
-            time_zone: Some("  UTC  ".to_owned()),
-            display_name: Some("  Profile Name  ".to_owned()),
+            owner:         " Octocat ".to_owned(),
+            repository:    None,
+            target_type:   TargetKind::Profile,
+            slug:          Some(" Custom.Profile ".to_owned(),),
+            branch_name:   Some("  feature/metrics  ".to_owned(),),
+            contributors_branch: None,
+            target_path:   Some("  dashboards/profile.svg  ".to_owned(),),
+            temp_artifact: Some("  tmp/profile.svg  ".to_owned(),),
+            time_zone:     Some("  UTC  ".to_owned(),),
+            display_name:  Some("  Profile Name  ".to_owned(),),
         };
 
         let target = normalize_entry(&entry).expect("expected overrides to be honored");
@@ -323,6 +339,17 @@ mod tests {
         assert_eq!(target.temp_artifact, "tmp/profile.svg");
         assert_eq!(target.time_zone, "UTC");
         assert_eq!(target.display_name, "Profile Name");
+        assert_eq!(target.contributors_branch, "main");
+    }
+
+    #[test]
+    fn normalizes_contributors_branch_override()
+    {
+        let mut entry = repository_entry();
+        entry.contributors_branch = Some(" feature/main ".to_owned(),);
+
+        let target = normalize_entry(&entry,).expect("expected contributors branch override",);
+        assert_eq!(target.contributors_branch, "feature/main");
     }
 
     #[test]
@@ -482,6 +509,9 @@ mod tests {
         let mut clone = base.clone();
         assert_eq!(base, clone);
         clone.branch_name.push_str("-extra");
+        assert_ne!(base, clone);
+        let mut clone = base.clone();
+        clone.contributors_branch.push_str("-feature",);
         assert_ne!(base, clone);
     }
 
