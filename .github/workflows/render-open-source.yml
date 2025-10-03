@@ -35,30 +35,30 @@ jobs:
         run: |
           set -euo pipefail
           python - "${GITHUB_OUTPUT}" <<'PY'
-import json
-import os
-import sys
+          import json
+          import os
+          import sys
 
-output_path = sys.argv[1]
-raw = os.environ.get("RAW_INPUT", "").strip()
-if not raw:
-    raw = '["masterror", "telegram-webapp-sdk"]'
-try:
-    repositories = json.loads(raw)
-except json.JSONDecodeError as exc:
-    raise SystemExit(f"Invalid repositories JSON: {exc}") from exc
-if not isinstance(repositories, list) or not repositories:
-    raise SystemExit("Repositories input must be a non-empty JSON array of repository names.")
-normalized = []
-for item in repositories:
-    if not isinstance(item, str):
-        raise SystemExit("Repositories input must contain only strings.")
-    trimmed = item.strip()
-    if not trimmed:
-        raise SystemExit("Repository names cannot be empty strings.")
-    normalized.append(trimmed)
-with open(output_path, "a", encoding="utf-8") as handle:
-    handle.write(f"repositories={json.dumps(normalized)}\n")
+          output_path = sys.argv[1]
+          raw = os.environ.get("RAW_INPUT", "").strip()
+          if not raw:
+              raw = '["masterror", "telegram-webapp-sdk"]'
+          try:
+              repositories = json.loads(raw)
+          except json.JSONDecodeError as exc:
+              raise SystemExit(f"Invalid repositories JSON: {exc}") from exc
+          if not isinstance(repositories, list) or not repositories:
+              raise SystemExit("Repositories input must be a non-empty JSON array of repository names.")
+          normalized = []
+          for item in repositories:
+              if not isinstance(item, str):
+                  raise SystemExit("Repositories input must contain only strings.")
+              trimmed = item.strip()
+              if not trimmed:
+                  raise SystemExit("Repository names cannot be empty strings.")
+              normalized.append(trimmed)
+          with open(output_path, "a", encoding="utf-8") as handle:
+              handle.write(f"repositories={json.dumps(normalized)}\n")
 PY
 
   render:
