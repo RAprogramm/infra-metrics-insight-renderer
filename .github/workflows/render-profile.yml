@@ -51,7 +51,6 @@ jobs:
           config_octicon: yes
           config_timezone: ${{ env.TZ }}
           config_twemoji: yes
-          cache: 12h
           plugin_achievements: yes
           plugin_achievements_display: detailed
           plugin_achievements_secrets: yes
