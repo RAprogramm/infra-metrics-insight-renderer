@@ -171,17 +171,52 @@ jobs:
           plugin_wakatime_user: "@RA"
           repositories_forks: yes
 
-      - name: Verify generated artifact
+      - name: Locate generated artifact
+        id: artifact
         run: |
-          set -eu
-          test -f "$GITHUB_WORKSPACE/${TEMP_ARTIFACT}"
-          echo "Generated: $GITHUB_WORKSPACE/${TEMP_ARTIFACT}"
+          set -euo pipefail
+
+          if [ -z "${TEMP_ARTIFACT}" ]; then
+            echo "Temporary artifact path is empty." >&2
+            exit 1
+          fi
+
+          CANDIDATES=(
+            "${GITHUB_WORKSPACE}/${TEMP_ARTIFACT}"
+            "/metrics_renders/${TEMP_ARTIFACT}"
+            "/metrics_renders/$(basename "${TEMP_ARTIFACT}")"
+          )
+
+          for CANDIDATE in "${CANDIDATES[@]}"; do
+            if [ -f "${CANDIDATE}" ]; then
+              echo "Located metrics artifact at ${CANDIDATE}"
+              echo "path=${CANDIDATE}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          echo "Unable to locate metrics artifact. Searched paths:" >&2
+          printf '  - %s\n' "${CANDIDATES[@]}" >&2
+
+          if [ -d "/metrics_renders" ]; then
+            echo "Discovered files under /metrics_renders:" >&2
+            find /metrics_renders -maxdepth 2 -type f -print >&2 || true
+          fi
+
+          exit 1
 
       - name: Move artifact into repository workspace
         run: |
           set -euo pipefail
+
+          SOURCE_PATH="${{ steps.artifact.outputs.path }}"
+          if [ -z "${SOURCE_PATH}" ]; then
+            echo "Artifact path output is empty." >&2
+            exit 1
+          fi
+
           mkdir -p "$(dirname "${TARGET_PATH}")"
-          mv "$GITHUB_WORKSPACE/${TEMP_ARTIFACT}" "${TARGET_PATH}"
+          mv "${SOURCE_PATH}" "${TARGET_PATH}"
           echo "Stored metrics at ${TARGET_PATH}"
 
       - name: Commit metrics update
