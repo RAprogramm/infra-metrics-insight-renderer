@@ -19,10 +19,17 @@ on:
       temp_artifact:
         description: "Intermediate artifact filename produced by metrics renderer."
         required: false
+      contributors_branch:
+        description: "Repository branch analyzed by contributors plugin."
+        required: false
   workflow_call:
     inputs:
       branch_name:
         description: "Branch name used for the metrics refresh PR."
+        required: false
+        type: string
+      contributors_branch:
+        description: "Repository branch analyzed by contributors plugin."
         required: false
         type: string
       target_owner:
@@ -64,5 +71,6 @@ jobs:
           target_owner: ${{ inputs.target_owner || github.repository_owner }}
           target_repo: ${{ inputs.target_repo }}
           branch_name: ${{ inputs.branch_name || format('ci/metrics-refresh-{0}', inputs.target_repo) }}
+          contributors_branch: ${{ inputs.contributors_branch }}
           target_path: ${{ inputs.target_path || format('metrics/{0}.svg', inputs.target_repo) }}
           temp_artifact: ${{ inputs.temp_artifact || format('.metrics-tmp/{0}.svg', inputs.target_repo) }}

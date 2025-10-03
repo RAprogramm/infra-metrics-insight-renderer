@@ -23,6 +23,7 @@ jobs:
     uses: ./.github/workflows/render-repository.yml
     with:
       branch_name: ${{ inputs.branch_name }}
+      contributors_branch: main
       target_owner: RAprogramm
       target_repo: infra-metrics-insight-renderer
       target_path: metrics/infra-metrics-insight-renderer.svg
