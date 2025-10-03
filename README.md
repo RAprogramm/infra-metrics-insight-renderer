@@ -67,6 +67,17 @@ cargo run --manifest-path metrics-orchestrator/Cargo.toml -- --config targets/ta
 The command outputs the normalized JSON document that the workflow uses. The same CLI is invoked during CI, so validation errors
 must be resolved locally before a workflow run succeeds.
 
+Optional per-target overrides include:
+
+- `branch_name` (or the alias `branch`) – select the Git branch used for the metrics refresh pull request.
+- `target_path` – change where the rendered SVG is stored.
+- `temp_artifact` – adjust the temporary filename produced by the renderer before moving it into place.
+- `time_zone` – customize the time zone passed to the renderer.
+- `slug` – override the derived slug used for filenames and workflow dispatch names.
+
+Unset overrides fall back to deterministic defaults chosen by the orchestrator, so adding a new target only requires the owner,
+repository (when applicable), and target type.
+
 ## IMIR badge integration
 
 Register a repository or profile by adding a new entry to [`targets/targets.yaml`](targets/targets.yaml). The orchestrator

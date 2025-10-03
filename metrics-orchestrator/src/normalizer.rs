@@ -377,6 +377,22 @@ mod tests
     }
 
     #[test]
+    fn parse_targets_supports_branch_alias()
+    {
+        let yaml = r#"
+            targets:
+              - owner: octocat
+                repository: metrics
+                type: open_source
+                branch:  feature/metrics 
+        "#;
+
+        let document = parse_targets(yaml,).expect("expected parse success",);
+        assert_eq!(document.targets.len(), 1);
+        assert_eq!(document.targets[0].branch_name, "feature/metrics");
+    }
+
+    #[test]
     fn parse_targets_propagates_decode_errors()
     {
         let result = parse_targets("targets: invalid",);

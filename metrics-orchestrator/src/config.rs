@@ -33,7 +33,7 @@ pub struct TargetEntry
     pub slug: Option<String,>,
 
     /// Optional branch name override for commits with refreshed metrics.
-    #[serde(default)]
+    #[serde(default, alias = "branch", alias = "branch-name", alias = "branchName")]
     pub branch_name: Option<String,>,
 
     /// Optional destination path override for the generated SVG artifact.
