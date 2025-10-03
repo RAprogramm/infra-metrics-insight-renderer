@@ -10,7 +10,9 @@ use std::{
 };
 
 use clap::{ArgAction, Args, Parser, Subcommand};
-use metrics_orchestrator::{load_targets, resolve_open_source_repositories, Error};
+use metrics_orchestrator::{
+    load_targets, resolve_open_source_repositories, Error, TargetsDocument,
+};
 
 /// Command line interface for generating normalized metrics target definitions.
 #[derive(Debug, Parser)]
@@ -103,10 +105,18 @@ fn run_targets_from_path(path: &Path, pretty: bool) -> Result<(), Error> {
     let stdout = io::stdout();
     let mut handle = stdout.lock();
 
+    write_targets_document(&mut handle, &document, pretty)
+}
+
+fn write_targets_document<W: io::Write>(
+    writer: &mut W,
+    document: &TargetsDocument,
+    pretty: bool,
+) -> Result<(), Error> {
     if pretty {
-        serde_json::to_writer_pretty(&mut handle, &document)?;
+        serde_json::to_writer_pretty(writer, document)?;
     } else {
-        serde_json::to_writer(&mut handle, &document)?;
+        serde_json::to_writer(writer, document)?;
     }
 
     Ok(())
@@ -145,11 +155,13 @@ fn run_legacy_targets(args: &LegacyTargetsArgs) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
+    use std::{io::Cursor, path::Path};
 
     use clap::Parser;
 
-    use super::{run_legacy_targets, Cli, LegacyTargetsArgs};
+    use metrics_orchestrator::TargetsDocument;
+
+    use super::{run_legacy_targets, write_targets_document, Cli, Command, LegacyTargetsArgs};
 
     #[test]
     fn cli_accepts_legacy_targets_invocation() {
@@ -172,5 +184,52 @@ mod tests {
             }
             other => panic!("unexpected error variant: {other:?}"),
         }
+    }
+
+    #[test]
+    fn targets_subcommand_pretty_flag_uses_pretty_writer() {
+        let cli = Cli::try_parse_from([
+            "metrics-orchestrator",
+            "targets",
+            "--config",
+            "config.yaml",
+            "--pretty",
+        ])
+        .expect("failed to parse CLI");
+
+        let args = match cli.command.expect("missing targets command") {
+            Command::Targets(args) => args,
+            _ => panic!("unexpected command variant"),
+        };
+        assert!(args.pretty);
+
+        let document = TargetsDocument {
+            targets: Vec::new(),
+        };
+        let mut buffer = Cursor::new(Vec::new());
+        write_targets_document(&mut buffer, &document, args.pretty)
+            .expect("failed to serialize targets");
+
+        let output = String::from_utf8(buffer.into_inner()).expect("invalid UTF-8");
+        assert_eq!(output, "{\n  \"targets\": []\n}");
+    }
+
+    #[test]
+    fn legacy_invocation_without_pretty_uses_compact_writer() {
+        let cli = Cli::try_parse_from(["metrics-orchestrator", "--config", "config.yaml"])
+            .expect("failed to parse CLI");
+
+        assert!(cli.command.is_none());
+        assert!(!cli.legacy.pretty);
+
+        let document = TargetsDocument {
+            targets: Vec::new(),
+        };
+        let mut buffer = Cursor::new(Vec::new());
+        write_targets_document(&mut buffer, &document, cli.legacy.pretty)
+            .expect("failed to serialize targets");
+
+        let output = String::from_utf8(buffer.into_inner()).expect("invalid UTF-8");
+        assert_eq!(output, "{\"targets\":[]}");
     }
 }
