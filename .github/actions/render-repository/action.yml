@@ -1,0 +1,289 @@
+name: Render repository metrics
+
+description: >-
+  Render metrics for a repository using lowlighter/metrics and open or update a PR
+  with the refreshed artifact.
+
+author: RAprogramm Infrastructure Automation
+
+inputs:
+  classic_token:
+    description: Personal access token used for pushing commits and opening PRs.
+    required: true
+  target_owner:
+    description: Account that owns the repository to render metrics for.
+    required: false
+    default: ''
+  target_repo:
+    description: Repository name to render metrics for.
+    required: true
+  branch_name:
+    description: Branch name used for commits with refreshed metrics.
+    required: false
+    default: ''
+  target_path:
+    description: Destination path for the generated metrics artifact relative to the repo root.
+    required: false
+    default: ''
+  temp_artifact:
+    description: Temporary artifact filename produced by the metrics renderer.
+    required: false
+    default: ''
+  time_zone:
+    description: Time zone string passed to metrics renderer.
+    required: false
+    default: Asia/Ho_Chi_Minh
+
+runs:
+  using: composite
+  steps:
+    - name: Configure execution context
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        TARGET_REPO="${{ inputs.target_repo }}"
+        if [ -z "${TARGET_REPO}" ]; then
+          echo "The target_repo input must be provided." >&2
+          exit 1
+        fi
+
+        TARGET_OWNER_INPUT="${{ inputs.target_owner }}"
+        if [ -n "${TARGET_OWNER_INPUT}" ]; then
+          TARGET_OWNER="${TARGET_OWNER_INPUT}"
+        else
+          TARGET_OWNER="${GITHUB_REPOSITORY%%/*}"
+        fi
+
+        TARGET_PATH_INPUT="${{ inputs.target_path }}"
+        if [ -n "${TARGET_PATH_INPUT}" ]; then
+          TARGET_PATH="${TARGET_PATH_INPUT}"
+        else
+          TARGET_PATH="metrics/${TARGET_REPO}.svg"
+        fi
+
+        TEMP_ARTIFACT_INPUT="${{ inputs.temp_artifact }}"
+        if [ -n "${TEMP_ARTIFACT_INPUT}" ]; then
+          TEMP_ARTIFACT="${TEMP_ARTIFACT_INPUT}"
+        else
+          TEMP_ARTIFACT=".metrics-tmp/${TARGET_REPO}.svg"
+        fi
+
+        BRANCH_NAME_INPUT="${{ inputs.branch_name }}"
+        if [ -n "${BRANCH_NAME_INPUT}" ]; then
+          BRANCH_NAME="${BRANCH_NAME_INPUT}"
+        else
+          BRANCH_NAME="ci/metrics-refresh-${TARGET_REPO}"
+        fi
+
+        TIME_ZONE_INPUT="${{ inputs.time_zone }}"
+        if [ -n "${TIME_ZONE_INPUT}" ]; then
+          TIME_ZONE="${TIME_ZONE_INPUT}"
+        else
+          TIME_ZONE="Asia/Ho_Chi_Minh"
+        fi
+
+        echo "TARGET_OWNER=${TARGET_OWNER}" >> "${GITHUB_ENV}"
+        echo "TARGET_REPO=${TARGET_REPO}" >> "${GITHUB_ENV}"
+        echo "TARGET_PATH=${TARGET_PATH}" >> "${GITHUB_ENV}"
+        echo "TEMP_ARTIFACT=${TEMP_ARTIFACT}" >> "${GITHUB_ENV}"
+        echo "BRANCH_NAME=${BRANCH_NAME}" >> "${GITHUB_ENV}"
+        echo "TIME_ZONE=${TIME_ZONE}" >> "${GITHUB_ENV}"
+
+    - name: Checkout renderer
+      uses: actions/checkout@v5
+
+    - name: Prepare temporary artifact path
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "$(dirname "${TEMP_ARTIFACT}")"
+
+    - name: Metrics embed
+      uses: lowlighter/metrics@v3.34
+      with:
+        token: ${{ inputs.classic_token }}
+        user: ${{ env.TARGET_OWNER }}
+        repo: ${{ env.TARGET_REPO }}
+        template: repository
+        filename: ${{ env.TEMP_ARTIFACT }}
+        base: "header, activity, community, metadata"
+        config_timezone: ${{ env.TIME_ZONE }}
+        plugin_lines: yes
+        plugin_followup: yes
+        plugin_followup_sections: repositories, user
+        plugin_projects: no
+        plugin_licenses: yes
+        plugin_contributors: yes
+
+    - name: Locate generated artifact
+      id: artifact
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [ -z "${TEMP_ARTIFACT}" ]; then
+          echo "Temporary artifact path is empty." >&2
+          exit 1
+        fi
+
+        CANDIDATES=(
+          "${GITHUB_WORKSPACE}/${TEMP_ARTIFACT}"
+          "/metrics_renders/${TEMP_ARTIFACT}"
+          "/metrics_renders/$(basename "${TEMP_ARTIFACT}")"
+        )
+
+        for CANDIDATE in "${CANDIDATES[@]}"; do
+          if [ -f "${CANDIDATE}" ]; then
+            echo "Located metrics artifact at ${CANDIDATE}"
+            echo "path=${CANDIDATE}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+        done
+
+        echo "Unable to locate metrics artifact. Searched paths:" >&2
+        printf '  - %s\n' "${CANDIDATES[@]}" >&2
+
+        if [ -d "/metrics_renders" ]; then
+          echo "Discovered files under /metrics_renders:" >&2
+          find /metrics_renders -maxdepth 2 -type f -print >&2 || true
+        fi
+
+        exit 1
+
+    - name: Move artifact into repository workspace
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        SOURCE_PATH="${{ steps.artifact.outputs.path }}"
+        if [ -z "${SOURCE_PATH}" ]; then
+          echo "Artifact path output is empty." >&2
+          exit 1
+        fi
+
+        mkdir -p "$(dirname "${TARGET_PATH}")"
+        mv "${SOURCE_PATH}" "${TARGET_PATH}"
+        echo "Stored metrics at ${TARGET_PATH}"
+
+    - name: Commit metrics update
+      id: update
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config pull.rebase true
+
+        DEFAULT_REF="$(git symbolic-ref --quiet --short HEAD || true)"
+        if [ -z "${DEFAULT_REF}" ]; then
+          DEFAULT_REF="main"
+        fi
+
+        if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
+          git fetch --no-tags --prune --depth=1 origin \
+            "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
+          git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
+        else
+          git fetch --no-tags --prune --depth=1 origin \
+            "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}" || true
+          git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}" || git checkout -B "${BRANCH_NAME}" "${DEFAULT_REF}"
+        fi
+
+        UPSTREAM_BEFORE="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
+
+        git add "${TARGET_PATH}"
+
+        if git diff --cached --quiet; then
+          echo "No changes to commit."
+          echo "pushed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        git commit -m "chore(metrics): refresh ${TARGET_REPO}"
+
+        PUSHED=false
+        for ATTEMPT in 1 2 3; do
+          if git push origin "${BRANCH_NAME}"; then
+            echo "Push attempt ${ATTEMPT} succeeded with fast-forward update."
+            PUSHED=true
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            break
+          fi
+
+          echo "Fast-forward push attempt ${ATTEMPT} failed, verifying remote state before force push..." >&2
+
+          git fetch --no-tags --prune --depth=1 origin \
+            "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}" || true
+
+          REMOTE_AFTER="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
+
+          if [ -n "${UPSTREAM_BEFORE}" ] && [ "${REMOTE_AFTER}" != "${UPSTREAM_BEFORE}" ]; then
+            echo "Remote branch advanced to ${REMOTE_AFTER}; retrying without force push." >&2
+            continue
+          fi
+
+          if [ -z "${UPSTREAM_BEFORE}" ] && [ -n "${REMOTE_AFTER}" ]; then
+            echo "Remote branch ${BRANCH_NAME} appeared at ${REMOTE_AFTER}; retrying without force push." >&2
+            continue
+          fi
+
+          if [ -n "${UPSTREAM_BEFORE}" ]; then
+            FORCE_ARGS=("--force-with-lease=refs/heads/${BRANCH_NAME}:${UPSTREAM_BEFORE}")
+          else
+            FORCE_ARGS=("--force-with-lease")
+          fi
+
+          if git push "${FORCE_ARGS[@]}" origin "${BRANCH_NAME}"; then
+            echo "Push attempt ${ATTEMPT} succeeded with force-with-lease."
+            PUSHED=true
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            break
+          fi
+
+          echo "Force push attempt ${ATTEMPT} failed, refreshing branch and retrying..." >&2
+        done
+
+        if [ "${PUSHED}" != true ]; then
+          echo "Unable to push metrics update after multiple attempts." >&2
+          exit 1
+        fi
+
+        DEFAULT_BASE="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##' || true)"
+        if [ -z "${DEFAULT_BASE}" ]; then DEFAULT_BASE="${DEFAULT_REF}"; fi
+        echo "default_base=${DEFAULT_BASE}" >> "$GITHUB_OUTPUT"
+
+    - name: Open PR (idempotent)
+      if: steps.update.outputs.pushed == 'true'
+      env:
+        GH_TOKEN: ${{ inputs.classic_token }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        REPO="${GITHUB_REPOSITORY}"
+        BASE="${{ steps.update.outputs.default_base }}"
+        HEAD="${BRANCH_NAME}"
+
+        EXISTING="$(gh pr list -R "${REPO}" --head "${HEAD}" --state open --json number --jq '.[0].number' || true)"
+        if [ -n "${EXISTING}" ]; then
+          echo "PR #${EXISTING} already open for ${REPO}:${HEAD} -> ${BASE}"
+          exit 0
+        fi
+
+        LABEL_ARGS=()
+        for LABEL in ci metrics; do
+          if gh label view "${LABEL}" -R "${REPO}" >/dev/null 2>&1 || \
+             gh label create "${LABEL}" -R "${REPO}" --description "Infrastructure automation" >/dev/null 2>&1; then
+            LABEL_ARGS+=("--label" "${LABEL}")
+          else
+            echo "Warning: unable to ensure label '${LABEL}' on ${REPO}, skipping" >&2
+          fi
+        done
+
+        gh pr create -R "${REPO}" \
+          --head "${HEAD}" \
+          --base "${BASE}" \
+          --title "chore(metrics): refresh" \
+          --body  "Auto-generated metrics update" \
+          "${LABEL_ARGS[@]}"

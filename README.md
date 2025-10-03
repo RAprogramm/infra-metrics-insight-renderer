@@ -15,7 +15,7 @@ jobs:
       # branch_name: ci/metrics-refresh-my-repository
       # target_owner: RAprogramm
       # target_path: metrics/my-repository.svg
-      # temp_artifact: .metrics-tmp/repository.svg
+      # temp_artifact: .metrics-tmp/my-repository.svg
     secrets:
       CLASSIC: ${{ secrets.METRICS_TOKEN }}
 ```
