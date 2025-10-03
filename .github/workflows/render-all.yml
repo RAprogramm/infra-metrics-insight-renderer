@@ -32,7 +32,7 @@ jobs:
       - name: Generate repository metrics SVG
         uses: lowlighter/metrics@latest
         with:
-          token: ${{ secrets.METRICS_PAT }}            # fine-grained PAT с RW на целевые репо
+          token: ${{ secrets.CLASSIC }}            # fine-grained PAT с RW на целевые репо
           user:  ${{ matrix.target.owner }}            # владелец
           repo:  ${{ matrix.target.repo }}             # сам репозиторий
           template: repository                          # <— ВАЖНО: используем репозитория-шаблон
@@ -62,7 +62,7 @@ jobs:
           set -eu
 
           REPO="${{ matrix.target.owner }}/${{ matrix.target.repo }}"
-          URL="https://x-access-token:${{ secrets.METRICS_PAT }}@github.com/${REPO}.git"
+          URL="https://x-access-token:${{ secrets.CLASSIC }}@github.com/${REPO}.git"
 
           git clone --depth=1 "$URL" target-repo
           cd target-repo
@@ -107,7 +107,7 @@ jobs:
       - name: Open PR (idempotent)
         if: steps.update.outputs.pushed == 'true'
         env:
-          GH_TOKEN: ${{ secrets.METRICS_PAT }}
+          GH_TOKEN: ${{ secrets.CLASSIC }}
         run: |
           set -eu
           REPO="${{ matrix.target.owner }}/${{ matrix.target.repo }}"
