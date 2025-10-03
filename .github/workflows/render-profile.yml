@@ -56,6 +56,7 @@ jobs:
           config_octicon: yes
           config_timezone: ${{ env.TZ }}
           config_twemoji: yes
+          repositories_affiliations: "owner, collaborator, organization_member"
           plugin_achievements: yes
           plugin_achievements_display: detailed
           plugin_achievements_secrets: yes
@@ -73,13 +74,13 @@ jobs:
           plugin_code_days: 3
           plugin_code_lines: 12
           plugin_code_load: 400
-          plugin_code_visibility: public
+          plugin_code_visibility: all
           plugin_discussions: yes
           plugin_discussions_categories: yes
           plugin_followup: yes
           plugin_followup_archived: yes
           plugin_followup_indepth: yes
-          plugin_followup_sections: repositories
+          plugin_followup_sections: "repositories, user"
           plugin_gists: yes
           plugin_habits: yes
           plugin_habits_charts: yes
@@ -101,15 +102,15 @@ jobs:
           plugin_languages_colors: github
           plugin_languages_details: bytes-size, percentage
           plugin_languages_indepth: yes
-          plugin_languages_recent_categories: markup, programming
+          plugin_languages_recent_categories: data, markup, programming, prose
           plugin_languages_recent_days: 14
           plugin_languages_recent_load: 300
-          plugin_languages_sections: most-used
+          plugin_languages_sections: "most-used, recently-used"
           plugin_languages_threshold: "100%"
           plugin_lines: yes
           plugin_lines_history_limit: 1
           plugin_lines_repositories_limit: 4
-          plugin_lines_sections: base
+          plugin_lines_sections: "base, repositories, history"
           plugin_notable: yes
           plugin_notable_from: organization
           plugin_notable_indepth: yes
@@ -124,7 +125,7 @@ jobs:
           plugin_people: yes
           plugin_people_limit: 24
           plugin_people_size: 28
-          plugin_people_types: "followers, following"
+          plugin_people_types: "followers, following, sponsoring, sponsors"
           plugin_projects: yes
           plugin_projects_limit: 4
           plugin_reactions: yes
@@ -136,6 +137,7 @@ jobs:
           plugin_repositories: yes
           plugin_repositories_featured: "RustManifest,masterror, telegram-webapp-sdk"
           plugin_repositories_order: "featured, pinned, starred, random"
+          plugin_repositories_affiliations: "owner, collaborator, organization_member"
           plugin_skyline: yes
           plugin_skyline_compatibility: yes
           plugin_skyline_frames: 60
