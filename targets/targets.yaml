@@ -9,11 +9,14 @@ targets:
   - owner: RAprogramm
     repository: masterror
     type: open_source
+    contributors_branch: main
   - owner: RAprogramm
     repository: telegram-webapp-sdk
     type: open_source
+    contributors_branch: main
   - owner: RAprogramm
     repository: infra-metrics-insight-renderer
     type: open_source
     slug: infra-metrics-insight-renderer
     display_name: Infra Metrics Insight Renderer
+    contributors_branch: main

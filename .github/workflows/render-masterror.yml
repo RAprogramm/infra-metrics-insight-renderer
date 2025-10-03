@@ -23,6 +23,7 @@ jobs:
     uses: ./.github/workflows/render-repository.yml
     with:
       branch_name: ${{ inputs.branch_name }}
+      contributors_branch: main
       target_owner: RAprogramm
       target_repo: masterror
       target_path: metrics/masterror.svg

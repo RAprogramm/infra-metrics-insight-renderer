@@ -1,3 +1,8 @@
+//! Command-line interface for the metrics orchestrator binary.
+//!
+//! The CLI exposes subcommands for normalizing target configuration documents
+//! and resolving workflow inputs specific to open-source repository rendering.
+
 use std::{
     io,
     path::{Path, PathBuf},
@@ -14,8 +19,8 @@ use metrics_orchestrator::{load_targets, resolve_open_source_repositories, Error
     version,
     about = "Normalize metrics renderer targets"
 )]
+/// Top-level CLI options parsed from user input.
 struct Cli {
-    /// Optional subcommand invoked by the user.
     #[command(subcommand)]
     command: Option<Command>,
 
@@ -25,6 +30,7 @@ struct Cli {
 }
 
 #[derive(Debug, Subcommand)]
+/// Supported commands exposed by the CLI.
 enum Command {
     /// Normalize targets from a YAML configuration file.
     Targets(TargetsArgs),
@@ -34,6 +40,7 @@ enum Command {
 }
 
 #[derive(Debug, Args)]
+/// Arguments accepted by the `targets` subcommand.
 struct TargetsArgs {
     /// Path to the YAML configuration file describing metrics targets.
     #[arg(long = "config", value_name = "PATH")]
@@ -63,6 +70,7 @@ struct OpenSourceArgs {
     input: Option<String>,
 }
 
+/// Entry point that reports errors and sets the appropriate exit status.
 fn main() {
     if let Err(error) = run() {
         eprintln!("{}", error.to_display_string());
@@ -70,6 +78,11 @@ fn main() {
     }
 }
 
+/// Executes the CLI using parsed arguments.
+///
+/// # Errors
+///
+/// Propagates errors originating from configuration loading and normalization.
 fn run() -> Result<(), Error> {
     let cli = Cli::parse();
 
@@ -86,11 +99,24 @@ fn run_targets(args: TargetsArgs) -> Result<(), Error> {
 
 fn run_targets_from_path(path: &Path, pretty: bool) -> Result<(), Error> {
     let document = load_targets(path)?;
+        Command::Targets(args) => run_targets(args),
+        Command::OpenSource(args) => run_open_source(args),
+    }
+}
+
+/// Handles the `targets` subcommand by emitting normalized JSON to stdout.
+///
+/// # Errors
+///
+/// Returns an [`Error`] when the configuration cannot be loaded or serialized.
+fn run_targets(args: TargetsArgs) -> Result<(), Error> {
+    let document = load_targets(&args.config)?;
 
     let stdout = io::stdout();
     let mut handle = stdout.lock();
 
     if pretty {
+    if args.pretty {
         serde_json::to_writer_pretty(&mut handle, &document)?;
     } else {
         serde_json::to_writer(&mut handle, &document)?;
@@ -99,6 +125,12 @@ fn run_targets_from_path(path: &Path, pretty: bool) -> Result<(), Error> {
     Ok(())
 }
 
+/// Handles the `open-source` subcommand by normalizing repository inputs.
+///
+/// # Errors
+///
+/// Returns an [`Error`] when repository inputs are invalid or serialization
+/// fails.
 fn run_open_source(args: OpenSourceArgs) -> Result<(), Error> {
     let trimmed = args.input.as_deref().map(str::trim).and_then(|value| {
         if value.is_empty() {
@@ -156,4 +188,6 @@ mod tests {
             other => panic!("unexpected error variant: {other:?}"),
         }
     }
+
+    Ok(())
 }

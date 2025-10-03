@@ -20,6 +20,7 @@ jobs:
     with:
       target_repo: my-repository
       # branch_name: ci/metrics-refresh-my-repository
+      # contributors_branch: main
       # target_owner: RAprogramm
       # target_path: metrics/my-repository.svg
       # temp_artifact: .metrics-tmp/my-repository.svg
@@ -79,6 +80,7 @@ Optional per-target overrides include:
 - `branch_name` (or the alias `branch`) – select the Git branch used for the metrics refresh pull request.
 - `target_path` – change where the rendered SVG is stored.
 - `temp_artifact` – adjust the temporary filename produced by the renderer before moving it into place.
+- `contributors_branch` – specify the repository branch analyzed by the contributors plugin.
 - `time_zone` – customize the time zone passed to the renderer.
 - `slug` – override the derived slug used for filenames and workflow dispatch names.
 
