@@ -14,7 +14,7 @@ use crate::slug::SlugStrategy;
 /// # Examples
 ///
 /// ```
-/// use metrics_orchestrator::TargetConfig;
+/// use imir::TargetConfig;
 ///
 /// let yaml = r#"
 /// targets:
@@ -95,7 +95,7 @@ impl TargetEntry {
     /// # Examples
     ///
     /// ```
-    /// use metrics_orchestrator::{TargetEntry, TargetKind};
+    /// use imir::{TargetEntry, TargetKind};
     ///
     /// let entry = TargetEntry {
     ///     owner: "octocat".to_owned(),

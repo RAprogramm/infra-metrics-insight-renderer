@@ -36,7 +36,7 @@
       </li>
     </ul>
   </li>
-  <li><a href="#metrics-orchestrator-cli">metrics-orchestrator CLI</a></li>
+  <li><a href="#imir-cli">IMIR CLI</a></li>
   <li><a href="#local-development-workflow">Local development workflow</a></li>
 </ul>
 
@@ -73,7 +73,7 @@
 
 <p>
   Workflows targeting public repositories that live under the <code>RAprogramm</code> organization can reuse
-  <code>.github/workflows/render-open-source.yml</code>. The workflow accepts a JSON array with repository names and renders the standard repository dashboard for each entry. The list is validated through the <code>metrics-orchestrator open-source</code> subcommand, ensuring the matrix only includes non-empty repository names.
+  <code>.github/workflows/render-open-source.yml</code>. The workflow accepts a JSON array with repository names and renders the standard repository dashboard for each entry. The list is validated through the <code>imir open-source</code> subcommand, ensuring the matrix only includes non-empty repository names.
 </p>
 
 <pre><code class="language-yaml">jobs:
@@ -105,17 +105,17 @@
 
 <p>
   When the scheduled <a href=".github/workflows/render-all.yml"><code>render-all.yml</code></a> workflow runs it executes the
-  <code>metrics-orchestrator</code> CLI to transform the YAML into a matrix consumed by the rendering jobs. New targets can be tested locally
+  <code>imir</code> CLI to transform the YAML into a matrix consumed by the rendering jobs. New targets can be tested locally
   with:
 </p>
 
-<pre><code class="language-bash">cargo run --manifest-path metrics-orchestrator/Cargo.toml -- --config targets/targets.yaml --pretty</code></pre>
+<pre><code class="language-bash">cargo run --manifest-path imir/Cargo.toml -- --config targets/targets.yaml --pretty</code></pre>
 
 <p>
   Use the open-source helper to normalize ad-hoc repository lists for the bundled workflow:
 </p>
 
-<pre><code class="language-bash">cargo run --manifest-path metrics-orchestrator/Cargo.toml -- open-source --input '["masterror", "telegram-webapp-sdk"]'</code></pre>
+<pre><code class="language-bash">cargo run --manifest-path imir/Cargo.toml -- open-source --input '["masterror", "telegram-webapp-sdk"]'</code></pre>
 
 <p>
   The command outputs the normalized JSON document that the workflow uses. The same CLI is invoked during CI, so validation errors
@@ -223,11 +223,11 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h2 id="metrics-orchestrator-cli">metrics-orchestrator CLI</h2>
+<h2 id="imir-cli">IMIR CLI</h2>
 
 <p>
-  The <code>metrics-orchestrator</code> crate lives in
-  <a href="metrics-orchestrator"><code>metrics-orchestrator</code></a>. It validates the target configuration,
+  The <code>imir</code> crate lives in
+  <a href="imir"><code>imir</code></a>. It validates the target configuration,
   applies deterministic defaults for filenames, branch names, and time zones, and serializes the normalized targets in JSON form.
   Unit tests cover slug normalization, configuration validation, and duplicate detection to ensure predictable behaviour when new
   targets are added.

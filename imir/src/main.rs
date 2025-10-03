@@ -1,4 +1,4 @@
-//! Command-line interface for the metrics orchestrator binary.
+//! Command-line interface for the IMIR binary.
 //!
 //! The CLI exposes subcommands for normalizing target configuration documents
 //! and resolving workflow inputs specific to open-source repository rendering.
@@ -10,17 +10,11 @@ use std::{
 };
 
 use clap::{ArgAction, Args, Parser, Subcommand};
-use metrics_orchestrator::{
-    load_targets, resolve_open_source_repositories, Error, TargetsDocument,
-};
+use imir::{load_targets, resolve_open_source_repositories, Error, TargetsDocument};
 
 /// Command line interface for generating normalized metrics target definitions.
 #[derive(Debug, Parser)]
-#[command(
-    name = "metrics-orchestrator",
-    version,
-    about = "Normalize metrics renderer targets"
-)]
+#[command(name = "imir", version, about = "Normalize metrics renderer targets")]
 /// Top-level CLI options parsed from user input.
 struct Cli {
     #[command(subcommand)]
@@ -159,13 +153,13 @@ mod tests {
 
     use clap::Parser;
 
-    use metrics_orchestrator::TargetsDocument;
+    use imir::TargetsDocument;
 
     use super::{run_legacy_targets, write_targets_document, Cli, Command, LegacyTargetsArgs};
 
     #[test]
     fn cli_accepts_legacy_targets_invocation() {
-        let cli = Cli::try_parse_from(["metrics-orchestrator", "--config", "config.yaml"])
+        let cli = Cli::try_parse_from([env!("CARGO_PKG_NAME"), "--config", "config.yaml"])
             .expect("failed to parse CLI");
 
         assert!(cli.command.is_none());
@@ -179,7 +173,7 @@ mod tests {
         let error = run_legacy_targets(&args).expect_err("expected validation error");
 
         match error {
-            metrics_orchestrator::Error::Validation { message } => {
+            imir::Error::Validation { message } => {
                 assert_eq!(message, "missing required --config <PATH> argument");
             }
             other => panic!("unexpected error variant: {other:?}"),
@@ -189,7 +183,7 @@ mod tests {
     #[test]
     fn targets_subcommand_pretty_flag_uses_pretty_writer() {
         let cli = Cli::try_parse_from([
-            "metrics-orchestrator",
+            env!("CARGO_PKG_NAME"),
             "targets",
             "--config",
             "config.yaml",
@@ -216,7 +210,7 @@ mod tests {
 
     #[test]
     fn legacy_invocation_without_pretty_uses_compact_writer() {
-        let cli = Cli::try_parse_from(["metrics-orchestrator", "--config", "config.yaml"])
+        let cli = Cli::try_parse_from([env!("CARGO_PKG_NAME"), "--config", "config.yaml"])
             .expect("failed to parse CLI");
 
         assert!(cli.command.is_none());

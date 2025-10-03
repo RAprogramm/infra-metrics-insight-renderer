@@ -5,7 +5,7 @@ set -euo pipefail
 # The script requires cargo-audit and cargo-deny to be installed.
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CRATE_DIR="${ROOT_DIR}/metrics-orchestrator"
+CRATE_DIR="${ROOT_DIR}/imir"
 
 run() {
   echo "[ci-check] $1"

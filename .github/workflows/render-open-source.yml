@@ -34,10 +34,10 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache metrics-orchestrator build
+      - name: Cache imir build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: "metrics-orchestrator -> target"
+          workspaces: "imir -> target"
 
       - id: resolve
         name: Resolve repository list
@@ -46,7 +46,7 @@ jobs:
         run: |
           set -euo pipefail
           RAW="${RAW_INPUT:-}"
-          REPOSITORIES=$(cargo run --manifest-path metrics-orchestrator/Cargo.toml --quiet --locked -- open-source --input "${RAW}")
+          REPOSITORIES=$(cargo run --manifest-path imir/Cargo.toml --quiet --locked -- open-source --input "${RAW}")
           printf 'repositories=%s\n' "${REPOSITORIES}" >> "${GITHUB_OUTPUT}"
 
   render:
