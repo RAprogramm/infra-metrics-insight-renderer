@@ -5,6 +5,10 @@ on:
     - cron: "19 3 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   masterror:
     uses: ./.github/workflows/render-masterror.yml
