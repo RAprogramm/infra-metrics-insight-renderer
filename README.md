@@ -130,6 +130,7 @@
   <li><code>contributors_branch</code> – specify the repository branch analyzed by the contributors plugin.</li>
   <li><code>time_zone</code> – customize the time zone passed to the renderer.</li>
   <li><code>slug</code> – override the derived slug used for filenames and workflow dispatch names.</li>
+  <li><code>include_private</code> – set to <code>true</code> to include private repositories and secret achievements for the target.</li>
 </ul>
 
 <p>

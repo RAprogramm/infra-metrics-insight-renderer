@@ -50,6 +50,8 @@ pub struct RenderTarget {
     pub display_name: String,
     /// Branch analyzed by the contributors plugin.
     pub contributors_branch: String,
+    /// Flag indicating whether the renderer should include private repositories.
+    pub include_private: bool,
 }
 
 /// Document containing all normalized targets.
@@ -196,6 +198,8 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
         .transpose()?
         .unwrap_or_else(|| DEFAULT_CONTRIBUTORS_BRANCH.to_owned());
 
+    let include_private = entry.include_private.unwrap_or(false);
+
     Ok(RenderTarget {
         slug,
         owner,
@@ -207,6 +211,7 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
         time_zone,
         display_name,
         contributors_branch,
+        include_private,
     })
 }
 
@@ -267,6 +272,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: None,
+            include_private: None,
         }
     }
 
@@ -281,6 +287,20 @@ mod tests {
         assert_eq!(target.temp_artifact, ".metrics-tmp/metrics.svg");
         assert_eq!(target.display_name, "metrics");
         assert_eq!(target.contributors_branch, "main");
+        assert!(!target.include_private);
+    }
+
+    #[test]
+    fn normalizes_include_private_flag_values() {
+        let mut enabled = repository_entry();
+        enabled.include_private = Some(true);
+        let target = normalize_entry(&enabled).expect("expected include_private to normalize");
+        assert!(target.include_private);
+
+        let mut disabled = repository_entry();
+        disabled.include_private = Some(false);
+        let target = normalize_entry(&disabled).expect("expected include_private to normalize");
+        assert!(!target.include_private);
     }
 
     #[test]
@@ -296,6 +316,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: Some("Infra Metrics Insight Renderer".to_owned()),
+            include_private: None,
         };
 
         let target = normalize_entry(&entry).expect("expected target to normalize");
@@ -330,6 +351,7 @@ mod tests {
             temp_artifact: Some("  tmp/profile.svg  ".to_owned()),
             time_zone: Some("  UTC  ".to_owned()),
             display_name: Some("  Profile Name  ".to_owned()),
+            include_private: None,
         };
 
         let target = normalize_entry(&entry).expect("expected overrides to be honored");
