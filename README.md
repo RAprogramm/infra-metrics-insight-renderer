@@ -1,1 +1,1 @@
-# infra-metrics-renderer
+# IMIR
