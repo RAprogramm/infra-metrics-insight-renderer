@@ -23,16 +23,61 @@ on:
         required: true
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      repositories: ${{ steps.resolve.outputs.repositories }}
+    steps:
+      - id: resolve
+        name: Resolve repository list
+        env:
+          RAW_INPUT: ${{ inputs.repositories }}
+        run: |
+          set -euo pipefail
+          python - <<'PY' "${GITHUB_OUTPUT}"
+import json
+import os
+import sys
+
+output_path = sys.argv[1]
+raw = os.environ.get("RAW_INPUT", "").strip()
+if not raw:
+    raw = '["masterror", "telegram-webapp-sdk"]'
+try:
+    repositories = json.loads(raw)
+except json.JSONDecodeError as exc:
+    raise SystemExit(f"Invalid repositories JSON: {exc}") from exc
+if not isinstance(repositories, list) or not repositories:
+    raise SystemExit("Repositories input must be a non-empty JSON array of repository names.")
+normalized = []
+for item in repositories:
+    if not isinstance(item, str):
+        raise SystemExit("Repositories input must contain only strings.")
+    trimmed = item.strip()
+    if not trimmed:
+        raise SystemExit("Repository names cannot be empty strings.")
+    normalized.append(trimmed)
+with open(output_path, "a", encoding="utf-8") as handle:
+    handle.write(f"repositories={json.dumps(normalized)}\n")
+PY
+
   render:
+    needs: prepare
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        repository: ${{ fromJSON(inputs.repositories != '' ? inputs.repositories : '["masterror", "telegram-webapp-sdk"]') }}
-    uses: ./.github/workflows/render-repository.yml
-    with:
-      branch_name: ${{ format('ci/metrics-refresh-{0}', matrix.repository) }}
-      target_owner: RAprogramm
-      target_repo: ${{ matrix.repository }}
-      target_path: ${{ format('metrics/{0}.svg', matrix.repository) }}
-      temp_artifact: ${{ format('.metrics-tmp/{0}.svg', matrix.repository) }}
-    secrets:
-      CLASSIC: ${{ secrets.CLASSIC }}
+        repository: ${{ fromJSON(needs.prepare.outputs.repositories) }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Render metrics for ${{ matrix.repository }}
+        uses: ./.github/actions/render-repository
+        with:
+          classic_token: ${{ secrets.CLASSIC }}
+          target_owner: RAprogramm
+          target_repo: ${{ matrix.repository }}
+          branch_name: ${{ format('ci/metrics-refresh-{0}', matrix.repository) }}
+          target_path: ${{ format('metrics/{0}.svg', matrix.repository) }}
+          temp_artifact: ${{ format('.metrics-tmp/{0}.svg', matrix.repository) }}
