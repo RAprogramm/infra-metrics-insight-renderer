@@ -26,8 +26,8 @@ jobs:
       - name: Checkout renderer
         uses: actions/checkout@v5
 
-      - name: Generate repository metrics SVG
-        uses: lowlighter/metrics@latest
+      - name: Metrics embed
+        uses: lowlighter/metrics@v3.34
         with:
           token: ${{ secrets.CLASSIC }}
           user:  ${{ env.TARGET_OWNER }}
