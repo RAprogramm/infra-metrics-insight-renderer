@@ -1,3 +1,4 @@
+<a id="top"></a>
 # IMIR
 > _Infra Metrics Insight Renderer_
 
@@ -7,6 +8,22 @@
 
 This repository hosts reusable GitHub Actions workflows for rendering [lowlighter/metrics](https://github.com/lowlighter/metrics)
 dashboards used across RAprogramm projects.
+
+## Table of contents
+
+- [Repository metrics workflow](#repository-metrics-workflow)
+  - [Open-source repositories bundle](#open-source-repositories-bundle)
+- [Unified target configuration](#unified-target-configuration)
+- [IMIR badge integration](#imir-badge-integration)
+  - [Badge catalogue](#badge-catalogue)
+    - [🟩 Open-source badges](#open-source-badges)
+    - [🟦 Private project badges](#private-project-badges)
+    - [🟪 Profile badges](#profile-badges)
+    - [Color reference](#color-reference)
+- [metrics-orchestrator CLI](#metrics-orchestrator-cli)
+- [Local development workflow](#local-development-workflow)
+
+_[Back to top](#top)_
 
 ## Repository metrics workflow
 
@@ -31,6 +48,8 @@ jobs:
 The workflow automatically renders the repository metrics card, commits the refreshed SVG to the configured path, and opens an
 idempotent pull request when changes are detected.
 
+_[Back to top](#top)_
+
 ### Open-source repositories bundle
 
 Workflows targeting public repositories that live under the `RAprogramm` organization can reuse `.github/workflows/render-open-source.yml`.
@@ -48,6 +67,8 @@ jobs:
 ```
 
 Providing a custom list of repositories allows a single job to refresh multiple metrics cards without duplicating boilerplate workflow definitions.
+
+_[Back to top](#top)_
 
 ## Unified target configuration
 
@@ -87,6 +108,8 @@ Optional per-target overrides include:
 Unset overrides fall back to deterministic defaults chosen by the orchestrator, so adding a new target only requires the owner,
 repository (when applicable), and target type.
 
+_[Back to top](#top)_
+
 ## IMIR badge integration
 
 Register a repository or profile by adding a new entry to [`targets/targets.yaml`](targets/targets.yaml). The orchestrator
@@ -111,6 +134,9 @@ page.
 The published badges are grouped by color so their category is obvious at a glance. Reuse the badges directly from the
 repository to avoid stale snapshots.
 
+_[Back to top](#top)_
+
+<a id="open-source-badges"></a>
 #### 🟩 Open-source badges
 
 | Repository | Badge |
@@ -118,21 +144,31 @@ repository to avoid stale snapshots.
 | `RAprogramm/masterror` | ![masterror metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/masterror.svg) |
 | `RAprogramm/telegram-webapp-sdk` | ![telegram-webapp-sdk metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg) |
 
+_[Back to top](#top)_
+
+<a id="private-project-badges"></a>
 #### 🟦 Private project badges
 
 Private dashboards follow the same embedding rules. Publish badges from this section once private projects are registered.
 
+_[Back to top](#top)_
+
+<a id="profile-badges"></a>
 #### 🟪 Profile badges
 
 | Account | Badge |
 | --- | --- |
 | `RAprogramm` | ![RAprogramm profile metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/profile.svg) |
 
+_[Back to top](#top)_
+
 #### Color reference
 
 - 🟩 Green badges indicate open-source repositories.
 - 🟦 Blue badges denote private repositories.
 - 🟪 Purple badges represent GitHub profile dashboards.
+
+_[Back to top](#top)_
 
 ## metrics-orchestrator CLI
 
@@ -141,9 +177,13 @@ applies deterministic defaults for filenames, branch names, and time zones, and 
 Unit tests cover slug normalization, configuration validation, and duplicate detection to ensure predictable behaviour when new
 targets are added.
 
+_[Back to top](#top)_
+
 ## Local development workflow
 
 Use [`scripts/ci-check.sh`](scripts/ci-check.sh) to run the full validation pipeline locally. The helper script formats the code
 with the nightly toolchain, executes Clippy, builds all targets, runs tests, generates documentation, and invokes `cargo audit`
 and `cargo deny` to ensure dependency health. Install [`cargo-audit`](https://crates.io/crates/cargo-audit) and
 [`cargo-deny`](https://crates.io/crates/cargo-deny) beforehand to enable the security checks.
+
+_[Back to top](#top)_
