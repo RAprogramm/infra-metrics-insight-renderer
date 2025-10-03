@@ -84,6 +84,10 @@ pub struct TargetEntry {
     /// Optional display name override used in commit messages.
     #[serde(default)]
     pub display_name: Option<String>,
+
+    /// Optional flag that enables private repository insights when set to `true`.
+    #[serde(default)]
+    pub include_private: Option<bool>,
 }
 
 impl TargetEntry {
@@ -108,6 +112,7 @@ impl TargetEntry {
     ///     contributors_branch: None,
     ///     time_zone: None,
     ///     display_name: None,
+    ///     include_private: None,
     /// };
     /// assert_eq!(entry.resolved_slug().as_deref(), Some("metrics"));
     /// ```
@@ -167,6 +172,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: None,
+            include_private: None,
         };
 
         let slug = entry
@@ -188,6 +194,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: None,
+            include_private: None,
         };
 
         let slug = entry
@@ -209,6 +216,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: None,
+            include_private: None,
         };
 
         let slug = entry
@@ -230,6 +238,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: None,
+            include_private: None,
         };
 
         assert!(entry.resolved_slug().is_none());
@@ -248,6 +257,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: Some("  Friendly Name  ".to_owned()),
+            include_private: None,
         };
 
         let display = entry
@@ -269,6 +279,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: None,
+            include_private: None,
         };
 
         let display = entry
@@ -290,6 +301,7 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: Some("   ".to_owned()),
+            include_private: None,
         };
 
         assert!(entry.resolved_display_name().is_none());
