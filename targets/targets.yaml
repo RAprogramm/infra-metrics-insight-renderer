@@ -11,3 +11,8 @@ targets:
   - owner: RAprogramm
     repository: telegram-webapp-sdk
     type: open_source
+  - owner: RAprogramm
+    repository: infra-metrics-insight-renderer
+    type: open_source
+    slug: infra-metrics-insight-renderer
+    display_name: Infra Metrics Insight Renderer

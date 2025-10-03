@@ -219,6 +219,38 @@ mod tests {
     }
 
     #[test]
+    fn normalizes_infra_metrics_insight_renderer_target() {
+        let entry = TargetEntry {
+            owner: "RAprogramm".to_owned(),
+            repository: Some("infra-metrics-insight-renderer".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: Some("infra-metrics-insight-renderer".to_owned()),
+            branch_name: None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: Some("Infra Metrics Insight Renderer".to_owned()),
+        };
+
+        let target = normalize_entry(&entry).expect("expected target to normalize");
+        assert_eq!(target.slug, "infra-metrics-insight-renderer");
+        assert_eq!(
+            target.branch_name,
+            "ci/metrics-refresh-infra-metrics-insight-renderer"
+        );
+        assert_eq!(
+            target.target_path,
+            "metrics/infra-metrics-insight-renderer.svg"
+        );
+        assert_eq!(
+            target.temp_artifact,
+            ".metrics-tmp/infra-metrics-insight-renderer.svg"
+        );
+        assert_eq!(target.time_zone, "Asia/Ho_Chi_Minh");
+        assert_eq!(target.display_name, "Infra Metrics Insight Renderer");
+    }
+
+    #[test]
     fn normalizes_profile_entry_with_overrides() {
         let entry = TargetEntry {
             owner: " Octocat ".to_owned(),
