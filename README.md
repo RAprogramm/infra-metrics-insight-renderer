@@ -67,6 +67,25 @@ cargo run --manifest-path metrics-orchestrator/Cargo.toml -- --config targets/ta
 The command outputs the normalized JSON document that the workflow uses. The same CLI is invoked during CI, so validation errors
 must be resolved locally before a workflow run succeeds.
 
+## IMIR badge integration
+
+Register a repository or profile by adding a new entry to [`targets/targets.yaml`](targets/targets.yaml). The orchestrator
+normalizes the identifier into a slug that becomes the SVG filename and forms the basis for badge embeds. Scheduled renders run
+on the cadence defined in the repository workflows, so dashboards refresh automatically once the target is listed.
+
+After the initial registration lands in `main`, trigger the on-demand workflow named `render-<slug>.yml` to produce the first
+badge artifact. This pre-populates the SVG before linking to it in documentation.
+
+Embed the rendered badge in Markdown using the slugged artifact path:
+
+```markdown
+![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/<slug>.svg)
+```
+
+Replace `<slug>` with the normalized identifier emitted for the target (for example, `owner-repository` for repository cards or
+`owner` for profile cards). Once the slug exists under `metrics/`, the badge can be referenced from any README or documentation
+page.
+
 ## metrics-orchestrator CLI
 
 The `metrics-orchestrator` crate lives in [`metrics-orchestrator`](metrics-orchestrator). It validates the target configuration,
