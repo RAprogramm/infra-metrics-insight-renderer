@@ -92,6 +92,7 @@ jobs:
           target_owner: ${{ matrix.target.owner }}
           target_repo: ${{ matrix.target.repository }}
           branch_name: ${{ matrix.target.branch_name }}
+          contributors_branch: ${{ matrix.target.contributors_branch }}
           target_path: ${{ matrix.target.target_path }}
           temp_artifact: ${{ matrix.target.temp_artifact }}
           time_zone: ${{ matrix.target.time_zone }}

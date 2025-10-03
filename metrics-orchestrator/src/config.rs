@@ -36,6 +36,15 @@ pub struct TargetEntry
     #[serde(default, alias = "branch", alias = "branch-name", alias = "branchName")]
     pub branch_name: Option<String,>,
 
+    /// Optional branch name analyzed by the contributors plugin.
+    #[serde(
+        default,
+        alias = "contributors_branch",
+        alias = "contributors-branch",
+        alias = "contributorsBranch"
+    )]
+    pub contributors_branch: Option<String,>,
+
     /// Optional destination path override for the generated SVG artifact.
     #[serde(default)]
     pub target_path: Option<String,>,
@@ -108,6 +117,7 @@ mod tests
             target_type:   TargetKind::OpenSource,
             slug:          Some("  Custom Slug  ".to_owned(),),
             branch_name:   None,
+            contributors_branch: None,
             target_path:   None,
             temp_artifact: None,
             time_zone:     None,
@@ -127,6 +137,7 @@ mod tests
             target_type:   TargetKind::Profile,
             slug:          None,
             branch_name:   None,
+            contributors_branch: None,
             target_path:   None,
             temp_artifact: None,
             time_zone:     None,
@@ -146,6 +157,7 @@ mod tests
             target_type:   TargetKind::PrivateProject,
             slug:          None,
             branch_name:   None,
+            contributors_branch: None,
             target_path:   None,
             temp_artifact: None,
             time_zone:     None,
@@ -165,6 +177,7 @@ mod tests
             target_type:   TargetKind::OpenSource,
             slug:          None,
             branch_name:   None,
+            contributors_branch: None,
             target_path:   None,
             temp_artifact: None,
             time_zone:     None,
@@ -183,6 +196,7 @@ mod tests
             target_type:   TargetKind::OpenSource,
             slug:          None,
             branch_name:   None,
+            contributors_branch: None,
             target_path:   None,
             temp_artifact: None,
             time_zone:     None,
@@ -202,6 +216,7 @@ mod tests
             target_type:   TargetKind::OpenSource,
             slug:          None,
             branch_name:   None,
+            contributors_branch: None,
             target_path:   None,
             temp_artifact: None,
             time_zone:     None,
@@ -221,6 +236,7 @@ mod tests
             target_type:   TargetKind::Profile,
             slug:          None,
             branch_name:   None,
+            contributors_branch: None,
             target_path:   None,
             temp_artifact: None,
             time_zone:     None,
