@@ -1,6 +1,10 @@
 # IMIR
 > _Infra Metrics Insight Renderer_
 
+---
+
+[![Hits-of-Code](https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer?branch=main)](https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer/view?branch=main)
+
 This repository hosts reusable GitHub Actions workflows for rendering [lowlighter/metrics](https://github.com/lowlighter/metrics)
 dashboards used across RAprogramm projects.
 
