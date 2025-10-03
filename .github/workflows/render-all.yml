@@ -121,9 +121,19 @@ jobs:
             exit 0
           fi
 
+          LABEL_ARGS=()
+          for LABEL in ci metrics; do
+            if gh label view "$LABEL" -R "$REPO" >/dev/null 2>&1 || \
+               gh label create "$LABEL" -R "$REPO" --description "Infrastructure automation" >/dev/null 2>&1; then
+              LABEL_ARGS+=("--label" "$LABEL")
+            else
+              echo "Warning: unable to ensure label '$LABEL' on $REPO, skipping" >&2
+            fi
+          done
+
           gh pr create -R "$REPO" \
             --head "$HEAD" \
             --base "$BASE" \
             --title "chore(metrics): refresh" \
             --body  "Auto-generated metrics update" \
-            --label "ci" --label "metrics"
+            "${LABEL_ARGS[@]}"
