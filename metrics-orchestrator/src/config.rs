@@ -67,7 +67,7 @@ pub struct TargetEntry {
         alias = "contributors-branch",
         alias = "contributorsBranch"
     )]
-    pub contributors_branch: Option<String,>,
+    pub contributors_branch: Option<String>,
 
     /// Optional destination path override for the generated SVG artifact.
     #[serde(default)]
@@ -99,12 +99,13 @@ impl TargetEntry {
     ///
     /// let entry = TargetEntry {
     ///     owner: "octocat".to_owned(),
-    ///     repository: Some("metrics".to_owned(),),
+    ///     repository: Some("metrics".to_owned()),
     ///     target_type: TargetKind::OpenSource,
     ///     slug: None,
     ///     branch_name: None,
     ///     target_path: None,
     ///     temp_artifact: None,
+    ///     contributors_branch: None,
     ///     time_zone: None,
     ///     display_name: None,
     /// };
@@ -156,13 +157,13 @@ mod tests {
     #[test]
     fn resolved_slug_prefers_custom_value() {
         let entry = TargetEntry {
-            owner:         "octocat".to_owned(),
-            repository:    Some("Hello-World".to_owned(),),
-            target_type:   TargetKind::OpenSource,
-            slug:          Some("  Custom Slug  ".to_owned(),),
-            branch_name:   None,
+            owner: "octocat".to_owned(),
+            repository: Some("Hello-World".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: Some("  Custom Slug  ".to_owned()),
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: None,
@@ -177,13 +178,13 @@ mod tests {
     #[test]
     fn resolved_slug_falls_back_to_profile_default() {
         let entry = TargetEntry {
-            owner:         "octocat".to_owned(),
-            repository:    None,
-            target_type:   TargetKind::Profile,
-            slug:          None,
-            branch_name:   None,
+            owner: "octocat".to_owned(),
+            repository: None,
+            target_type: TargetKind::Profile,
+            slug: None,
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: None,
@@ -198,13 +199,13 @@ mod tests {
     #[test]
     fn resolved_slug_falls_back_to_repository_name() {
         let entry = TargetEntry {
-            owner:         "octocat".to_owned(),
-            repository:    Some("Example Repo".to_owned(),),
-            target_type:   TargetKind::PrivateProject,
-            slug:          None,
-            branch_name:   None,
+            owner: "octocat".to_owned(),
+            repository: Some("Example Repo".to_owned()),
+            target_type: TargetKind::PrivateProject,
+            slug: None,
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: None,
@@ -219,13 +220,13 @@ mod tests {
     #[test]
     fn resolved_slug_returns_none_when_unable_to_derive() {
         let entry = TargetEntry {
-            owner:         "octocat".to_owned(),
-            repository:    Some("***".to_owned(),),
-            target_type:   TargetKind::OpenSource,
-            slug:          None,
-            branch_name:   None,
+            owner: "octocat".to_owned(),
+            repository: Some("***".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: None,
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: None,
@@ -237,13 +238,13 @@ mod tests {
     #[test]
     fn resolved_display_name_prefers_override() {
         let entry = TargetEntry {
-            owner:         "octocat".to_owned(),
-            repository:    Some("repo".to_owned(),),
-            target_type:   TargetKind::OpenSource,
-            slug:          None,
-            branch_name:   None,
+            owner: "octocat".to_owned(),
+            repository: Some("repo".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: None,
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: Some("  Friendly Name  ".to_owned()),
@@ -258,13 +259,13 @@ mod tests {
     #[test]
     fn resolved_display_name_uses_repository_name() {
         let entry = TargetEntry {
-            owner:         "octocat".to_owned(),
-            repository:    Some(" Repo With Spaces ".to_owned(),),
-            target_type:   TargetKind::OpenSource,
-            slug:          None,
-            branch_name:   None,
+            owner: "octocat".to_owned(),
+            repository: Some(" Repo With Spaces ".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: None,
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: None,
@@ -279,13 +280,13 @@ mod tests {
     #[test]
     fn resolved_display_name_returns_none_when_override_blank() {
         let entry = TargetEntry {
-            owner:         "octocat".to_owned(),
-            repository:    None,
-            target_type:   TargetKind::Profile,
-            slug:          None,
-            branch_name:   None,
+            owner: "octocat".to_owned(),
+            repository: None,
+            target_type: TargetKind::Profile,
+            slug: None,
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: Some("   ".to_owned()),
