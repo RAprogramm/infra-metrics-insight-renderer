@@ -45,6 +45,8 @@ jobs:
           plugin_followup: yes                          # активность по issues/PR
           plugin_followup_sections: repositories, user  # вклад в репо и от пользователя
           plugin_projects: no                           # можно включить и указать project board, если есть
+          plugin_licenses: yes
+          plugin_contributors: yes
           # Можно добавить ещё: plugin_licenses, plugin_contributors и т.д., но не перегружай
 
       - name: Verify generated artifact
