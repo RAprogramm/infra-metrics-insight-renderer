@@ -16,11 +16,11 @@ jobs:
       fail-fast: false
       matrix:
         target:
+          # Добавляй новые по образцу
           - { owner: "RAprogramm", repo: "masterror",           path: "docs/metrics.svg" }
           - { owner: "RAprogramm", repo: "telegram-webapp-sdk", path: "metrics.svg" }
 
     env:
-      GH_USER: RAprogramm
       TZ: Asia/Ho_Chi_Minh
       BRANCH_NAME: ci/metrics-refresh
 
@@ -28,32 +28,32 @@ jobs:
       - name: Checkout renderer
         uses: actions/checkout@v4
 
-      # 1) Генерим метрики в $GITHUB_WORKSPACE
-      - name: Generate metrics SVG
+      # 1) Рендерим repository template ДЛЯ КАЖДОГО репозитория из матрицы
+      - name: Generate repository metrics SVG
         uses: lowlighter/metrics@latest
         with:
-          token: ${{ secrets.METRICS_PAT }}     # fine-grained PAT с RW на целевые репо
-          user: ${{ env.GH_USER }}
-          template: classic
-          filename: metrics.tmp.svg
-          base: ""
+          token: ${{ secrets.METRICS_PAT }}            # fine-grained PAT с RW на целевые репо
+          user:  ${{ matrix.target.owner }}            # владелец
+          repo:  ${{ matrix.target.repo }}             # сам репозиторий
+          template: repository                          # <— ВАЖНО: используем репозитория-шаблон
+          filename: repo.tmp.svg                        # генерим во временный файл в $GITHUB_WORKSPACE
+          base: ""                                      # без базового «спама»
           config_timezone: ${{ env.TZ }}
           cache: 12h
-          plugin_isocalendar: yes
-          plugin_isocalendar_duration: half-year
-          plugin_languages: yes
-          plugin_languages_limit: 8
-          plugin_languages_sections: most-used
-          plugin_languages_details: bytes-size, percentage
-          plugin_languages_ignored: html, css, scss
+          # Плагины, которые адекватно смотрятся для repo template
+          plugin_lines: yes                             # строки кода (суммарно, без клоунских графиков)
+          plugin_followup: yes                          # активность по issues/PR
+          plugin_followup_sections: repositories, user  # вклад в репо и от пользователя
+          plugin_projects: no                           # можно включить и указать project board, если есть
+          # Можно добавить ещё: plugin_licenses, plugin_contributors и т.д., но не перегружай
 
       - name: Verify generated artifact
         run: |
           set -eu
-          test -f "$GITHUB_WORKSPACE/metrics.tmp.svg"
-          echo "Generated: $GITHUB_WORKSPACE/metrics.tmp.svg"
+          test -f "$GITHUB_WORKSPACE/repo.tmp.svg"
+          echo "Generated: $GITHUB_WORKSPACE/repo.tmp.svg"
 
-      # 2) Клоним цель, корректно создаём/обновляем tracking-ref и ветку, коммитим, пушим
+      # 2) Клоним цель, аккуратно создаём/обновляем tracking-ref и ветку, коммитим, пушим
       - name: Clone target repo, update branch and file
         id: update
         run: |
@@ -69,18 +69,18 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config pull.rebase true
 
-          # Определяем дефолтную ветку удалённого репозитория (origin/HEAD -> origin/main|master|…)
+          # Определяем дефолтную ветку (origin/HEAD -> origin/main|master|…)
           DEFAULT_REF="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##' || true)"
           if [ -z "${DEFAULT_REF}" ]; then DEFAULT_REF="main"; fi
           echo "default_base=${DEFAULT_REF}" >> "$GITHUB_OUTPUT"
 
-          # Если удалённая ci-ветка существует — подтянуть её в remote-tracking ref и создать локальную на её основе.
+          # Если удалённая ci-ветка уже есть — тянем её в remote-tracking и чекаутим локальную от неё
           if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
             git fetch --no-tags --prune --depth=1 origin \
               "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
             git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
           else
-            # Иначе создать локальную ветку от дефолтной базы
+            # Иначе создаём локальную ветку от дефолтной базы
             git fetch --no-tags --prune --depth=1 origin \
               "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}"
             git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}"
@@ -88,12 +88,12 @@ jobs:
 
           # Обновляем файл
           mkdir -p "$(dirname "${{ matrix.target.path }}")"
-          cp "$GITHUB_WORKSPACE/metrics.tmp.svg" "${{ matrix.target.path }}"
+          cp "$GITHUB_WORKSPACE/repo.tmp.svg" "${{ matrix.target.path }}"
 
           if git status --porcelain | grep .; then
             git add "${{ matrix.target.path }}"
             git commit -m "chore(metrics): refresh ${{ matrix.target.path }}"
-            # Служебная ветка — форсим с защитой, чтобы не плодить мердж-мусор
+            # Служебная ветка — форсим с защитой
             git push --force-with-lease origin "${BRANCH_NAME}"
             echo "pushed=true" >> "$GITHUB_OUTPUT"
           else
@@ -101,7 +101,7 @@ jobs:
             echo "pushed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # 3) Создаём PR через gh CLI, без трогания ветки сторонними экшенами
+      # 3) Создаём PR через gh CLI, если его ещё нет. Без ребейсов и лишних манипуляций веткой
       - name: Open PR (idempotent)
         if: steps.update.outputs.pushed == 'true'
         env:
@@ -112,7 +112,7 @@ jobs:
           BASE="${{ steps.update.outputs.default_base }}"
           HEAD="${BRANCH_NAME}"
 
-          # Если PR уже открыт от этой ветки — ничего не делаем
+          # Если PR уже открыт от этой ветки — ок
           EXISTING="$(gh pr list -R "$REPO" --head "$HEAD" --state open --json number --jq '.[0].number' || true)"
           if [ -n "$EXISTING" ]; then
             echo "PR #$EXISTING already open for $REPO:$HEAD -> $BASE"
