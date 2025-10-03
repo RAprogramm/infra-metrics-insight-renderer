@@ -34,7 +34,7 @@ jobs:
           RAW_INPUT: ${{ inputs.repositories }}
         run: |
           set -euo pipefail
-          python - <<'PY' "${GITHUB_OUTPUT}"
+          python - "${GITHUB_OUTPUT}" <<'PY'
 import json
 import os
 import sys
