@@ -73,4 +73,24 @@ mod tests {
             prop_assert!(slug.is_none_or(|value| value.chars().all(|ch| matches!(ch, 'a'..='z' | '0'..='9' | '-'))));
         }
     }
+
+    #[test]
+    fn builder_discards_invalid_and_duplicate_separators() {
+        let slug = SlugStrategy::builder("  Multi--Separator__Value  ")
+            .build()
+            .expect("expected slug to be derived");
+        assert_eq!(slug, "multi-separator-value");
+    }
+
+    #[test]
+    fn builder_returns_none_for_empty_input() {
+        assert!(SlugStrategy::builder("   ").build().is_none());
+        assert!(SlugStrategy::builder("***").build().is_none());
+    }
+
+    #[test]
+    fn builder_lowercases_uppercase_characters() {
+        let slug = SlugStrategy::builder("HelloWorld").build();
+        assert_eq!(slug.as_deref(), Some("helloworld"));
+    }
 }
