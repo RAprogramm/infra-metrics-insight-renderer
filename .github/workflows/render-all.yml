@@ -2,7 +2,7 @@ name: Render metrics for selected repos
 
 on:
   schedule:
-    - cron: "19 3 * * *"        # ежедневно, смещено от пиков
+    - cron: "19 3 * * *" 
   workflow_dispatch:
 
 jobs:
@@ -17,7 +17,6 @@ jobs:
       max-parallel: 1
       matrix:
         target:
-          # Добавляй новые по образцу
           - { owner: "RAprogramm", repo: "masterror",           filename: "metrics/masterror.svg" }
           - { owner: "RAprogramm", repo: "telegram-webapp-sdk", filename: "metrics/telegram-webapp-sdk.svg" }
 
@@ -38,7 +37,7 @@ jobs:
           repo:  ${{ matrix.target.repo }}             # сам репозиторий
           template: repository                          # <— ВАЖНО: используем репозитория-шаблон
           filename: repo.tmp.svg                        # генерим во временный файл в $GITHUB_WORKSPACE
-          base: ""                                      # без базового «спама»
+          base: "header, activity, community, metadata" 
           config_timezone: ${{ env.TZ }}
           cache: 12h
           # Плагины, которые адекватно смотрятся для repo template
