@@ -99,24 +99,11 @@ fn run_targets(args: TargetsArgs) -> Result<(), Error> {
 
 fn run_targets_from_path(path: &Path, pretty: bool) -> Result<(), Error> {
     let document = load_targets(path)?;
-        Command::Targets(args) => run_targets(args),
-        Command::OpenSource(args) => run_open_source(args),
-    }
-}
-
-/// Handles the `targets` subcommand by emitting normalized JSON to stdout.
-///
-/// # Errors
-///
-/// Returns an [`Error`] when the configuration cannot be loaded or serialized.
-fn run_targets(args: TargetsArgs) -> Result<(), Error> {
-    let document = load_targets(&args.config)?;
 
     let stdout = io::stdout();
     let mut handle = stdout.lock();
 
     if pretty {
-    if args.pretty {
         serde_json::to_writer_pretty(&mut handle, &document)?;
     } else {
         serde_json::to_writer(&mut handle, &document)?;
@@ -132,13 +119,11 @@ fn run_targets(args: TargetsArgs) -> Result<(), Error> {
 /// Returns an [`Error`] when repository inputs are invalid or serialization
 /// fails.
 fn run_open_source(args: OpenSourceArgs) -> Result<(), Error> {
-    let trimmed = args.input.as_deref().map(str::trim).and_then(|value| {
-        if value.is_empty() {
-            None
-        } else {
-            Some(value)
-        }
-    });
+    let trimmed = args
+        .input
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
 
     let repositories = resolve_open_source_repositories(trimmed)?;
 
@@ -182,12 +167,10 @@ mod tests {
         let error = run_legacy_targets(&args).expect_err("expected validation error");
 
         match error {
-            metrics_orchestrator::Error::Validation { message, .. } => {
+            metrics_orchestrator::Error::Validation { message } => {
                 assert_eq!(message, "missing required --config <PATH> argument");
             }
             other => panic!("unexpected error variant: {other:?}"),
         }
     }
-
-    Ok(())
 }

@@ -47,7 +47,7 @@ pub struct RenderTarget {
     /// Time zone passed to the renderer.
     pub time_zone: String,
     /// Display name used in commit messages and logs.
-    pub display_name:        String,
+    pub display_name: String,
     /// Branch analyzed by the contributors plugin.
     pub contributors_branch: String,
 }
@@ -192,9 +192,9 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
     let contributors_branch = entry
         .contributors_branch
         .as_ref()
-        .map(|value| normalize_identifier(value, "contributors_branch",))
+        .map(|value| normalize_identifier(value, "contributors_branch"))
         .transpose()?
-        .unwrap_or_else(|| DEFAULT_CONTRIBUTORS_BRANCH.to_owned(),);
+        .unwrap_or_else(|| DEFAULT_CONTRIBUTORS_BRANCH.to_owned());
 
     Ok(RenderTarget {
         slug,
@@ -207,7 +207,7 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
         time_zone,
         display_name,
         contributors_branch,
-    },)
+    })
 }
 
 /// Validates identifier-like fields such as owners or repositories.
@@ -257,13 +257,13 @@ mod tests {
 
     fn repository_entry() -> TargetEntry {
         TargetEntry {
-            owner:         "RAprogramm".to_owned(),
-            repository:    Some("metrics".to_owned(),),
-            target_type:   TargetKind::OpenSource,
-            slug:          None,
-            branch_name:   None,
+            owner: "RAprogramm".to_owned(),
+            repository: Some("metrics".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: None,
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: None,
@@ -286,13 +286,13 @@ mod tests {
     #[test]
     fn normalizes_infra_metrics_insight_renderer_target() {
         let entry = TargetEntry {
-            owner:         "RAprogramm".to_owned(),
-            repository:    Some("infra-metrics-insight-renderer".to_owned(),),
-            target_type:   TargetKind::OpenSource,
-            slug:          Some("infra-metrics-insight-renderer".to_owned(),),
-            branch_name:   None,
+            owner: "RAprogramm".to_owned(),
+            repository: Some("infra-metrics-insight-renderer".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: Some("infra-metrics-insight-renderer".to_owned()),
+            branch_name: None,
             contributors_branch: None,
-            target_path:   None,
+            target_path: None,
             temp_artifact: None,
             time_zone: None,
             display_name: Some("Infra Metrics Insight Renderer".to_owned()),
@@ -320,16 +320,16 @@ mod tests {
     #[test]
     fn normalizes_profile_entry_with_overrides() {
         let entry = TargetEntry {
-            owner:         " Octocat ".to_owned(),
-            repository:    None,
-            target_type:   TargetKind::Profile,
-            slug:          Some(" Custom.Profile ".to_owned(),),
-            branch_name:   Some("  feature/metrics  ".to_owned(),),
+            owner: " Octocat ".to_owned(),
+            repository: None,
+            target_type: TargetKind::Profile,
+            slug: Some(" Custom.Profile ".to_owned()),
+            branch_name: Some("  feature/metrics  ".to_owned()),
             contributors_branch: None,
-            target_path:   Some("  dashboards/profile.svg  ".to_owned(),),
-            temp_artifact: Some("  tmp/profile.svg  ".to_owned(),),
-            time_zone:     Some("  UTC  ".to_owned(),),
-            display_name:  Some("  Profile Name  ".to_owned(),),
+            target_path: Some("  dashboards/profile.svg  ".to_owned()),
+            temp_artifact: Some("  tmp/profile.svg  ".to_owned()),
+            time_zone: Some("  UTC  ".to_owned()),
+            display_name: Some("  Profile Name  ".to_owned()),
         };
 
         let target = normalize_entry(&entry).expect("expected overrides to be honored");
@@ -343,12 +343,11 @@ mod tests {
     }
 
     #[test]
-    fn normalizes_contributors_branch_override()
-    {
+    fn normalizes_contributors_branch_override() {
         let mut entry = repository_entry();
-        entry.contributors_branch = Some(" feature/main ".to_owned(),);
+        entry.contributors_branch = Some(" feature/main ".to_owned());
 
-        let target = normalize_entry(&entry,).expect("expected contributors branch override",);
+        let target = normalize_entry(&entry).expect("expected contributors branch override");
         assert_eq!(target.contributors_branch, "feature/main");
     }
 
@@ -511,7 +510,7 @@ mod tests {
         clone.branch_name.push_str("-extra");
         assert_ne!(base, clone);
         let mut clone = base.clone();
-        clone.contributors_branch.push_str("-feature",);
+        clone.contributors_branch.push_str("-feature");
         assert_ne!(base, clone);
     }
 
