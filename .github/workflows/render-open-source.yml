@@ -72,6 +72,9 @@ PY
       contents: write
       pull-requests: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
       - name: Render metrics for ${{ matrix.repository }}
         uses: ./.github/actions/render-repository
         with:
