@@ -7,8 +7,10 @@
 mod config;
 mod error;
 mod normalizer;
+mod open_source;
 mod slug;
 
 pub use config::{TargetConfig, TargetEntry, TargetKind};
 pub use error::Error;
 pub use normalizer::{load_targets, parse_targets, RenderTarget, TargetsDocument};
+pub use open_source::resolve_open_source_repositories;
