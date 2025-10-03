@@ -107,7 +107,6 @@ runs:
         user: ${{ env.TARGET_OWNER }}
         repo: ${{ env.TARGET_REPO }}
         template: repository
-        use_prebuilt_image: ghcr.io/lowlighter/metrics:v3.34.0
         filename: ${{ env.TEMP_ARTIFACT }}
         base: "header, activity, community, metadata"
         config_timezone: ${{ env.TIME_ZONE }}
