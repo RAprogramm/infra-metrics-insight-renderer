@@ -27,7 +27,7 @@ impl<'input> SlugStrategy<'input> {
     /// # Examples
     ///
     /// ```
-    /// use metrics_orchestrator::SlugStrategy;
+    /// use imir::SlugStrategy;
     ///
     /// let slug = SlugStrategy::builder(" Docs/Overview  ",).build();
     /// assert_eq!(slug.as_deref(), Some("docs-overview"));

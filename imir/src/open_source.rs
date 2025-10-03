@@ -25,11 +25,11 @@ const DEFAULT_REPOSITORIES: &[&str] = &["masterror", "telegram-webapp-sdk"];
 /// # Examples
 ///
 /// ```
-/// use metrics_orchestrator::resolve_open_source_repositories;
+/// use imir::resolve_open_source_repositories;
 ///
 /// let repositories = resolve_open_source_repositories(Some("[\"repo\"]",),)?;
 /// assert_eq!(repositories, vec!["repo".to_owned()]);
-/// # Ok::<(), metrics_orchestrator::Error>(())
+/// # Ok::<(), imir::Error>(())
 /// ```
 pub fn resolve_open_source_repositories(raw_input: Option<&str>) -> Result<Vec<String>, Error> {
     match raw_input.and_then(|value| {

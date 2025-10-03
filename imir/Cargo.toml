@@ -1,5 +1,5 @@
 [package]
-name = "metrics-orchestrator"
+name = "imir"
 version = "0.1.0"
 edition = "2021"
 description = "Generate rendering instructions for lowlighter/metrics targets"
