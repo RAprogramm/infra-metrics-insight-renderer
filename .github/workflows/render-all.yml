@@ -14,11 +14,12 @@ jobs:
 
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         target:
           # Добавляй новые по образцу
-          - { owner: "RAprogramm", repo: "masterror",           path: "docs/metrics.svg" }
-          - { owner: "RAprogramm", repo: "telegram-webapp-sdk", path: "metrics.svg" }
+          - { owner: "RAprogramm", repo: "masterror",           filename: "metrics/masterror.svg" }
+          - { owner: "RAprogramm", repo: "telegram-webapp-sdk", filename: "metrics/telegram-webapp-sdk.svg" }
 
     env:
       TZ: Asia/Ho_Chi_Minh
@@ -55,60 +56,52 @@ jobs:
           test -f "$GITHUB_WORKSPACE/repo.tmp.svg"
           echo "Generated: $GITHUB_WORKSPACE/repo.tmp.svg"
 
-      # 2) Клоним цель, аккуратно создаём/обновляем tracking-ref и ветку, коммитим, пушим
-      - name: Clone target repo, update branch and file
+      - name: Move artifact into repository workspace
+        run: |
+          set -euo pipefail
+          TARGET_PATH="${{ matrix.target.filename }}"
+          mkdir -p "$(dirname "${TARGET_PATH}")"
+          mv "$GITHUB_WORKSPACE/repo.tmp.svg" "${TARGET_PATH}"
+          echo "Stored metrics at ${TARGET_PATH}"
+
+      - name: Commit metrics update
         id: update
         run: |
           set -euo pipefail
-
-          REPO="${{ matrix.target.owner }}/${{ matrix.target.repo }}"
-          URL="https://x-access-token:${{ secrets.CLASSIC }}@github.com/${REPO}.git"
-
-          git clone --depth=1 "$URL" target-repo
-          cd target-repo
 
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config pull.rebase true
 
-          # Определяем дефолтную ветку (origin/HEAD -> origin/main|master|…)
-          DEFAULT_REF="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##' || true)"
-          if [ -z "${DEFAULT_REF}" ]; then DEFAULT_REF="main"; fi
-          echo "default_base=${DEFAULT_REF}" >> "$GITHUB_OUTPUT"
-
-          if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
-            BRANCH_EXISTS=true
-          else
-            BRANCH_EXISTS=false
+          DEFAULT_REF="$(git symbolic-ref --quiet --short HEAD || true)"
+          if [ -z "${DEFAULT_REF}" ]; then
+            DEFAULT_REF="main"
           fi
 
-          mkdir -p "$(dirname "${{ matrix.target.path }}")"
+          if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
+            git fetch --no-tags --prune --depth=1 origin \
+              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
+            git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
+          else
+            git fetch --no-tags --prune --depth=1 origin \
+              "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}" || true
+            git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}" || git checkout -B "${BRANCH_NAME}" "${DEFAULT_REF}"
+          fi
+
+          UPSTREAM_BEFORE="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
+
+          git add "${{ matrix.target.filename }}"
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "chore(metrics): refresh ${{ matrix.target.repo }}"
 
           PUSHED=false
           for ATTEMPT in 1 2 3; do
-            if [ "${BRANCH_EXISTS}" = true ]; then
-              git fetch --no-tags --prune --depth=1 origin \
-                "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
-              git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
-            else
-              git fetch --no-tags --prune --depth=1 origin \
-                "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}"
-              git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}"
-            fi
-
-            UPSTREAM_BEFORE="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
-
-            cp "$GITHUB_WORKSPACE/repo.tmp.svg" "${{ matrix.target.path }}"
-
-            if ! git status --porcelain | grep -q .; then
-              echo "No changes to commit."
-              echo "pushed=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            git add "${{ matrix.target.path }}"
-            git commit -m "chore(metrics): refresh ${{ matrix.target.path }}"
-
             if git push origin "${BRANCH_NAME}"; then
               echo "Push attempt ${ATTEMPT} succeeded with fast-forward update."
               PUSHED=true
@@ -125,13 +118,11 @@ jobs:
 
             if [ -n "${UPSTREAM_BEFORE}" ] && [ "${REMOTE_AFTER}" != "${UPSTREAM_BEFORE}" ]; then
               echo "Remote branch advanced to ${REMOTE_AFTER}; retrying without force push." >&2
-              BRANCH_EXISTS=true
               continue
             fi
 
             if [ -z "${UPSTREAM_BEFORE}" ] && [ -n "${REMOTE_AFTER}" ]; then
               echo "Remote branch ${BRANCH_NAME} appeared at ${REMOTE_AFTER}; retrying without force push." >&2
-              BRANCH_EXISTS=true
               continue
             fi
 
@@ -149,13 +140,16 @@ jobs:
             fi
 
             echo "Force push attempt ${ATTEMPT} failed, refreshing branch and retrying..." >&2
-            BRANCH_EXISTS=true
           done
 
           if [ "${PUSHED}" != true ]; then
             echo "Unable to push metrics update after multiple attempts." >&2
             exit 1
           fi
+
+          DEFAULT_BASE="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##' || true)"
+          if [ -z "${DEFAULT_BASE}" ]; then DEFAULT_BASE="${DEFAULT_REF}"; fi
+          echo "default_base=${DEFAULT_BASE}" >> "$GITHUB_OUTPUT"
 
       # 3) Создаём PR через gh CLI, если его ещё нет. Без ребейсов и лишних манипуляций веткой
       - name: Open PR (idempotent)
@@ -164,7 +158,7 @@ jobs:
           GH_TOKEN: ${{ secrets.CLASSIC }}
         run: |
           set -eu
-          REPO="${{ matrix.target.owner }}/${{ matrix.target.repo }}"
+          REPO="${{ github.repository }}"
           BASE="${{ steps.update.outputs.default_base }}"
           HEAD="${BRANCH_NAME}"
 
