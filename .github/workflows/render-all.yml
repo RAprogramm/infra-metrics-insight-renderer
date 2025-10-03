@@ -2,22 +2,25 @@ name: Render metrics for selected repos
 
 on:
   schedule:
-    - cron: "19 3 * * *" 
+    - cron: "19 3 * * *"        # каждый день в 03:19 UTC; смещено от пиков
   workflow_dispatch:
 
 jobs:
   render:
     runs-on: ubuntu-latest
+    # Ничего лишнего: только то, что нужно для пуша ветки и открытия PR
     permissions:
       contents: write
       pull-requests: write
 
+    # Не валимся всем матричным джобом из-за одного репо
     strategy:
       fail-fast: false
       matrix:
         target:
-          - { owner: "RAprogramm", repo: "masterror",            path: "docs/metrics.svg" }
-          - { owner: "RAprogramm", repo: "telegram-webapp-sdk",  path: "metrics.svg" }
+          # Добавляй сюда новые репозитории по образцу
+          - { owner: "RAprogramm", repo: "masterror",           path: "docs/metrics.svg" }
+          - { owner: "RAprogramm", repo: "telegram-webapp-sdk", path: "metrics.svg" }
 
     env:
       GH_USER: RAprogramm
@@ -25,17 +28,17 @@ jobs:
 
     steps:
       - name: Checkout renderer
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
-      # Генерим один SVG (минимум плагинов = стабильнее, быстрее, чище)
+      # 1) Генерим метрики в корень рабочего каталога (не мудрим с относительными путями)
       - name: Generate metrics SVG
         uses: lowlighter/metrics@latest
         with:
-          token: ${{ secrets.METRICS_PAT }}     # fine-grained PAT с RW на эти 2 репозитория
+          token: ${{ secrets.METRICS_PAT }}     # fine-grained PAT c RW к целевым репо
           user: ${{ env.GH_USER }}
           template: classic
-          filename: metrics.tmp.svg
-          base: ""                              # не тянем базовые спам-блоки
+          filename: metrics.tmp.svg             # будет лежать в $GITHUB_WORKSPACE
+          base: ""                              # без базового «спама»
           config_timezone: ${{ env.TZ }}
           cache: 12h
           plugin_isocalendar: yes
@@ -46,34 +49,42 @@ jobs:
           plugin_languages_details: bytes-size, percentage
           plugin_languages_ignored: html, css, scss
 
-      # Клоним целевой репозиторий, кладём файл в нужный путь, пушим ветку
+      - name: Verify generated artifact
+        run: |
+          set -eu
+          test -f "$GITHUB_WORKSPACE/metrics.tmp.svg"
+          echo "Generated: $GITHUB_WORKSPACE/metrics.tmp.svg"
+
+      # 2) Клоним целевое репо c PAT, кладём файл и пушим ветку
       - name: Clone target repo and prepare branch
         run: |
           set -eu
           REPO="${{ matrix.target.owner }}/${{ matrix.target.repo }}"
-          URL="https://${GITHUB_ACTOR}:${{ secrets.METRICS_PAT }}@github.com/${REPO}.git"
+          URL="https://x-access-token:${{ secrets.METRICS_PAT }}@github.com/${REPO}.git"
 
-          git clone --depth=1 "$URL" "target-repo"
+          git clone --depth=1 "$URL" target-repo
           cd target-repo
 
+          # Конфиг коммитера (нормальный «бот»)
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           BR="ci/metrics-refresh"
-          if git rev-parse --verify "$BR" >/dev/null 2>&1; then
-            git checkout "$BR"
-          else
-            git checkout -b "$BR"
-          fi
+          # Локально создаём/переключаемся; если ветка уже есть на удалёнке — следующая команда push её обновит
+          git checkout -B "$BR"
 
           mkdir -p "$(dirname "${{ matrix.target.path }}")"
-          cp ../metrics.tmp.svg "${{ matrix.target.path }}"
+          cp "$GITHUB_WORKSPACE/metrics.tmp.svg" "${{ matrix.target.path }}"
 
           if git status --porcelain | grep .; then
             git add "${{ matrix.target.path }}"
             git commit -m "chore(metrics): refresh ${{ matrix.target.path }}"
-            git push -u origin "$BR" || git push origin "$BR"
+            git push -u origin "$BR"
           else
             echo "No changes to commit."
           fi
 
+      # 3) Создаём/обновляем PR на main (если защищён — тем лучше)
       - name: Open PR to target repo
         uses: peter-evans/create-pull-request@v6
         with:
@@ -89,4 +100,3 @@ jobs:
           labels: |
             ci
             metrics
-
