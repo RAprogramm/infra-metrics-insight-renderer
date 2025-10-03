@@ -30,11 +30,16 @@ jobs:
       BRANCH_NAME: ${{ inputs.branch_name }}
       TARGET_USER: RAprogramm
       TARGET_PATH: metrics/profile.svg
-      TEMP_ARTIFACT: profile.tmp.svg
+      TEMP_ARTIFACT: .metrics-tmp/profile.svg
 
     steps:
       - name: Checkout renderer
         uses: actions/checkout@v5
+
+      - name: Prepare temporary artifact path
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "${TEMP_ARTIFACT}")"
 
       - name: Metrics embed
         uses: lowlighter/metrics@v3.34

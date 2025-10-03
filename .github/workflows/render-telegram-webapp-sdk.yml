@@ -26,6 +26,6 @@ jobs:
       target_owner: RAprogramm
       target_repo: telegram-webapp-sdk
       target_path: metrics/telegram-webapp-sdk.svg
-      temp_artifact: repo.tmp.svg
+      temp_artifact: .metrics-tmp/telegram-webapp-sdk.svg
     secrets:
       CLASSIC: ${{ secrets.CLASSIC }}
