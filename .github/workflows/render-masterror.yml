@@ -26,6 +26,6 @@ jobs:
       target_owner: RAprogramm
       target_repo: masterror
       target_path: metrics/masterror.svg
-      temp_artifact: repo.tmp.svg
+      temp_artifact: .metrics-tmp/masterror.svg
     secrets:
       CLASSIC: ${{ secrets.CLASSIC }}

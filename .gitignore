@@ -1,0 +1,3 @@
+# Temporary files produced during metrics rendering
+*.tmp.svg
+.metrics-tmp/

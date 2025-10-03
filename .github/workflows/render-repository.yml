@@ -58,12 +58,17 @@ jobs:
       TARGET_OWNER: ${{ inputs.target_owner || github.repository_owner }}
       TARGET_REPO: ${{ inputs.target_repo }}
       TARGET_PATH: ${{ inputs.target_path || format('metrics/{0}.svg', inputs.target_repo) }}
-      TEMP_ARTIFACT: ${{ inputs.temp_artifact || 'repo.tmp.svg' }}
+      TEMP_ARTIFACT: ${{ inputs.temp_artifact || '.metrics-tmp/repository.svg' }}
       BRANCH_NAME: ${{ inputs.branch_name || format('ci/metrics-refresh-{0}', inputs.target_repo) }}
 
     steps:
       - name: Checkout renderer
         uses: actions/checkout@v5
+
+      - name: Prepare temporary artifact path
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "${TEMP_ARTIFACT}")"
 
       - name: Metrics embed
         uses: lowlighter/metrics@v3.34
