@@ -5,6 +5,7 @@ targets:
   - owner: RAprogramm
     type: profile
     slug: profile
+    # branch: ci/metrics-refresh-profile
   - owner: RAprogramm
     repository: masterror
     type: open_source
