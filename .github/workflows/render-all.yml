@@ -26,9 +26,8 @@ jobs:
 
     steps:
       - name: Checkout renderer
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      # 1) Генерим метрики в $GITHUB_WORKSPACE
       - name: Generate metrics SVG
         uses: lowlighter/metrics@latest
         with:
@@ -42,10 +41,10 @@ jobs:
           plugin_isocalendar: yes
           plugin_isocalendar_duration: half-year
           plugin_languages: yes
-          plugin_languages_limit: 8
+          # plugin_languages_limit: 8
           plugin_languages_sections: most-used
           plugin_languages_details: bytes-size, percentage
-          plugin_languages_ignored: html, css, scss
+          # plugin_languages_ignored: html, css, scss
 
       - name: Verify generated artifact
         run: |
@@ -53,10 +52,11 @@ jobs:
           test -f "$GITHUB_WORKSPACE/metrics.tmp.svg"
           echo "Generated: $GITHUB_WORKSPACE/metrics.tmp.svg"
 
-      # 2) Клонируем цель, кладём файл, пушим ветку
-      - name: Clone target repo and prepare branch
+      - name: Clone target repo, update branch and file
+        id: update
         run: |
           set -eu
+
           REPO="${{ matrix.target.owner }}/${{ matrix.target.repo }}"
           URL="https://x-access-token:${{ secrets.METRICS_PAT }}@github.com/${REPO}.git"
 
@@ -67,13 +67,20 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config pull.rebase true
 
+          DEFAULT_REF="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##')"
+          if [ -z "${DEFAULT_REF}" ]; then
+            DEFAULT_REF="main"
+          fi
+          echo "default_base=${DEFAULT_REF}" >> "$GITHUB_OUTPUT"
+
           if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
-            git fetch origin "${BRANCH_NAME}:${BRANCH_NAME}"
-            git checkout "${BRANCH_NAME}"
-            # выровнять локальную ветку по удалённой
-            git reset --hard "origin/${BRANCH_NAME}"
+            git fetch --no-tags --prune --depth=1 origin \
+              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
+            git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
           else
-            git checkout -b "${BRANCH_NAME}"
+            git fetch --no-tags --prune --depth=1 origin \
+              "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}"
+            git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}"
           fi
 
           mkdir -p "$(dirname "${{ matrix.target.path }}")"
@@ -82,28 +89,27 @@ jobs:
           if git status --porcelain | grep .; then
             git add "${{ matrix.target.path }}"
             git commit -m "chore(metrics): refresh ${{ matrix.target.path }}"
-            # 4) Пушим безопасно поверх своей же ветки
             git push --force-with-lease origin "${BRANCH_NAME}"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
           else
             echo "No changes to commit."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # 2.5) Критичный шаг: подтянуть только что запушенную ветку,
-      # чтобы у create-pull-request был remotes/origin/${BRANCH_NAME}
-      - name: Fetch pushed branch for PR
+      - name: Ensure remote-tracking ref for PR
+        if: steps.update.outputs.pushed == 'true'
         run: |
           set -eu
           git -C target-repo fetch origin \
             +refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}
 
-      # 3) Открываем/обновляем PR
-      - name: Open PR to target repo
+      - name: Open or update PR
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.METRICS_PAT }}
           path: target-repo
           branch: ${{ env.BRANCH_NAME }}
-          base: main                 # если в репо дефолт не main — поменяй тут
+          base: ${{ steps.update.outputs.default_base }}
           title: "chore(metrics): refresh"
           body: "Auto-generated metrics update"
           commit-message: "chore(metrics): refresh"
