@@ -96,6 +96,8 @@ jobs:
               git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}"
             fi
 
+            UPSTREAM_BEFORE="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
+
             cp "$GITHUB_WORKSPACE/repo.tmp.svg" "${{ matrix.target.path }}"
 
             if ! git status --porcelain | grep -q .; then
@@ -107,13 +109,46 @@ jobs:
             git add "${{ matrix.target.path }}"
             git commit -m "chore(metrics): refresh ${{ matrix.target.path }}"
 
-            if git push --force-with-lease origin "${BRANCH_NAME}"; then
+            if git push origin "${BRANCH_NAME}"; then
+              echo "Push attempt ${ATTEMPT} succeeded with fast-forward update."
               PUSHED=true
               echo "pushed=true" >> "$GITHUB_OUTPUT"
               break
             fi
 
-            echo "Push attempt ${ATTEMPT} failed, refreshing branch and retrying..." >&2
+            echo "Fast-forward push attempt ${ATTEMPT} failed, verifying remote state before force push..." >&2
+
+            git fetch --no-tags --prune --depth=1 origin \
+              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}" || true
+
+            REMOTE_AFTER="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
+
+            if [ -n "${UPSTREAM_BEFORE}" ] && [ "${REMOTE_AFTER}" != "${UPSTREAM_BEFORE}" ]; then
+              echo "Remote branch advanced to ${REMOTE_AFTER}; retrying without force push." >&2
+              BRANCH_EXISTS=true
+              continue
+            fi
+
+            if [ -z "${UPSTREAM_BEFORE}" ] && [ -n "${REMOTE_AFTER}" ]; then
+              echo "Remote branch ${BRANCH_NAME} appeared at ${REMOTE_AFTER}; retrying without force push." >&2
+              BRANCH_EXISTS=true
+              continue
+            fi
+
+            if [ -n "${UPSTREAM_BEFORE}" ]; then
+              FORCE_ARGS=("--force-with-lease=refs/heads/${BRANCH_NAME}:${UPSTREAM_BEFORE}")
+            else
+              FORCE_ARGS=("--force-with-lease")
+            fi
+
+            if git push "${FORCE_ARGS[@]}" origin "${BRANCH_NAME}"; then
+              echo "Push attempt ${ATTEMPT} succeeded with force-with-lease."
+              PUSHED=true
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+
+            echo "Force push attempt ${ATTEMPT} failed, refreshing branch and retrying..." >&2
             BRANCH_EXISTS=true
           done
 
