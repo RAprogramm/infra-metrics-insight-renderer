@@ -1,0 +1,31 @@
+name: Render metrics for infra-metrics-insight-renderer repository
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: "Branch name used for the metrics refresh PR."
+        required: false
+        default: "ci/metrics-refresh-infra-metrics-insight-renderer"
+  workflow_call:
+    inputs:
+      branch_name:
+        description: "Branch name used for the metrics refresh PR."
+        required: false
+        default: "ci/metrics-refresh-infra-metrics-insight-renderer"
+        type: string
+    secrets:
+      CLASSIC:
+        required: true
+
+jobs:
+  render:
+    uses: ./.github/workflows/render-repository.yml
+    with:
+      branch_name: ${{ inputs.branch_name }}
+      target_owner: RAprogramm
+      target_repo: infra-metrics-insight-renderer
+      target_path: metrics/infra-metrics-insight-renderer.svg
+      temp_artifact: .metrics-tmp/infra-metrics-insight-renderer.svg
+    secrets:
+      CLASSIC: ${{ secrets.CLASSIC }}
