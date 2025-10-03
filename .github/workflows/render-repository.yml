@@ -75,7 +75,6 @@ jobs:
           filename: ${{ env.TEMP_ARTIFACT }}
           base: "header, activity, community, metadata"
           config_timezone: ${{ env.TZ }}
-          cache: 12h
           plugin_lines: yes
           plugin_followup: yes
           plugin_followup_sections: repositories, user
