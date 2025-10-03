@@ -71,3 +71,57 @@ pub fn io_error(path: &Path, source: std::io::Error) -> Error {
         source,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::Error;
+
+    #[test]
+    fn validation_constructor_populates_message() {
+        let error = Error::validation("something went wrong");
+        match error {
+            Error::Validation { ref message } => {
+                assert_eq!(message, "something went wrong");
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn to_display_string_matches_display() {
+        let error = Error::validation("display me");
+        assert_eq!(error.to_string(), error.to_display_string());
+    }
+
+    #[test]
+    fn io_error_helper_wraps_path_and_source() {
+        let path = std::path::Path::new("/tmp/example.yaml");
+        let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
+        let error = super::io_error(path, io_error);
+
+        match error {
+            Error::Io {
+                path: ref stored_path,
+                ref source,
+            } => {
+                assert_eq!(stored_path, path);
+                assert_eq!(source.kind(), std::io::ErrorKind::NotFound);
+            }
+            other => panic!("expected io error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn serde_yaml_conversion_maps_to_parse_variant() {
+        let error = serde_yaml::from_str::<usize>("not-a-number").unwrap_err();
+        let mapped: Error = error.into();
+        assert!(matches!(mapped, Error::Parse { .. }));
+    }
+
+    #[test]
+    fn serde_json_conversion_maps_to_serialize_variant() {
+        let invalid = serde_json::from_str::<serde_json::Value>("not-json").unwrap_err();
+        let mapped: Error = invalid.into();
+        assert!(matches!(mapped, Error::Serialize { .. }));
+    }
+}

@@ -89,6 +89,145 @@ impl TargetEntry {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{TargetEntry, TargetKind};
+
+    #[test]
+    fn resolved_slug_prefers_custom_value() {
+        let entry = TargetEntry {
+            owner: "octocat".to_owned(),
+            repository: Some("Hello-World".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: Some("  Custom Slug  ".to_owned()),
+            branch_name: None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+        };
+
+        let slug = entry
+            .resolved_slug()
+            .expect("expected slug to be derived from override");
+        assert_eq!(slug, "custom-slug");
+    }
+
+    #[test]
+    fn resolved_slug_falls_back_to_profile_default() {
+        let entry = TargetEntry {
+            owner: "octocat".to_owned(),
+            repository: None,
+            target_type: TargetKind::Profile,
+            slug: None,
+            branch_name: None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+        };
+
+        let slug = entry
+            .resolved_slug()
+            .expect("expected slug to be derived from owner");
+        assert_eq!(slug, "octocat-profile");
+    }
+
+    #[test]
+    fn resolved_slug_falls_back_to_repository_name() {
+        let entry = TargetEntry {
+            owner: "octocat".to_owned(),
+            repository: Some("Example Repo".to_owned()),
+            target_type: TargetKind::PrivateProject,
+            slug: None,
+            branch_name: None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+        };
+
+        let slug = entry
+            .resolved_slug()
+            .expect("expected slug to be derived from repository");
+        assert_eq!(slug, "example-repo");
+    }
+
+    #[test]
+    fn resolved_slug_returns_none_when_unable_to_derive() {
+        let entry = TargetEntry {
+            owner: "octocat".to_owned(),
+            repository: Some("***".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: None,
+            branch_name: None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+        };
+
+        assert!(entry.resolved_slug().is_none());
+    }
+
+    #[test]
+    fn resolved_display_name_prefers_override() {
+        let entry = TargetEntry {
+            owner: "octocat".to_owned(),
+            repository: Some("repo".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: None,
+            branch_name: None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: Some("  Friendly Name  ".to_owned()),
+        };
+
+        let display = entry
+            .resolved_display_name()
+            .expect("expected display name to be derived");
+        assert_eq!(display, "Friendly Name");
+    }
+
+    #[test]
+    fn resolved_display_name_uses_repository_name() {
+        let entry = TargetEntry {
+            owner: "octocat".to_owned(),
+            repository: Some(" Repo With Spaces ".to_owned()),
+            target_type: TargetKind::OpenSource,
+            slug: None,
+            branch_name: None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+        };
+
+        let display = entry
+            .resolved_display_name()
+            .expect("expected repository name to be used");
+        assert_eq!(display, "Repo With Spaces");
+    }
+
+    #[test]
+    fn resolved_display_name_returns_none_when_override_blank() {
+        let entry = TargetEntry {
+            owner: "octocat".to_owned(),
+            repository: None,
+            target_type: TargetKind::Profile,
+            slug: None,
+            branch_name: None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: Some("   ".to_owned()),
+        };
+
+        assert!(entry.resolved_display_name().is_none());
+    }
+}
+
 /// Supported categories of metrics targets.
 #[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(rename_all = "snake_case")]

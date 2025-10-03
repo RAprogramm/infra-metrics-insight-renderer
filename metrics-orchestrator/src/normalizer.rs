@@ -185,12 +185,15 @@ fn normalize_path_like(input: &str, field: &str) -> Result<String, Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::config::TargetKind;
+    use super::{
+        load_targets, normalize_entry, normalize_identifier, normalize_path_like,
+        normalize_targets, parse_targets, Error,
+    };
+    use crate::config::{TargetEntry, TargetKind};
+    use std::io::Write;
 
-    #[test]
-    fn normalizes_repository_entry() {
-        let entry = TargetEntry {
+    fn repository_entry() -> TargetEntry {
+        TargetEntry {
             owner: "RAprogramm".to_owned(),
             repository: Some("metrics".to_owned()),
             target_type: TargetKind::OpenSource,
@@ -200,7 +203,12 @@ mod tests {
             temp_artifact: None,
             time_zone: None,
             display_name: None,
-        };
+        }
+    }
+
+    #[test]
+    fn normalizes_repository_entry() {
+        let entry = repository_entry();
 
         let target = normalize_entry(&entry).expect("expected normalization success");
         assert_eq!(target.slug, "metrics");
@@ -211,17 +219,33 @@ mod tests {
     }
 
     #[test]
+    fn normalizes_profile_entry_with_overrides() {
+        let entry = TargetEntry {
+            owner: " Octocat ".to_owned(),
+            repository: None,
+            target_type: TargetKind::Profile,
+            slug: Some(" Custom.Profile ".to_owned()),
+            branch_name: Some("  feature/metrics  ".to_owned()),
+            target_path: Some("  dashboards/profile.svg  ".to_owned()),
+            temp_artifact: Some("  tmp/profile.svg  ".to_owned()),
+            time_zone: Some("  UTC  ".to_owned()),
+            display_name: Some("  Profile Name  ".to_owned()),
+        };
+
+        let target = normalize_entry(&entry).expect("expected overrides to be honored");
+        assert_eq!(target.slug, "custom-profile");
+        assert_eq!(target.branch_name, "feature/metrics");
+        assert_eq!(target.target_path, "dashboards/profile.svg");
+        assert_eq!(target.temp_artifact, "tmp/profile.svg");
+        assert_eq!(target.time_zone, "UTC");
+        assert_eq!(target.display_name, "Profile Name");
+    }
+
+    #[test]
     fn rejects_missing_repository_for_repository_target() {
         let entry = TargetEntry {
-            owner: "user".to_owned(),
             repository: None,
-            target_type: TargetKind::OpenSource,
-            slug: None,
-            branch_name: None,
-            target_path: None,
-            temp_artifact: None,
-            time_zone: None,
-            display_name: None,
+            ..repository_entry()
         };
 
         let result = normalize_entry(&entry);
@@ -230,32 +254,156 @@ mod tests {
 
     #[test]
     fn prevents_duplicate_slugs() {
-        let entries = vec![
-            TargetEntry {
-                owner: "user".to_owned(),
-                repository: Some("repo".to_owned()),
-                target_type: TargetKind::OpenSource,
-                slug: None,
-                branch_name: None,
-                target_path: None,
-                temp_artifact: None,
-                time_zone: None,
-                display_name: None,
-            },
-            TargetEntry {
-                owner: "user".to_owned(),
-                repository: Some("repo".to_owned()),
-                target_type: TargetKind::PrivateProject,
-                slug: None,
-                branch_name: None,
-                target_path: None,
-                temp_artifact: None,
-                time_zone: None,
-                display_name: None,
-            },
-        ];
+        let entries = vec![repository_entry(), repository_entry()];
 
         let result = normalize_targets(&entries);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn prevents_duplicate_target_paths() {
+        let mut a = repository_entry();
+        a.target_path = Some("custom/path.svg".to_owned());
+        let mut b = repository_entry();
+        b.slug = Some("other".to_owned());
+        b.target_path = Some("custom/path.svg".to_owned());
+
+        let result = normalize_targets(&[a, b]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn prevents_duplicate_temp_artifacts() {
+        let mut a = repository_entry();
+        a.temp_artifact = Some("tmp/output.svg".to_owned());
+        let mut b = repository_entry();
+        b.slug = Some("other".to_owned());
+        b.temp_artifact = Some("tmp/output.svg".to_owned());
+
+        let result = normalize_targets(&[a, b]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn prevents_duplicate_branch_names() {
+        let mut a = repository_entry();
+        a.branch_name = Some("ci/branch".to_owned());
+        let mut b = repository_entry();
+        b.slug = Some("other".to_owned());
+        b.branch_name = Some("ci/branch".to_owned());
+
+        let result = normalize_targets(&[a, b]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn normalize_identifier_rejects_whitespace() {
+        let error = normalize_identifier("bad value", "field").unwrap_err();
+        match error {
+            Error::Validation { message } => {
+                assert_eq!(message, "field cannot contain whitespace");
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn normalize_identifier_rejects_empty() {
+        let error = normalize_identifier("   ", "field").unwrap_err();
+        match error {
+            Error::Validation { message } => {
+                assert_eq!(message, "field cannot be empty");
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn normalize_path_like_trims_values() {
+        let normalized =
+            normalize_path_like("  path/value  ", "field").expect("expected normalization success");
+        assert_eq!(normalized, "path/value");
+    }
+
+    #[test]
+    fn normalize_path_like_rejects_empty() {
+        let error = normalize_path_like("   ", "field").unwrap_err();
+        match error {
+            Error::Validation { message } => {
+                assert_eq!(message, "field override cannot be empty");
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_targets_rejects_empty_configuration() {
+        let result = parse_targets("targets: []");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parse_targets_handles_valid_document() {
+        let yaml = r#"
+            targets:
+              - owner: octocat
+                repo: metrics
+                type: open_source
+        "#;
+
+        let document = parse_targets(yaml).expect("expected parse success");
+        assert_eq!(document.targets.len(), 1);
+    }
+
+    #[test]
+    fn parse_targets_propagates_decode_errors() {
+        let result = parse_targets("targets: invalid");
+        assert!(matches!(result, Err(Error::Parse { .. })));
+    }
+
+    #[test]
+    fn normalized_document_preserves_order() {
+        let mut first = repository_entry();
+        first.slug = Some("first".to_owned());
+        let mut second = repository_entry();
+        second.slug = Some("second".to_owned());
+
+        let document = normalize_targets(&[first, second]).expect("expected normalization success");
+        let slugs: Vec<_> = document
+            .targets
+            .iter()
+            .map(|target| target.slug.as_str())
+            .collect();
+        assert_eq!(slugs, ["first", "second"]);
+    }
+
+    #[test]
+    fn render_target_equality_covers_all_fields() {
+        let base = normalize_entry(&repository_entry()).expect("expected success");
+        let mut clone = base.clone();
+        assert_eq!(base, clone);
+        clone.branch_name.push_str("-extra");
+        assert_ne!(base, clone);
+    }
+
+    #[test]
+    fn load_targets_reads_configuration_from_disk() {
+        let mut file = tempfile::NamedTempFile::new().expect("expected temp file");
+        write!(
+            file,
+            "targets:\n  - owner: octocat\n    repo: metrics\n    type: open_source\n"
+        )
+        .expect("expected write to succeed");
+
+        let document = load_targets(file.path()).expect("expected load to succeed");
+        assert_eq!(document.targets.len(), 1);
+        assert_eq!(document.targets[0].owner, "octocat");
+    }
+
+    #[test]
+    fn load_targets_reports_io_errors() {
+        let path = std::path::Path::new("/nonexistent/config.yaml");
+        let error = load_targets(path).expect_err("expected io error");
+        assert!(matches!(error, Error::Io { .. }));
     }
 }
