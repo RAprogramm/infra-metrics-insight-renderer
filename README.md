@@ -16,6 +16,15 @@
   dashboards used across RAprogramm projects.
 </p>
 
+<p>
+  <strong>IMIR exists to take the friction out of README polish.</strong>
+  Point your repository at the provided workflows, merge the generated
+  <code>metrics/&lt;slug&gt;.svg</code> badge, and drop a one-line embed into
+  your README: GitHub instantly shows a fully styled metrics card and IMIR keeps
+  it refreshed automatically. No custom infrastructure, no hand-crafted SVGs,
+  just copy the badge URL and ship.
+</p>
+
 <h2>Table of contents</h2>
 <ul>
   <li><a href="#repository-metrics-workflow">Repository metrics workflow</a>
