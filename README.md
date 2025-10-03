@@ -33,7 +33,8 @@ idempotent pull request when changes are detected.
 ### Open-source repositories bundle
 
 Workflows targeting public repositories that live under the `RAprogramm` organization can reuse `.github/workflows/render-open-source.yml`.
-The workflow accepts a JSON array with repository names and renders the standard repository dashboard for each entry.
+The workflow accepts a JSON array with repository names and renders the standard repository dashboard for each entry. The list is
+validated through the `metrics-orchestrator open-source` subcommand, ensuring the matrix only includes non-empty repository names.
 
 ```yaml
 jobs:
@@ -62,6 +63,12 @@ with:
 
 ```bash
 cargo run --manifest-path metrics-orchestrator/Cargo.toml -- --config targets/targets.yaml --pretty
+```
+
+Use the open-source helper to normalize ad-hoc repository lists for the bundled workflow:
+
+```bash
+cargo run --manifest-path metrics-orchestrator/Cargo.toml -- open-source --input '["masterror", "telegram-webapp-sdk"]'
 ```
 
 The command outputs the normalized JSON document that the workflow uses. The same CLI is invoked during CI, so validation errors

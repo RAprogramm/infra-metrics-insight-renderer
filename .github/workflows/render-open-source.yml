@@ -28,37 +28,26 @@ jobs:
     outputs:
       repositories: ${{ steps.resolve.outputs.repositories }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache metrics-orchestrator build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "metrics-orchestrator -> target"
+
       - id: resolve
         name: Resolve repository list
         env:
           RAW_INPUT: ${{ inputs.repositories }}
         run: |
           set -euo pipefail
-          python - <<'PY'
-import json
-import os
-
-output_path = os.environ["GITHUB_OUTPUT"]
-raw = os.environ.get("RAW_INPUT", "").strip()
-if not raw:
-    raw = '["masterror", "telegram-webapp-sdk"]'
-try:
-    repositories = json.loads(raw)
-except json.JSONDecodeError as exc:
-    raise SystemExit(f"Invalid repositories JSON: {exc}") from exc
-if not isinstance(repositories, list) or not repositories:
-    raise SystemExit("Repositories input must be a non-empty JSON array of repository names.")
-normalized = []
-for item in repositories:
-    if not isinstance(item, str):
-        raise SystemExit("Repositories input must contain only strings.")
-    trimmed = item.strip()
-    if not trimmed:
-        raise SystemExit("Repository names cannot be empty strings.")
-    normalized.append(trimmed)
-with open(output_path, "a", encoding="utf-8") as handle:
-    handle.write(f"repositories={json.dumps(normalized)}\n")
-PY
+          RAW="${RAW_INPUT:-}"
+          REPOSITORIES=$(cargo run --manifest-path metrics-orchestrator/Cargo.toml --quiet --locked -- open-source --input "${RAW}")
+          printf 'repositories=%s\n' "${REPOSITORIES}" >> "${GITHUB_OUTPUT}"
 
   render:
     needs: prepare
