@@ -10,16 +10,52 @@ permissions:
   pull-requests: write
 
 jobs:
-  open_source:
-    uses: ./.github/workflows/render-open-source.yml
-    with:
-      repositories: '["masterror", "telegram-webapp-sdk"]'
-    secrets:
-      CLASSIC: ${{ secrets.CLASSIC }}
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
 
-  profile:
-    uses: ./.github/workflows/render-profile.yml
-    with:
-      branch_name: ci/metrics-refresh-profile
-    secrets:
-      CLASSIC: ${{ secrets.CLASSIC }}
+      - name: Generate render targets
+        id: generate
+        run: |
+          set -euo pipefail
+          MATRIX="$(cargo run --quiet --manifest-path metrics-orchestrator/Cargo.toml -- --config targets/targets.yaml)"
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+
+  render:
+    needs: prepare
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJson(needs.prepare.outputs.matrix).targets }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Render profile target
+        if: ${{ matrix.target.kind == 'profile' }}
+        uses: ./.github/actions/render-profile
+        with:
+          classic_token: ${{ secrets.CLASSIC }}
+          target_user: ${{ matrix.target.owner }}
+          branch_name: ${{ matrix.target.branch_name }}
+          target_path: ${{ matrix.target.target_path }}
+          temp_artifact: ${{ matrix.target.temp_artifact }}
+          time_zone: ${{ matrix.target.time_zone }}
+          display_name: ${{ matrix.target.display_name }}
+
+      - name: Render repository target
+        if: ${{ matrix.target.kind != 'profile' }}
+        uses: ./.github/actions/render-repository
+        with:
+          classic_token: ${{ secrets.CLASSIC }}
+          target_owner: ${{ matrix.target.owner }}
+          target_repo: ${{ matrix.target.repository }}
+          branch_name: ${{ matrix.target.branch_name }}
+          target_path: ${{ matrix.target.target_path }}
+          temp_artifact: ${{ matrix.target.temp_artifact }}
+          time_zone: ${{ matrix.target.time_zone }}

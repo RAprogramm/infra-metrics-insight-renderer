@@ -1,3 +1,7 @@
 # Temporary files produced during metrics rendering
 *.tmp.svg
 .metrics-tmp/
+
+# Rust build artifacts
+target/
+**/target/
