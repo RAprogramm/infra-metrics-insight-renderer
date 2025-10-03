@@ -68,3 +68,10 @@ The `metrics-orchestrator` crate lives in [`metrics-orchestrator`](metrics-orche
 applies deterministic defaults for filenames, branch names, and time zones, and serializes the normalized targets in JSON form.
 Unit tests cover slug normalization, configuration validation, and duplicate detection to ensure predictable behaviour when new
 targets are added.
+
+## Local development workflow
+
+Use [`scripts/ci-check.sh`](scripts/ci-check.sh) to run the full validation pipeline locally. The helper script formats the code
+with the nightly toolchain, executes Clippy, builds all targets, runs tests, generates documentation, and invokes `cargo audit`
+and `cargo deny` to ensure dependency health. Install [`cargo-audit`](https://crates.io/crates/cargo-audit) and
+[`cargo-deny`](https://crates.io/crates/cargo-deny) beforehand to enable the security checks.
