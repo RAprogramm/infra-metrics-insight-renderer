@@ -1,13 +1,14 @@
-use std::path::Path;
-use std::path::PathBuf;
+#![allow(non_shorthand_field_patterns)]
+// The derive emitted by `masterror::Error` expands pattern matches that trip
+// `non_shorthand_field_patterns`, so we disable the lint for this module.
 
-use thiserror::Error;
+use std::path::{Path, PathBuf};
 
 /// Unified error type returned by the configuration loader and CLI.
-#[derive(Debug, Error)]
+#[derive(Debug, masterror::Error)]
 pub enum Error {
     /// Wraps I/O errors that occur while reading configuration files.
-    #[error("failed to read configuration from {path}: {source}")]
+    #[error("failed to read configuration from {path:?}: {source}")]
     Io {
         /// Location of the configuration file.
         path: PathBuf,
