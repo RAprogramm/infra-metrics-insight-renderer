@@ -100,7 +100,7 @@ runs:
         mkdir -p "$(dirname "${TEMP_ARTIFACT}")"
 
     - name: Metrics embed
-      uses: lowlighter/metrics@v3.34
+      uses: lowlighter/metrics@latest
       with:
         use_prebuilt_image: yes
         token: ${{ inputs.classic_token }}
