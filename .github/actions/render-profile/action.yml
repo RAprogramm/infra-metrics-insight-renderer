@@ -105,6 +105,7 @@ runs:
         token: ${{ inputs.classic_token }}
         user: ${{ env.TARGET_USER }}
         template: classic
+        use_prebuilt_image: ghcr.io/lowlighter/metrics:v3.34.0
         filename: ${{ env.TEMP_ARTIFACT }}
         base: "header, activity, community, repositories, metadata"
         base_hireable: yes
