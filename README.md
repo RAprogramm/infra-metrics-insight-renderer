@@ -86,6 +86,34 @@ Replace `<slug>` with the normalized identifier emitted for the target (for exam
 `owner` for profile cards). Once the slug exists under `metrics/`, the badge can be referenced from any README or documentation
 page.
 
+### Badge catalogue
+
+The published badges are grouped by color so their category is obvious at a glance. Reuse the badges directly from the
+repository to avoid stale snapshots.
+
+#### 🟩 Open-source badges
+
+| Repository | Badge |
+| --- | --- |
+| `RAprogramm/masterror` | ![masterror metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/masterror.svg) |
+| `RAprogramm/telegram-webapp-sdk` | ![telegram-webapp-sdk metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg) |
+
+#### 🟦 Private project badges
+
+Private dashboards follow the same embedding rules. Publish badges from this section once private projects are registered.
+
+#### 🟪 Profile badges
+
+| Account | Badge |
+| --- | --- |
+| `RAprogramm` | ![RAprogramm profile metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/profile.svg) |
+
+#### Color reference
+
+- 🟩 Green badges indicate open-source repositories.
+- 🟦 Blue badges denote private repositories.
+- 🟪 Purple badges represent GitHub profile dashboards.
+
 ## metrics-orchestrator CLI
 
 The `metrics-orchestrator` crate lives in [`metrics-orchestrator`](metrics-orchestrator). It validates the target configuration,
