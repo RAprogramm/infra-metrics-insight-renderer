@@ -175,9 +175,9 @@ struct RepositoryDescriptor {
 #[cfg(test)]
 mod tests {
     use super::{
-        OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
+        DEFAULT_CONTRIBUTORS_BRANCH, OpenSourceRepository, resolve_open_source_repositories,
+        resolve_open_source_targets,
     };
-    use crate::normalizer::DEFAULT_CONTRIBUTORS_BRANCH;
 
     #[test]
     fn falls_back_to_defaults_when_input_missing() {

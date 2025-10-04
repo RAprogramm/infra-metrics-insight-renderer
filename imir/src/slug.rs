@@ -5,23 +5,18 @@
 //! names and filesystem paths across platforms.
 
 /// Builder for slug strings that can be used for branch names and filenames.
-#[derive(Debug, Clone, Copy,)]
-pub struct SlugStrategy<'input,>
-{
+#[derive(Debug, Clone, Copy)]
+pub struct SlugStrategy<'input> {
     source: &'input str,
 }
 
-impl<'input,> SlugStrategy<'input,>
-{
+impl<'input> SlugStrategy<'input> {
     /// Creates a new slug builder for the provided string slice.
     ///
     /// The builder retains a borrowed view of the source to avoid allocations
     /// until [`build`](Self::build) is invoked.
-    pub fn builder(source: &'input str,) -> Self
-    {
-        Self {
-            source,
-        }
+    pub fn builder(source: &'input str) -> Self {
+        Self { source }
     }
 
     /// Builds a slug from the provided source string. The slug contains only
@@ -37,56 +32,50 @@ impl<'input,> SlugStrategy<'input,>
     /// let slug = SlugStrategy::builder(" Docs/Overview  ",).build();
     /// assert_eq!(slug.as_deref(), Some("docs-overview"));
     /// ```
-    pub fn build(self,) -> Option<String,>
-    {
+    pub fn build(self) -> Option<String> {
         let trimmed = self.source.trim();
         if trimmed.is_empty() {
             return None;
         }
 
-        let mut slug = String::with_capacity(trimmed.len(),);
+        let mut slug = String::with_capacity(trimmed.len());
         let mut previous_hyphen = false;
 
         for candidate in trimmed.chars() {
             match candidate {
                 'A'..='Z' => {
-                    slug.push(candidate.to_ascii_lowercase(),);
+                    slug.push(candidate.to_ascii_lowercase());
                     previous_hyphen = false;
                 }
                 'a'..='z' | '0'..='9' => {
-                    slug.push(candidate,);
+                    slug.push(candidate);
                     previous_hyphen = false;
                 }
                 '-' | '_' | ' ' | '.' | '/' => {
                     if !previous_hyphen && !slug.is_empty() {
-                        slug.push('-',);
+                        slug.push('-');
                         previous_hyphen = true;
                     }
                 }
                 _ => {
                     if !previous_hyphen && !slug.is_empty() {
-                        slug.push('-',);
+                        slug.push('-');
                         previous_hyphen = true;
                     }
                 }
             }
         }
 
-        while slug.ends_with('-',) {
+        while slug.ends_with('-') {
             slug.pop();
         }
 
-        if slug.is_empty() {
-            None
-        } else {
-            Some(slug,)
-        }
+        if slug.is_empty() { None } else { Some(slug) }
     }
 }
 
 #[cfg(test)]
-mod tests
-{
+mod tests {
     use proptest::prelude::*;
 
     use super::SlugStrategy;
@@ -101,25 +90,22 @@ mod tests
     }
 
     #[test]
-    fn builder_discards_invalid_and_duplicate_separators()
-    {
-        let slug = SlugStrategy::builder("  Multi--Separator__Value  ",)
+    fn builder_discards_invalid_and_duplicate_separators() {
+        let slug = SlugStrategy::builder("  Multi--Separator__Value  ")
             .build()
-            .expect("expected slug to be derived",);
+            .expect("expected slug to be derived");
         assert_eq!(slug, "multi-separator-value");
     }
 
     #[test]
-    fn builder_returns_none_for_empty_input()
-    {
+    fn builder_returns_none_for_empty_input() {
         assert!(SlugStrategy::builder("   ").build().is_none());
         assert!(SlugStrategy::builder("***").build().is_none());
     }
 
     #[test]
-    fn builder_lowercases_uppercase_characters()
-    {
-        let slug = SlugStrategy::builder("HelloWorld",).build();
+    fn builder_lowercases_uppercase_characters() {
+        let slug = SlugStrategy::builder("HelloWorld").build();
         assert_eq!(slug.as_deref(), Some("helloworld"));
     }
 }
