@@ -11,7 +11,9 @@ use std::{collections::HashSet, fs, path::Path};
 use serde::Serialize;
 
 use crate::{
-    config::{TargetConfig, TargetEntry, TargetKind},
+    config::{
+        BadgeOptions, BadgeStyle, BadgeWidgetAlignment, TargetConfig, TargetEntry, TargetKind,
+    },
     error::{self, Error},
 };
 
@@ -26,6 +28,10 @@ const DEFAULT_EXTENSION: &str = "svg";
 /// Default time zone for renderer execution when none is provided.
 const DEFAULT_TIME_ZONE: &str = "Asia/Ho_Chi_Minh";
 const DEFAULT_CONTRIBUTORS_BRANCH: &str = "main";
+const DEFAULT_BADGE_STYLE: BadgeStyle = BadgeStyle::Classic;
+const DEFAULT_BADGE_COLUMNS: u8 = 1;
+const DEFAULT_BADGE_ALIGNMENT: BadgeWidgetAlignment = BadgeWidgetAlignment::Start;
+const DEFAULT_BADGE_BORDER_RADIUS: u8 = 4;
 
 /// Normalized representation of a metrics target used by automation workflows.
 #[derive(Debug, Serialize, Clone, PartialEq, Eq)]
@@ -52,6 +58,28 @@ pub struct RenderTarget {
     pub contributors_branch: String,
     /// Flag indicating whether the renderer should include private repositories.
     pub include_private: bool,
+    /// Normalized badge descriptor associated with the target.
+    pub badge: BadgeDescriptor,
+}
+
+/// Normalized badge descriptor emitted alongside render targets.
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
+pub struct BadgeDescriptor {
+    /// Visual style preset selected for the badge.
+    pub style: BadgeStyle,
+    /// Normalized widget options that control layout.
+    pub widget: BadgeWidgetDescriptor,
+}
+
+/// Normalized widget parameters derived from configuration overrides.
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
+pub struct BadgeWidgetDescriptor {
+    /// Number of columns used to arrange badge content.
+    pub columns: u8,
+    /// Alignment applied to the badge content.
+    pub alignment: BadgeWidgetAlignment,
+    /// Corner radius applied to the badge in pixels.
+    pub border_radius: u8,
 }
 
 /// Document containing all normalized targets.
@@ -199,6 +227,7 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
         .unwrap_or_else(|| DEFAULT_CONTRIBUTORS_BRANCH.to_owned());
 
     let include_private = entry.include_private.unwrap_or(false);
+    let badge = normalize_badge(entry.badge.as_ref())?;
 
     Ok(RenderTarget {
         slug,
@@ -212,7 +241,55 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
         display_name,
         contributors_branch,
         include_private,
+        badge,
     })
+}
+
+fn normalize_badge(badge: Option<&BadgeOptions>) -> Result<BadgeDescriptor, Error> {
+    let style = badge
+        .and_then(|options| options.style)
+        .unwrap_or(DEFAULT_BADGE_STYLE);
+    let widget_options = badge.and_then(|options| options.widget.as_ref());
+
+    let columns_value = widget_options
+        .and_then(|widget| widget.columns)
+        .unwrap_or(DEFAULT_BADGE_COLUMNS);
+    let alignment = widget_options
+        .and_then(|widget| widget.alignment)
+        .unwrap_or(DEFAULT_BADGE_ALIGNMENT);
+    let border_radius_value = widget_options
+        .and_then(|widget| widget.border_radius)
+        .unwrap_or(DEFAULT_BADGE_BORDER_RADIUS);
+
+    let columns = validate_badge_columns(columns_value)?;
+    let border_radius = validate_badge_border_radius(border_radius_value)?;
+
+    Ok(BadgeDescriptor {
+        style,
+        widget: BadgeWidgetDescriptor {
+            columns,
+            alignment,
+            border_radius,
+        },
+    })
+}
+
+fn validate_badge_columns(value: u8) -> Result<u8, Error> {
+    if value == 0 || value > 4 {
+        return Err(Error::validation(
+            "badge.widget.columns must be between 1 and 4",
+        ));
+    }
+    Ok(value)
+}
+
+fn validate_badge_border_radius(value: u8) -> Result<u8, Error> {
+    if value > 32 {
+        return Err(Error::validation(
+            "badge.widget.border_radius must not exceed 32",
+        ));
+    }
+    Ok(value)
 }
 
 /// Validates identifier-like fields such as owners or repositories.
@@ -258,7 +335,9 @@ mod tests {
         load_targets, normalize_entry, normalize_identifier, normalize_path_like,
         normalize_targets, parse_targets, Error,
     };
-    use crate::config::{TargetEntry, TargetKind};
+    use crate::config::{
+        BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetEntry, TargetKind,
+    };
 
     fn repository_entry() -> TargetEntry {
         TargetEntry {
@@ -273,6 +352,7 @@ mod tests {
             time_zone: None,
             display_name: None,
             include_private: None,
+            badge: None,
         }
     }
 
@@ -288,6 +368,10 @@ mod tests {
         assert_eq!(target.display_name, "metrics");
         assert_eq!(target.contributors_branch, "main");
         assert!(!target.include_private);
+        assert_eq!(target.badge.style, BadgeStyle::Classic);
+        assert_eq!(target.badge.widget.columns, 1);
+        assert_eq!(target.badge.widget.alignment, BadgeWidgetAlignment::Start);
+        assert_eq!(target.badge.widget.border_radius, 4);
     }
 
     #[test]
@@ -317,6 +401,7 @@ mod tests {
             time_zone: None,
             display_name: Some("Infra Metrics Insight Renderer".to_owned()),
             include_private: None,
+            badge: None,
         };
 
         let target = normalize_entry(&entry).expect("expected target to normalize");
@@ -336,6 +421,7 @@ mod tests {
         assert_eq!(target.time_zone, "Asia/Ho_Chi_Minh");
         assert_eq!(target.display_name, "Infra Metrics Insight Renderer");
         assert_eq!(target.contributors_branch, "main");
+        assert_eq!(target.badge.style, BadgeStyle::Classic);
     }
 
     #[test]
@@ -352,6 +438,7 @@ mod tests {
             time_zone: Some("  UTC  ".to_owned()),
             display_name: Some("  Profile Name  ".to_owned()),
             include_private: None,
+            badge: None,
         };
 
         let target = normalize_entry(&entry).expect("expected overrides to be honored");
@@ -362,6 +449,68 @@ mod tests {
         assert_eq!(target.time_zone, "UTC");
         assert_eq!(target.display_name, "Profile Name");
         assert_eq!(target.contributors_branch, "main");
+        assert_eq!(target.badge.style, BadgeStyle::Classic);
+    }
+
+    #[test]
+    fn normalizes_badge_overrides() {
+        let mut entry = repository_entry();
+        entry.badge = Some(BadgeOptions {
+            style: Some(BadgeStyle::FlatSquare),
+            widget: Some(BadgeWidgetOptions {
+                columns: Some(3),
+                alignment: Some(BadgeWidgetAlignment::Center),
+                border_radius: Some(8),
+            }),
+        });
+
+        let target = normalize_entry(&entry).expect("expected badge override to normalize");
+        assert_eq!(target.badge.style, BadgeStyle::FlatSquare);
+        assert_eq!(target.badge.widget.columns, 3);
+        assert_eq!(target.badge.widget.alignment, BadgeWidgetAlignment::Center);
+        assert_eq!(target.badge.widget.border_radius, 8);
+    }
+
+    #[test]
+    fn normalize_entry_rejects_badge_columns_out_of_range() {
+        let mut entry = repository_entry();
+        entry.badge = Some(BadgeOptions {
+            style: None,
+            widget: Some(BadgeWidgetOptions {
+                columns: Some(0),
+                alignment: None,
+                border_radius: None,
+            }),
+        });
+
+        let error = normalize_entry(&entry).expect_err("expected badge validation failure");
+        match error {
+            Error::Validation { message } => {
+                assert_eq!(message, "badge.widget.columns must be between 1 and 4");
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn normalize_entry_rejects_badge_border_radius_out_of_range() {
+        let mut entry = repository_entry();
+        entry.badge = Some(BadgeOptions {
+            style: Some(BadgeStyle::Flat),
+            widget: Some(BadgeWidgetOptions {
+                columns: None,
+                alignment: None,
+                border_radius: Some(64),
+            }),
+        });
+
+        let error = normalize_entry(&entry).expect_err("expected badge validation failure");
+        match error {
+            Error::Validation { message } => {
+                assert_eq!(message, "badge.widget.border_radius must not exceed 32");
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
     }
 
     #[test]
@@ -494,7 +643,7 @@ mod tests {
               - owner: octocat
                 repository: metrics
                 type: open_source
-                branch:  feature/metrics 
+                branch:  feature/metrics
         "#;
 
         let document = parse_targets(yaml).expect("expected parse success");
@@ -503,9 +652,56 @@ mod tests {
     }
 
     #[test]
+    fn parse_targets_handles_badge_configuration() {
+        let yaml = r#"
+            targets:
+              - owner: octocat
+                repo: metrics
+                type: open_source
+                badge:
+                  style: for_the_badge
+                  widget:
+                    columns: 2
+                    alignment: end
+                    border_radius: 6
+        "#;
+
+        let document = parse_targets(yaml).expect("expected parse success");
+        assert_eq!(document.targets.len(), 1);
+        let badge = &document.targets[0].badge;
+        assert_eq!(badge.style, BadgeStyle::ForTheBadge);
+        assert_eq!(badge.widget.columns, 2);
+        assert_eq!(badge.widget.alignment, BadgeWidgetAlignment::End);
+        assert_eq!(badge.widget.border_radius, 6);
+    }
+
+    #[test]
     fn parse_targets_propagates_decode_errors() {
         let result = parse_targets("targets: invalid");
         assert!(matches!(result, Err(Error::Parse { .. })));
+    }
+
+    #[test]
+    fn parse_targets_rejects_badge_validation_errors() {
+        let yaml = r#"
+            targets:
+              - owner: octocat
+                repo: metrics
+                type: open_source
+                badge:
+                  widget:
+                    columns: 8
+        "#;
+
+        let error = parse_targets(yaml).expect_err("expected badge validation failure");
+        match error {
+            Error::Parse { ref source } => {
+                assert!(source
+                    .to_string()
+                    .contains("badge.widget.columns must be between 1 and 4"));
+            }
+            other => panic!("expected parse error, got {other:?}"),
+        }
     }
 
     #[test]
@@ -533,6 +729,9 @@ mod tests {
         assert_ne!(base, clone);
         let mut clone = base.clone();
         clone.contributors_branch.push_str("-feature");
+        assert_ne!(base, clone);
+        let mut clone = base.clone();
+        clone.badge.widget.columns = 2;
         assert_ne!(base, clone);
     }
 
