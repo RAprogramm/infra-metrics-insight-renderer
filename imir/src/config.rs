@@ -5,7 +5,7 @@
 //! flexible to allow user-supplied overrides, and provide helper methods for
 //! deriving normalized values that satisfy downstream invariants.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::slug::SlugStrategy;
 
@@ -90,7 +90,11 @@ pub struct TargetEntry
     /// Optional flag that enables private repository insights when set to
     /// `true`.
     #[serde(default)]
-    pub include_private: Option<bool,>,
+    pub include_private: Option<bool>,
+
+    /// Optional badge customization applied to the generated widget preview.
+    #[serde(default)]
+    pub badge: Option<BadgeOptions>,
 }
 
 impl TargetEntry
@@ -114,9 +118,10 @@ impl TargetEntry
     ///     target_path:         None,
     ///     temp_artifact:       None,
     ///     contributors_branch: None,
-    ///     time_zone:           None,
-    ///     display_name:        None,
-    ///     include_private:     None,
+    ///     time_zone: None,
+    ///     display_name: None,
+    ///     include_private: None,
+    ///     badge: None,
     /// };
     /// assert_eq!(entry.resolved_slug().as_deref(), Some("metrics"));
     /// ```
@@ -160,10 +165,118 @@ impl TargetEntry
     }
 }
 
-#[cfg(test)]
-mod tests
+/// Badge customization entry mirroring the structure of YAML configuration.
+///
+/// The badge controls the appearance of the lightweight widget rendered next
+/// to the metrics dashboard. Users can selectively override the visual style
+/// and layout attributes while inheriting sane defaults.
+///
+/// # Examples
+///
+/// ```
+/// use imir::{BadgeOptions, BadgeStyle};
+///
+/// let options = BadgeOptions {
+///     style: Some(BadgeStyle::FlatSquare),
+///     widget: None,
+/// };
+/// assert_eq!(options.style, Some(BadgeStyle::FlatSquare));
+/// ```
+#[derive(Debug, Deserialize, Clone, Default)]
+#[serde(deny_unknown_fields)]
+pub struct BadgeOptions {
+    /// Optional visual style preset applied to the badge.
+    #[serde(default)]
+    pub style: Option<BadgeStyle>,
+
+    /// Optional widget layout overrides.
+    #[serde(default)]
+    pub widget: Option<BadgeWidgetOptions>,
+}
+
+/// Visual themes supported by the badge renderer.
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum BadgeStyle {
+    /// Render the badge using the default GitHub-inspired gradient.
+    Classic,
+    /// Render the badge using a flat appearance.
+    Flat,
+    /// Render the badge using the flat-square preset.
+    FlatSquare,
+    /// Render the badge using the plastic preset popularized by shields.io.
+    Plastic,
+    /// Render the badge using the "for-the-badge" preset with uppercase text.
+    ForTheBadge,
+}
+
+/// Layout customization options for the badge widget.
+///
+/// The configuration is intentionally conservative to avoid generating
+/// widgets that violate rendering constraints. Values outside the documented
+/// ranges are rejected during deserialization.
+#[derive(Debug, Deserialize, Clone, Default)]
+#[serde(deny_unknown_fields)]
+pub struct BadgeWidgetOptions {
+    /// Optional number of columns, constrained to the range `1..=4`.
+    #[serde(default, deserialize_with = "deserialize_optional_columns")]
+    pub columns: Option<u8>,
+
+    /// Optional alignment applied to the widget contents.
+    #[serde(default)]
+    pub alignment: Option<BadgeWidgetAlignment>,
+
+    /// Optional border radius, constrained to the range `0..=32` pixels.
+    #[serde(default, deserialize_with = "deserialize_optional_border_radius")]
+    pub border_radius: Option<u8>,
+}
+
+/// Horizontal alignment presets supported by the badge widget.
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum BadgeWidgetAlignment {
+    /// Align contents to the leading edge of the widget.
+    Start,
+    /// Center the contents within the widget.
+    Center,
+    /// Align contents to the trailing edge of the widget.
+    End,
+}
+
+fn deserialize_optional_columns<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+where
+    D: serde::Deserializer<'de>,
 {
-    use super::{TargetEntry, TargetKind};
+    let value: Option<u8> = Option::deserialize(deserializer)?;
+    if let Some(columns) = value {
+        if columns == 0 || columns > 4 {
+            return Err(serde::de::Error::custom(
+                "badge.widget.columns must be between 1 and 4",
+            ));
+        }
+    }
+    Ok(value)
+}
+
+fn deserialize_optional_border_radius<'de, D>(deserializer: D) -> Result<Option<u8>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value: Option<u8> = Option::deserialize(deserializer)?;
+    if let Some(radius) = value {
+        if radius > 32 {
+            return Err(serde::de::Error::custom(
+                "badge.widget.border_radius must not exceed 32",
+            ));
+        }
+    }
+    Ok(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{BadgeOptions, BadgeStyle, BadgeWidgetAlignment, TargetEntry, TargetKind};
+
 
     #[test]
     fn resolved_slug_prefers_custom_value()
@@ -175,11 +288,12 @@ mod tests
             slug:                Some("  Custom Slug  ".to_owned(),),
             branch_name:         None,
             contributors_branch: None,
-            target_path:         None,
-            temp_artifact:       None,
-            time_zone:           None,
-            display_name:        None,
-            include_private:     None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+            include_private: None,
+            badge: None,
         };
 
         let slug = entry.resolved_slug().expect("expected slug to be derived from override",);
@@ -196,11 +310,12 @@ mod tests
             slug:                None,
             branch_name:         None,
             contributors_branch: None,
-            target_path:         None,
-            temp_artifact:       None,
-            time_zone:           None,
-            display_name:        None,
-            include_private:     None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+            include_private: None,
+            badge: None,
         };
 
         let slug = entry.resolved_slug().expect("expected slug to be derived from owner",);
@@ -217,11 +332,13 @@ mod tests
             slug:                None,
             branch_name:         None,
             contributors_branch: None,
-            target_path:         None,
-            temp_artifact:       None,
-            time_zone:           None,
-            display_name:        None,
-            include_private:     None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+            include_private: None,
+            badge: None,
+
         };
 
         let slug = entry.resolved_slug().expect("expected slug to be derived from repository",);
@@ -238,11 +355,12 @@ mod tests
             slug:                None,
             branch_name:         None,
             contributors_branch: None,
-            target_path:         None,
-            temp_artifact:       None,
-            time_zone:           None,
-            display_name:        None,
-            include_private:     None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+            include_private: None,
+            badge: None,
         };
 
         assert!(entry.resolved_slug().is_none());
@@ -258,11 +376,12 @@ mod tests
             slug:                None,
             branch_name:         None,
             contributors_branch: None,
-            target_path:         None,
-            temp_artifact:       None,
-            time_zone:           None,
-            display_name:        Some("  Friendly Name  ".to_owned(),),
-            include_private:     None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: Some("  Friendly Name  ".to_owned()),
+            include_private: None,
+            badge: None,
         };
 
         let display = entry.resolved_display_name().expect("expected display name to be derived",);
@@ -279,11 +398,12 @@ mod tests
             slug:                None,
             branch_name:         None,
             contributors_branch: None,
-            target_path:         None,
-            temp_artifact:       None,
-            time_zone:           None,
-            display_name:        None,
-            include_private:     None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: None,
+            include_private: None,
+            badge: None,
         };
 
         let display = entry.resolved_display_name().expect("expected repository name to be used",);
@@ -300,14 +420,61 @@ mod tests
             slug:                None,
             branch_name:         None,
             contributors_branch: None,
-            target_path:         None,
-            temp_artifact:       None,
-            time_zone:           None,
-            display_name:        Some("   ".to_owned(),),
-            include_private:     None,
+            target_path: None,
+            temp_artifact: None,
+            time_zone: None,
+            display_name: Some("   ".to_owned()),
+            include_private: None,
+            badge: None,
         };
 
         assert!(entry.resolved_display_name().is_none());
+    }
+
+    #[test]
+    fn badge_options_supports_alignment_presets() {
+        let yaml = r#"
+            style: plastic
+            widget:
+              alignment: center
+              columns: 2
+              border_radius: 12
+        "#;
+
+        let options: BadgeOptions =
+            serde_yaml::from_str(yaml).expect("expected badge configuration to deserialize");
+        assert_eq!(options.style, Some(BadgeStyle::Plastic));
+        let widget = options.widget.expect("expected widget options");
+        assert_eq!(widget.columns, Some(2));
+        assert_eq!(widget.alignment, Some(BadgeWidgetAlignment::Center));
+        assert_eq!(widget.border_radius, Some(12));
+    }
+
+    #[test]
+    fn badge_widget_options_reject_invalid_columns() {
+        let yaml = r#"
+            style: flat
+            widget:
+              columns: 6
+        "#;
+
+        let error = serde_yaml::from_str::<BadgeOptions>(yaml).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("columns must be between 1 and 4"));
+    }
+
+    #[test]
+    fn badge_widget_options_reject_invalid_border_radius() {
+        let yaml = r#"
+            widget:
+              border_radius: 64
+        "#;
+
+        let error = serde_yaml::from_str::<BadgeOptions>(yaml).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("border_radius must not exceed 32"));
     }
 }
 
