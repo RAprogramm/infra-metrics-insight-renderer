@@ -27,6 +27,20 @@ run_stable "build" build --all-targets --locked
 run_stable "tests" test --all
 run_stable "documentation" doc --no-deps
 
+BADGE_TMP="$(mktemp -d)"
+cleanup() {
+  rm -rf "${BADGE_TMP}"
+}
+trap cleanup EXIT
+
+run_stable "badge-smoke" run --locked --manifest-path "${CRATE_DIR}/Cargo.toml" -- \
+  badge generate --config "${ROOT_DIR}/targets/targets.yaml" --target profile --output "${BADGE_TMP}"
+
+if [ ! -f "${BADGE_TMP}/profile.svg" ] || [ ! -f "${BADGE_TMP}/profile.json" ]; then
+  echo "badge smoke test did not produce expected artifacts" >&2
+  exit 1
+fi
+
 if ! command -v cargo-audit >/dev/null 2>&1; then
   echo "cargo-audit is required. Install it via 'cargo install cargo-audit'." >&2
   exit 1

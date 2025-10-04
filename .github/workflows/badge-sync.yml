@@ -1,0 +1,271 @@
+name: Badge sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 4 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - README.md
+      - targets/targets.yaml
+  pull_request:
+    paths:
+      - README.md
+      - targets/targets.yaml
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      TARGETS_CONFIG: targets/targets.yaml
+      BADGE_BRANCH: ci/badge-sync
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "imir -> target"
+
+      - name: Normalize targets document
+        id: targets
+        run: |
+          set -euo pipefail
+
+          cargo +stable run --locked --manifest-path imir/Cargo.toml -- \
+            --config "${TARGETS_CONFIG}" > targets.json
+
+          echo "path=targets.json" >> "$GITHUB_OUTPUT"
+
+      - name: Detect impacted badge slugs
+        id: slugs
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          PUSH_BEFORE_SHA: ${{ github.event.before || '' }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          TARGETS_JSON="${{ steps.targets.outputs.path }}"
+          if [ -z "${TARGETS_JSON}" ] || [ ! -f "${TARGETS_JSON}" ]; then
+            echo "Targets JSON is missing." >&2
+            exit 1
+          fi
+
+          ALL_SLUGS_JSON="$(jq -c '[.targets[].slug]' "${TARGETS_JSON}")"
+
+          if [ "${EVENT_NAME}" = "schedule" ]; then
+            SELECTED="${ALL_SLUGS_JSON}"
+          else
+            BASE_REF=""
+            if [ "${EVENT_NAME}" = "pull_request" ]; then
+              BASE_REF="${PR_BASE_SHA}"
+            elif [ "${EVENT_NAME}" = "push" ]; then
+              BASE_REF="${PUSH_BEFORE_SHA}"
+            fi
+
+            if [ -n "${BASE_REF}" ]; then
+              if ! git rev-parse --verify "${BASE_REF}" >/dev/null 2>&1; then
+                git fetch --no-tags --prune --depth=1 origin "+${BASE_REF}:${BASE_REF}" || true
+              fi
+            fi
+
+            HEAD_REF="${HEAD_SHA}"
+            if [ -z "${HEAD_REF}" ]; then
+              HEAD_REF="$(git rev-parse HEAD)"
+            fi
+
+            if [ -n "${BASE_REF}" ]; then
+              DIFF_OUTPUT="$(git diff --unified=0 "${BASE_REF}" "${HEAD_REF}" -- README.md targets/targets.yaml || true)"
+            else
+              DIFF_OUTPUT="$(git show "${HEAD_REF}" -- README.md targets/targets.yaml || true)"
+            fi
+
+            SLUGS_FROM_DIFF="$(printf '%s' "${DIFF_OUTPUT}" | grep -oE 'metrics/([A-Za-z0-9_.-]+)\\.svg' || true)"
+            if [ -n "${SLUGS_FROM_DIFF}" ]; then
+              SLUGS="$(printf '%s' "${SLUGS_FROM_DIFF}" | sed -E 's#metrics/##;s#\\.svg##' | sort -u)"
+            else
+              SLUGS=""
+            fi
+
+            if [ -n "${SLUGS}" ]; then
+              SELECTED="$(printf '%s\n' "${SLUGS}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
+            else
+              SELECTED="[]"
+            fi
+          fi
+
+          echo "slugs=${SELECTED}" >> "$GITHUB_OUTPUT"
+          if [ "${SELECTED}" != "[]" ]; then
+            echo "has=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate badge assets
+        if: steps.slugs.outputs.has == 'true'
+        env:
+          SLUGS_JSON: ${{ steps.slugs.outputs.slugs }}
+        run: |
+          set -euo pipefail
+
+          printf '%s' "${SLUGS_JSON}" | jq -r '.[]' | while read -r SLUG; do
+            if [ -z "${SLUG}" ]; then
+              continue
+            fi
+
+            echo "Rendering badge for ${SLUG}" >&2
+            cargo +stable run --locked --manifest-path imir/Cargo.toml -- \
+              badge generate --config "${TARGETS_CONFIG}" --target "${SLUG}" --output metrics
+          done
+
+      - name: Commit badge updates
+        id: commit
+        if: steps.slugs.outputs.has == 'true' && github.event_name != 'pull_request'
+        env:
+          BADGE_BRANCH: ${{ env.BADGE_BRANCH }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+        run: |
+          set -euo pipefail
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase true
+
+          DEFAULT_REF="$(git symbolic-ref --quiet --short HEAD || true)"
+          if [ -z "${DEFAULT_REF}" ]; then
+            DEFAULT_REF="${DEFAULT_BRANCH}"
+          fi
+
+          BRANCH_NAME="${BADGE_BRANCH}"
+
+          if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
+            git fetch --no-tags --prune --depth=1 origin \
+              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
+            git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
+          else
+            git fetch --no-tags --prune --depth=1 origin \
+              "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}" || true
+            if git show-ref --quiet "refs/remotes/origin/${DEFAULT_REF}"; then
+              git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}"
+            else
+              git checkout -B "${BRANCH_NAME}" "${DEFAULT_REF}"
+            fi
+          fi
+
+          UPSTREAM_BEFORE="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
+
+          git add metrics
+
+          if git diff --cached --quiet; then
+            echo "No badge changes to commit."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -m "chore(badges): refresh"
+
+          PUSHED=false
+          for ATTEMPT in 1 2 3; do
+            if git push origin "${BRANCH_NAME}"; then
+              PUSHED=true
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+
+            echo "Push attempt ${ATTEMPT} failed, verifying remote state." >&2
+
+            git fetch --no-tags --prune --depth=1 origin \
+              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}" || true
+
+            REMOTE_AFTER="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
+
+            if [ -n "${UPSTREAM_BEFORE}" ] && [ "${REMOTE_AFTER}" != "${UPSTREAM_BEFORE}" ]; then
+              echo "Remote branch advanced to ${REMOTE_AFTER}; retrying without force." >&2
+              continue
+            fi
+
+            if [ -z "${UPSTREAM_BEFORE}" ] && [ -n "${REMOTE_AFTER}" ]; then
+              echo "Remote branch materialized at ${REMOTE_AFTER}; retrying without force." >&2
+              continue
+            fi
+
+            if [ -n "${UPSTREAM_BEFORE}" ]; then
+              FORCE_ARGS=("--force-with-lease=refs/heads/${BRANCH_NAME}:${UPSTREAM_BEFORE}")
+            else
+              FORCE_ARGS=("--force-with-lease")
+            fi
+
+            if git push "${FORCE_ARGS[@]}" origin "${BRANCH_NAME}"; then
+              PUSHED=true
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+              break
+            fi
+
+            echo "Force push attempt ${ATTEMPT} failed; refreshing branch." >&2
+          done
+
+          if [ "${PUSHED}" != true ]; then
+            echo "Unable to push badge updates after multiple attempts." >&2
+            exit 1
+          fi
+
+          DEFAULT_BASE="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##' || true)"
+          if [ -z "${DEFAULT_BASE}" ]; then
+            DEFAULT_BASE="${DEFAULT_REF}"
+          fi
+
+          echo "default_base=${DEFAULT_BASE}" >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ env.BADGE_BRANCH }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
+          DEFAULT_BASE: ${{ steps.commit.outputs.default_base }}
+        run: |
+          set -euo pipefail
+
+          REPO="${GITHUB_REPOSITORY}"
+          BASE="${DEFAULT_BASE:-${DEFAULT_BRANCH}}"
+          HEAD="${BRANCH_NAME}"
+
+          EXISTING="$(gh pr list -R "${REPO}" --head "${HEAD}" --state open --json number --jq '.[0].number' || true)"
+          if [ -n "${EXISTING}" ]; then
+            echo "PR #${EXISTING} already open for ${REPO}:${HEAD} -> ${BASE}"
+            exit 0
+          fi
+
+          LABEL_ARGS=()
+          for LABEL in ci badges; do
+            if gh label view "${LABEL}" -R "${REPO}" >/dev/null 2>&1 || \
+               gh label create "${LABEL}" -R "${REPO}" --description "Infrastructure automation" >/dev/null 2>&1; then
+              LABEL_ARGS+=("--label" "${LABEL}")
+            else
+              echo "Warning: unable to ensure label '${LABEL}'" >&2
+            fi
+          done
+
+          gh pr create -R "${REPO}" \
+            --head "${HEAD}" \
+            --base "${BASE}" \
+            --title "chore(badges): refresh" \
+            --body "Automated badge refresh." \
+            "${LABEL_ARGS[@]}"
