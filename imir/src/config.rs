@@ -248,7 +248,8 @@ where
     D: serde::Deserializer<'de>,
 {
     let value: Option<u8> = Option::deserialize(deserializer)?;
-    if value.is_some_and(|columns| columns == 0 || columns > 4) {
+    if let Some(columns) = value && (columns == 0 || columns > 4) {
+
         return Err(serde::de::Error::custom(
             "badge.widget.columns must be between 1 and 4",
         ));
@@ -261,7 +262,7 @@ where
     D: serde::Deserializer<'de>,
 {
     let value: Option<u8> = Option::deserialize(deserializer)?;
-    if value.is_some_and(|radius| radius > 32) {
+    if let Some(radius) = value && radius > 32 {
         return Err(serde::de::Error::custom(
             "badge.widget.border_radius must not exceed 32",
         ));

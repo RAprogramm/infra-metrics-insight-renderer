@@ -26,13 +26,12 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
+          override: false
 
       - name: Install cargo utilities
         uses: taiki-e/install-action@v2
         with:
-          tool: |
-            cargo-audit
-            cargo-deny
+          tool: cargo-audit,cargo-deny
 
       - name: Cache build artifacts
         uses: Swatinem/rust-cache@v2
