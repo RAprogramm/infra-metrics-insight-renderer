@@ -34,12 +34,14 @@
 //! # }
 //! ```
 
+mod badge;
 mod config;
 mod error;
 mod normalizer;
 mod open_source;
 mod slug;
 
+pub use badge::{BadgeAssets, generate_badge_assets};
 pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
     TargetKind,

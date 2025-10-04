@@ -65,6 +65,12 @@
 <p>
   Use <code>.github/workflows/render-repository.yml</code> to refresh repository dashboards based on the "repository" template. Supply the
   repository handle and optional overrides for the owner, target branch name, artifact filename, or destination path.
+
+  Repository cards now highlight two extra sections powered by <code>plugin_languages</code> and <code>plugin_traffic</code>:
+  <ul>
+    <li><strong>Most used languages</strong> &mdash; a GitHub-colored bar that focuses on the <code>most-used</code> segment so language mixes differ across repositories at a glance.</li>
+    <li><strong>Traffic insights</strong> &mdash; a condensed view of recent views and clones to expose repository momentum directly on the badge.</li>
+  </ul>
 </p>
 
 <pre><code class="language-yaml">jobs:
@@ -148,7 +154,7 @@
   <li><code>contributors_branch</code> – specify the repository branch analyzed by the contributors plugin.</li>
   <li><code>time_zone</code> – customize the time zone passed to the renderer.</li>
   <li><code>slug</code> – override the derived slug used for filenames and workflow dispatch names.</li>
-  <li><code>include_private</code> – set to <code>true</code> to include private repositories and secret achievements for the target.</li>
+  <li><code>include_private</code> – set to <code>true</code> to include private repositories and secret achievements for the target. Profile cards owned by <code>RAprogramm</code> enable this flag by default so the dashboard reflects private activity without additional configuration.</li>
 </ul>
 
 <p>

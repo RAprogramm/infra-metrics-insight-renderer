@@ -227,7 +227,9 @@ fn normalize_entry(entry: &TargetEntry,) -> Result<RenderTarget, Error,>
         .transpose()?
         .unwrap_or_else(|| DEFAULT_CONTRIBUTORS_BRANCH.to_owned(),);
 
-    let include_private = entry.include_private.unwrap_or(false);
+    let include_private = entry
+        .include_private
+        .unwrap_or_else(|| default_include_private(&owner, entry.target_type,),);
     let badge = normalize_badge(entry.badge.as_ref())?;
 
 
@@ -245,6 +247,11 @@ fn normalize_entry(entry: &TargetEntry,) -> Result<RenderTarget, Error,>
         include_private,
         badge,
     })
+}
+
+fn default_include_private(owner: &str, kind: TargetKind,) -> bool
+{
+    matches!(kind, TargetKind::Profile,) && owner == "RAprogramm"
 }
 
 fn normalize_badge(badge: Option<&BadgeOptions>) -> Result<BadgeDescriptor, Error> {
@@ -358,6 +365,24 @@ mod tests
         }
     }
 
+    fn profile_entry(owner: &str,) -> TargetEntry
+    {
+        TargetEntry {
+            owner:               owner.to_owned(),
+            repository:          None,
+            target_type:         TargetKind::Profile,
+            slug:                None,
+            branch_name:         None,
+            contributors_branch: None,
+            target_path:         None,
+            temp_artifact:       None,
+            time_zone:           None,
+            display_name:        None,
+            include_private:     None,
+            badge:               None,
+        }
+    }
+
     #[test]
     fn normalizes_repository_entry()
     {
@@ -388,6 +413,22 @@ mod tests
         let mut disabled = repository_entry();
         disabled.include_private = Some(false,);
         let target = normalize_entry(&disabled,).expect("expected include_private to normalize",);
+        assert!(!target.include_private);
+    }
+
+    #[test]
+    fn defaults_include_private_for_raprogramm_profile()
+    {
+        let entry = profile_entry("RAprogramm",);
+        let target = normalize_entry(&entry,).expect("expected include_private default",);
+        assert!(target.include_private);
+    }
+
+    #[test]
+    fn profile_targets_for_other_owners_default_to_public_only()
+    {
+        let entry = profile_entry("octocat",);
+        let target = normalize_entry(&entry,).expect("expected include_private default",);
         assert!(!target.include_private);
     }
 

@@ -10,7 +10,9 @@ use std::{
 };
 
 use clap::{ArgAction, Args, Parser, Subcommand};
-use imir::{Error, TargetsDocument, load_targets, resolve_open_source_targets};
+use imir::{
+    Error, TargetsDocument, generate_badge_assets, load_targets, resolve_open_source_repositories,
+};
 
 /// Command line interface for generating normalized metrics target definitions.
 #[derive(Debug, Parser)]
@@ -33,6 +35,8 @@ enum Command {
     /// Resolve repository inputs for the open-source render workflow.
     #[command(name = "open-source")]
     OpenSource(OpenSourceArgs),
+    /// Generate badge assets for a normalized target.
+    Badge(BadgeArgs),
 }
 
 #[derive(Debug, Args)]
@@ -66,6 +70,33 @@ struct OpenSourceArgs {
     input: Option<String>,
 }
 
+#[derive(Debug, Args)]
+struct BadgeArgs {
+    #[command(subcommand)]
+    command: BadgeCommand,
+}
+
+#[derive(Debug, Subcommand)]
+enum BadgeCommand {
+    /// Materialize deterministic badge assets for a target slug.
+    Generate(BadgeGenerateArgs),
+}
+
+#[derive(Debug, Args)]
+struct BadgeGenerateArgs {
+    /// Path to the YAML configuration file describing metrics targets.
+    #[arg(long = "config", value_name = "PATH")]
+    config: PathBuf,
+
+    /// Slug identifying the target to generate badge assets for.
+    #[arg(long = "target", value_name = "SLUG")]
+    target: String,
+
+    /// Directory that will receive the SVG and manifest artifacts.
+    #[arg(long = "output", value_name = "DIR", default_value = "metrics")]
+    output: PathBuf,
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 fn main() {
     if let Err(error) = run() {
@@ -85,6 +116,7 @@ fn run() -> Result<(), Error> {
     match cli.command {
         Some(Command::Targets(args)) => run_targets(args),
         Some(Command::OpenSource(args)) => run_open_source(args),
+        Some(Command::Badge(args)) => run_badge(args),
         None => run_legacy_targets(&cli.legacy),
     }
 }
@@ -129,11 +161,11 @@ fn run_open_source(args: OpenSourceArgs) -> Result<(), Error> {
         .map(str::trim)
         .filter(|value| !value.is_empty());
 
-    let targets = resolve_open_source_targets(trimmed)?;
+    let repositories = resolve_open_source_repositories(trimmed)?;
 
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    serde_json::to_writer(&mut handle, &targets)?;
+    serde_json::to_writer(&mut handle, &repositories)?;
 
     Ok(())
 }
@@ -147,14 +179,37 @@ fn run_legacy_targets(args: &LegacyTargetsArgs) -> Result<(), Error> {
     run_targets_from_path(config, args.pretty)
 }
 
+fn run_badge(args: BadgeArgs) -> Result<(), Error> {
+    match args.command {
+        BadgeCommand::Generate(arguments) => run_badge_generate(arguments),
+    }
+}
+
+fn run_badge_generate(args: BadgeGenerateArgs) -> Result<(), Error> {
+    let document = load_targets(&args.config)?;
+    let slug = args.target.as_str();
+    let target = document
+        .targets
+        .iter()
+        .find(|candidate| candidate.slug.as_str() == slug)
+        .ok_or_else(|| Error::validation(format!("target '{slug}' was not found",)))?;
+
+    generate_badge_assets(target, &args.output)?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
-    use std::{io::Cursor, path::Path};
+    use std::{fs, io::Cursor, path::Path};
 
     use clap::Parser;
     use imir::TargetsDocument;
+    use tempfile::tempdir;
 
-    use super::{Cli, Command, LegacyTargetsArgs, run_legacy_targets, write_targets_document};
+    use super::{
+        Cli, Command, LegacyTargetsArgs, run_badge, run_legacy_targets, write_targets_document,
+    };
 
     #[test]
     fn cli_accepts_legacy_targets_invocation() {
@@ -224,5 +279,83 @@ mod tests {
 
         let output = String::from_utf8(buffer.into_inner()).expect("invalid UTF-8");
         assert_eq!(output, "{\"targets\":[]}");
+    }
+
+    #[test]
+    fn badge_generate_writes_assets() {
+        let temp = tempdir().expect("failed to create tempdir");
+        let config_path = temp.path().join("targets.yaml");
+        let output_dir = temp.path().join("artifacts");
+        let yaml = r#"
+targets:
+  - owner: example
+    repository: repo
+    type: open_source
+    slug: example-repo
+"#;
+        fs::write(&config_path, yaml).expect("failed to write config");
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "badge",
+            "generate",
+            "--config",
+            config_path.to_str().expect("utf8"),
+            "--target",
+            "example-repo",
+            "--output",
+            output_dir.to_str().expect("utf8"),
+        ])
+        .expect("failed to parse badge command");
+
+        let args = match cli.command.expect("missing command") {
+            Command::Badge(arguments) => arguments,
+            other => panic!("unexpected command variant: {other:?}"),
+        };
+
+        run_badge(args).expect("badge generation failed");
+
+        let svg_path = output_dir.join("example-repo.svg");
+        let manifest_path = output_dir.join("example-repo.json");
+        assert!(svg_path.exists());
+        assert!(manifest_path.exists());
+    }
+
+    #[test]
+    fn badge_generate_reports_missing_target() {
+        let temp = tempdir().expect("failed to create tempdir");
+        let config_path = temp.path().join("targets.yaml");
+        let yaml = r#"
+targets:
+  - owner: example
+    repository: repo
+    type: open_source
+    slug: existing
+"#;
+        fs::write(&config_path, yaml).expect("failed to write config");
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "badge",
+            "generate",
+            "--config",
+            config_path.to_str().expect("utf8"),
+            "--target",
+            "missing",
+        ])
+        .expect("failed to parse badge command");
+
+        let args = match cli.command.expect("missing command") {
+            Command::Badge(arguments) => arguments,
+            other => panic!("unexpected command variant: {other:?}"),
+        };
+
+        let error = run_badge(args).expect_err("expected missing target error");
+        match error {
+            imir::Error::Validation { message } => {
+                assert!(message.contains("target 'missing' was not found"));
+            }
+            other => panic!("unexpected error variant: {other:?}"),
+        }
     }
 }
