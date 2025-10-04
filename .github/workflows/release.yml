@@ -10,24 +10,10 @@ permissions:
 
 jobs:
   build:
-    name: Build ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            archive: tar.gz
-            extension: ""
-          - os: macos-14
-            target: aarch64-apple-darwin
-            archive: tar.gz
-            extension: ""
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            archive: zip
-            extension: .exe
+    name: Build x86_64-unknown-linux-gnu
+    runs-on: ubuntu-latest
+    env:
+      ARCHIVE: imir-x86_64-unknown-linux-gnu.tar.gz
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -36,33 +22,21 @@ jobs:
 
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
 
       - name: Build release binary
-        run: cargo build --release --locked --manifest-path imir/Cargo.toml --target ${{ matrix.target }}
+        run: cargo build --release --locked --manifest-path imir/Cargo.toml
 
-      - name: Package binary (tar.gz)
-        if: ${{ matrix.archive == 'tar.gz' }}
+      - name: Package binary
         run: |
           set -euo pipefail
-          BIN="imir/target/${{ matrix.target }}/release/imir${{ matrix.extension }}"
+          BIN="imir/target/release/imir"
           chmod +x "${BIN}"
-          tar -C "$(dirname "${BIN}")" -czf "imir-${{ matrix.target }}.${{ matrix.archive }}" "$(basename "${BIN}")"
-
-      - name: Package binary (zip)
-        if: ${{ matrix.archive == 'zip' }}
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $bin = "imir/target/${{ matrix.target }}/release/imir${{ matrix.extension }}"
-          $archive = "imir-${{ matrix.target }}.${{ matrix.archive }}"
-          Compress-Archive -Path $bin -DestinationPath $archive -Force
+          tar -C "$(dirname "${BIN}")" -czf "${ARCHIVE}" "$(basename "${BIN}")"
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: imir-${{ matrix.target }}.${{ matrix.archive }}
+          files: ${{ env.ARCHIVE }}
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
