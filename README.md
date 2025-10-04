@@ -47,6 +47,7 @@
   </li>
   <li><a href="#imir-cli">IMIR CLI</a></li>
   <li><a href="#local-development-workflow">Local development workflow</a></li>
+  <li><a href="#release-process">Release process</a></li>
 </ul>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
@@ -252,6 +253,33 @@
   with the nightly toolchain, executes Clippy, builds all targets, runs tests, generates documentation, and invokes <a href="https://crates.io/crates/cargo-audit">cargo audit</a>
   and <a href="https://crates.io/crates/cargo-deny">cargo deny</a> to ensure dependency health. Install
   <a href="https://crates.io/crates/cargo-audit">cargo-audit</a> and <a href="https://crates.io/crates/cargo-deny">cargo-deny</a> beforehand to enable the security checks.
+</p>
+
+<p align="right"><em><a href="#top">Back to top</a></em></p>
+
+<h2 id="release-process">Release process</h2>
+
+<p>
+  Tagged releases publish pre-built <code>imir</code> binaries so GitHub Actions workflows can download a pinned CLI without
+  rebuilding the crate on every run. Follow this checklist to cut a new release:
+</p>
+
+<ol>
+  <li>Run <a href="scripts/ci-check.sh"><code>scripts/ci-check.sh</code></a> locally to ensure formatting, linting, tests,
+    documentation, <code>cargo audit</code>, and <code>cargo deny</code> all pass before tagging.</li>
+  <li>Create an annotated tag (for example, <code>git tag -a v0.1.0</code>) and push it to GitHub.</li>
+  <li>Draft a release in the GitHub UI, associate it with the tag, and publish it. Publishing triggers
+    <code>.github/workflows/release.yml</code>.</li>
+  <li>The workflow builds the CLI for Linux (<code>x86_64-unknown-linux-gnu</code>), macOS (<code>aarch64-apple-darwin</code>), and
+    Windows (<code>x86_64-pc-windows-msvc</code>), packages the binaries as archives named
+    <code>imir-&lt;target&gt;.tar.gz</code> or <code>imir-&lt;target&gt;.zip</code>, and uploads them to the release assets.</li>
+  <li>Update downstream workflows to download the archive that matches their runner architecture and unpack the <code>imir</code>
+    executable into their workspace.</li>
+</ol>
+
+<p>
+  Each archive contains only the compiled binary. The release workflow runs on every published release, ensuring updated
+  binaries are available immediately after a tag is promoted.
 </p>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
