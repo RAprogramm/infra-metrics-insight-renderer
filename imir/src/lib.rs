@@ -51,5 +51,7 @@ pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,
     parse_targets,
 };
-pub use open_source::resolve_open_source_repositories;
+pub use open_source::{
+    OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
+};
 pub use slug::SlugStrategy;

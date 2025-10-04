@@ -5,19 +5,21 @@ on:
     inputs:
       repositories:
         description: >-
-          JSON array with repository names that should be refreshed.
-          Defaults to ["masterror", "telegram-webapp-sdk"].
+          JSON array with repository descriptors that should be refreshed.
+          Each entry may be a repository string or an object with
+          `repository` and optional `contributors_branch`.
         required: false
-        default: '["masterror", "telegram-webapp-sdk"]'
+        default: '[{"repository":"masterror"}, {"repository":"telegram-webapp-sdk"}]'
   workflow_call:
     inputs:
       repositories:
         description: >-
-          JSON array with repository names that should be refreshed.
-          Defaults to ["masterror", "telegram-webapp-sdk"].
+          JSON array with repository descriptors that should be refreshed.
+          Each entry may be a repository string or an object with
+          `repository` and optional `contributors_branch`.
         required: false
         type: string
-        default: '["masterror", "telegram-webapp-sdk"]'
+        default: '[{"repository":"masterror"}, {"repository":"telegram-webapp-sdk"}]'
     secrets:
       CLASSIC:
         required: true
@@ -26,7 +28,7 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      repositories: ${{ steps.resolve.outputs.repositories }}
+      targets: ${{ steps.resolve.outputs.targets }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -46,8 +48,8 @@ jobs:
         run: |
           set -euo pipefail
           RAW="${RAW_INPUT:-}"
-          REPOSITORIES=$(cargo run --manifest-path imir/Cargo.toml --quiet --locked -- open-source --input "${RAW}")
-          printf 'repositories=%s\n' "${REPOSITORIES}" >> "${GITHUB_OUTPUT}"
+          TARGETS=$(cargo run --manifest-path imir/Cargo.toml --quiet --locked -- open-source --input "${RAW}")
+          printf 'targets=%s\n' "${TARGETS}" >> "${GITHUB_OUTPUT}"
 
   render:
     needs: prepare
@@ -55,7 +57,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repository: ${{ fromJSON(needs.prepare.outputs.repositories) }}
+        target: ${{ fromJSON(needs.prepare.outputs.targets) }}
     permissions:
       contents: write
       pull-requests: write
@@ -63,13 +65,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Render metrics for ${{ matrix.repository }}
+      - name: Render metrics for ${{ matrix.target.repository }}
         uses: ./.github/actions/render-repository
         with:
           classic_token: ${{ secrets.CLASSIC }}
           target_owner: RAprogramm
-          target_repo: ${{ matrix.repository }}
-          branch_name: ${{ format('ci/metrics-refresh-{0}', matrix.repository) }}
-          contributors_branch: main
-          target_path: ${{ format('metrics/{0}.svg', matrix.repository) }}
-          temp_artifact: ${{ format('.metrics-tmp/{0}.svg', matrix.repository) }}
+          target_repo: ${{ matrix.target.repository }}
+          branch_name: ${{ format('ci/metrics-refresh-{0}', matrix.target.repository) }}
+          contributors_branch: ${{ matrix.target.contributors_branch }}
+          target_path: ${{ format('metrics/{0}.svg', matrix.target.repository) }}
+          temp_artifact: ${{ format('.metrics-tmp/{0}.svg', matrix.target.repository) }}
