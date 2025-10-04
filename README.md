@@ -65,6 +65,12 @@
 <p>
   Use <code>.github/workflows/render-repository.yml</code> to refresh repository dashboards based on the "repository" template. Supply the
   repository handle and optional overrides for the owner, target branch name, artifact filename, or destination path.
+
+  Repository cards now highlight two extra sections powered by <code>plugin_languages</code> and <code>plugin_traffic</code>:
+  <ul>
+    <li><strong>Most used languages</strong> &mdash; a GitHub-colored bar that focuses on the <code>most-used</code> segment so language mixes differ across repositories at a glance.</li>
+    <li><strong>Traffic insights</strong> &mdash; a condensed view of recent views and clones to expose repository momentum directly on the badge.</li>
+  </ul>
 </p>
 
 <pre><code class="language-yaml">jobs:
