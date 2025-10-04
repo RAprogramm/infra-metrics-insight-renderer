@@ -270,9 +270,8 @@
   <li>Create an annotated tag (for example, <code>git tag -a v0.1.0</code>) and push it to GitHub.</li>
   <li>Draft a release in the GitHub UI, associate it with the tag, and publish it. Publishing triggers
     <code>.github/workflows/release.yml</code>.</li>
-  <li>The workflow builds the CLI for Linux (<code>x86_64-unknown-linux-gnu</code>), macOS (<code>aarch64-apple-darwin</code>), and
-    Windows (<code>x86_64-pc-windows-msvc</code>), packages the binaries as archives named
-    <code>imir-&lt;target&gt;.tar.gz</code> or <code>imir-&lt;target&gt;.zip</code>, and uploads them to the release assets.</li>
+  <li>The workflow builds the CLI for Linux (<code>x86_64-unknown-linux-gnu</code>), packages the binary as
+    <code>imir-x86_64-unknown-linux-gnu.tar.gz</code>, and uploads it to the release assets.</li>
   <li>Update downstream workflows to download the archive that matches their runner architecture and unpack the <code>imir</code>
     executable into their workspace.</li>
 </ol>
