@@ -1,12 +1,20 @@
 <a id="top"></a>
-<h1>IMIR</h1>
-<blockquote><em>Infra Metrics Insight Renderer</em></blockquote>
+<h1 align="center">IMIR</h1>
+<div align="right">
+  <blockquote><em>Infra Metrics Insight Renderer</em></blockquote>
+</div>
 
 <hr />
 
-<p>
+<p align="center">
   <a href="https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer/view?branch=main">
     <img src="https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer?branch=main" alt="Hits-of-Code" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="./imir.png">
+    <img src="./imir.png" alt="IMIR" />
   </a>
 </p>
 
@@ -52,7 +60,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h2 id="repository-metrics-workflow">Repository metrics workflow</h2>
+<h2 align="center" id="repository-metrics-workflow">Repository metrics workflow</h2>
 
 <p>
   Use <code>.github/workflows/render-repository.yml</code> to refresh repository dashboards based on the "repository" template. Supply the
@@ -79,7 +87,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h3 id="open-source-repositories-bundle">Open-source repositories bundle</h3>
+<h3 align="center" id="open-source-repositories-bundle">Open-source repositories bundle</h3>
 
 <p>
   Workflows targeting public repositories that live under the <code>RAprogramm</code> organization can reuse
@@ -100,7 +108,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h2 id="unified-target-configuration">Unified target configuration</h2>
+<h2 align="center" id="unified-target-configuration">Unified target configuration</h2>
 
 <p>
   The <a href="targets/targets.yaml"><code>targets/targets.yaml</code></a> file defines every metrics target that should be refreshed on the regular
@@ -150,7 +158,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h2 id="imir-badge-integration">IMIR badge integration</h2>
+<h2 align="center" id="imir-badge-integration">IMIR badge integration</h2>
 
 <p>
   Register a repository or profile by adding a new entry to
@@ -172,7 +180,7 @@
   page.
 </p>
 
-<h3 id="badge-catalogue">Badge catalogue</h3>
+<h3 align="center" id="badge-catalogue">Badge catalogue</h3>
 
 <p>
   The published badges are grouped by color so their category is obvious at a glance. Reuse the badges directly from the
@@ -181,7 +189,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 id="open-source-badges">🟩 Open-source badges</h4>
+<h4 align="center" id="open-source-badges">🟩 Open-source badges</h4>
 
 <table>
   <thead>
@@ -201,7 +209,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 id="private-project-badges">🟦 Private project badges</h4>
+<h4 align="center" id="private-project-badges">🟦 Private project badges</h4>
 
 <p>
   Private dashboards follow the same embedding rules. Publish badges from this section once private projects are registered.
@@ -209,7 +217,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 id="profile-badges">🟪 Profile badges</h4>
+<h4 align="center" id="profile-badges">🟪 Profile badges</h4>
 
 <table>
   <thead>
@@ -225,7 +233,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 id="color-reference">Color reference</h4>
+<h4 align="center" id="color-reference">Color reference</h4>
 <ul>
   <li>🟩 Green badges indicate open-source repositories.</li>
   <li>🟦 Blue badges denote private repositories.</li>
@@ -234,7 +242,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h2 id="imir-cli">IMIR CLI</h2>
+<h2 align="center" id="imir-cli">IMIR CLI</h2>
 
 <p>
   The <code>imir</code> crate lives in
@@ -246,7 +254,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h2 id="local-development-workflow">Local development workflow</h2>
+<h2 align="center" id="local-development-workflow">Local development workflow</h2>
 
 <p>
   Use <a href="scripts/ci-check.sh"><code>scripts/ci-check.sh</code></a> to run the full validation pipeline locally. The helper script formats the code
@@ -257,7 +265,7 @@
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h2 id="release-process">Release process</h2>
+<h2 align="center" id="release-process">Release process</h2>
 
 <p>
   Tagged releases publish pre-built <code>imir</code> binaries so GitHub Actions workflows can download a pinned CLI without
@@ -270,9 +278,8 @@
   <li>Create an annotated tag (for example, <code>git tag -a v0.1.0</code>) and push it to GitHub.</li>
   <li>Draft a release in the GitHub UI, associate it with the tag, and publish it. Publishing triggers
     <code>.github/workflows/release.yml</code>.</li>
-  <li>The workflow builds the CLI for Linux (<code>x86_64-unknown-linux-gnu</code>), macOS (<code>aarch64-apple-darwin</code>), and
-    Windows (<code>x86_64-pc-windows-msvc</code>), packages the binaries as archives named
-    <code>imir-&lt;target&gt;.tar.gz</code> or <code>imir-&lt;target&gt;.zip</code>, and uploads them to the release assets.</li>
+  <li>The workflow builds the CLI for Linux (<code>x86_64-unknown-linux-gnu</code>), packages the binary as
+    <code>imir-x86_64-unknown-linux-gnu.tar.gz</code>, and uploads it to the release assets.</li>
   <li>Update downstream workflows to download the archive that matches their runner architecture and unpack the <code>imir</code>
     executable into their workspace.</li>
 </ol>

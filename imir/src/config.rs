@@ -249,6 +249,7 @@ where
 {
     let value: Option<u8> = Option::deserialize(deserializer)?;
     if let Some(columns) = value && (columns == 0 || columns > 4) {
+
         return Err(serde::de::Error::custom(
             "badge.widget.columns must be between 1 and 4",
         ));
