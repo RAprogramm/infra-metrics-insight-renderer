@@ -248,12 +248,10 @@ where
     D: serde::Deserializer<'de>,
 {
     let value: Option<u8> = Option::deserialize(deserializer)?;
-    if let Some(columns) = value {
-        if columns == 0 || columns > 4 {
-            return Err(serde::de::Error::custom(
-                "badge.widget.columns must be between 1 and 4",
-            ));
-        }
+    if let Some(columns) = value && (columns == 0 || columns > 4) {
+        return Err(serde::de::Error::custom(
+            "badge.widget.columns must be between 1 and 4",
+        ));
     }
     Ok(value)
 }
@@ -263,12 +261,10 @@ where
     D: serde::Deserializer<'de>,
 {
     let value: Option<u8> = Option::deserialize(deserializer)?;
-    if let Some(radius) = value {
-        if radius > 32 {
-            return Err(serde::de::Error::custom(
-                "badge.widget.border_radius must not exceed 32",
-            ));
-        }
+    if let Some(radius) = value && radius > 32 {
+        return Err(serde::de::Error::custom(
+            "badge.widget.border_radius must not exceed 32",
+        ));
     }
     Ok(value)
 }
