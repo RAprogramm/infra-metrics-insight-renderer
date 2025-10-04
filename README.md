@@ -98,7 +98,7 @@
   open_source:
     uses: RAprogramm/infra-metrics-insight-renderer/.github/workflows/render-open-source.yml@main
     with:
-      repositories: '["masterror", "telegram-webapp-sdk"]'
+      repositories: '[{"repository": "masterror"}, {"repository": "telegram-webapp-sdk"}]'
     secrets:
       CLASSIC: ${{ secrets.METRICS_TOKEN }}</code></pre>
 
@@ -133,11 +133,11 @@
   Use the open-source helper to normalize ad-hoc repository lists for the bundled workflow:
 </p>
 
-<pre><code class="language-bash">cargo run --manifest-path imir/Cargo.toml -- open-source --input '["masterror", "telegram-webapp-sdk"]'</code></pre>
+<pre><code class="language-bash">cargo run --manifest-path imir/Cargo.toml -- open-source --input '[{"repository": "masterror"}, {"repository": "telegram-webapp-sdk"}]'</code></pre>
 
 <p>
-  The command outputs the normalized JSON document that the workflow uses. The same CLI is invoked during CI, so validation errors
-  must be resolved locally before a workflow run succeeds.
+  The command outputs repository descriptors containing the slugged name and the contributors branch analyzed by the renderer.
+  The same CLI is invoked during CI, so validation errors must be resolved locally before a workflow run succeeds.
 </p>
 
 <p>Optional per-target overrides include:</p>
@@ -150,6 +150,11 @@
   <li><code>slug</code> – override the derived slug used for filenames and workflow dispatch names.</li>
   <li><code>include_private</code> – set to <code>true</code> to include private repositories and secret achievements for the target.</li>
 </ul>
+
+<p>
+  Contributor branch overrides are especially helpful for repositories that use a non-<code>main</code> default branch: the
+  generated metrics now highlight contributors for the correct branch without manual workflow edits.
+</p>
 
 <p>
   Unset overrides fall back to deterministic defaults chosen by the orchestrator, so adding a new target only requires the owner,

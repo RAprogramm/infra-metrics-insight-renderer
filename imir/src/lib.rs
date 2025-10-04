@@ -44,10 +44,12 @@ pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
     TargetKind,
 };
-pub use error::{io_error, Error};
+pub use error::{Error, io_error};
 pub use normalizer::{
-    load_targets, parse_targets, BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget,
-    TargetsDocument,
+    BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,
+    parse_targets,
 };
-pub use open_source::resolve_open_source_repositories;
+pub use open_source::{
+    OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
+};
 pub use slug::SlugStrategy;
