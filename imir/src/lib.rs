@@ -12,7 +12,7 @@
 //! the resulting normalized descriptor:
 //!
 //! ```
-//! use imir::{parse_targets, BadgeStyle, Error};
+//! use imir::{BadgeStyle, Error, parse_targets};
 //!
 //! # fn main() -> Result<(), Error> {
 //! let yaml = r#"
@@ -27,7 +27,7 @@
 //!         alignment: center
 //! "#;
 //!
-//! let document = parse_targets(yaml)?;
+//! let document = parse_targets(yaml,)?;
 //! assert_eq!(document.targets[0].badge.style, BadgeStyle::Flat);
 //! assert_eq!(document.targets[0].badge.widget.columns, 2);
 //! # Ok(())

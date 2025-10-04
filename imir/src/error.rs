@@ -13,53 +13,60 @@ use std::path::{Path, PathBuf};
 /// accidental exposure of sensitive data. Instances are typically constructed
 /// through the [`io_error`] helper or by converting from serde error types via
 /// the provided `From` implementations.
-#[derive(Debug, masterror::Error)]
-pub enum Error {
+#[derive(Debug, masterror::Error,)]
+pub enum Error
+{
     /// Wraps I/O errors that occur while reading configuration files.
     #[error("failed to read configuration from {path:?}: {source}")]
-    Io {
+    Io
+    {
         /// Location of the configuration file.
-        path: PathBuf,
+        path:   PathBuf,
         /// Underlying I/O error.
         source: std::io::Error,
     },
     /// Wraps YAML decoding errors.
     #[error("failed to parse configuration: {source}")]
-    Parse {
+    Parse
+    {
         /// Source decoding error from serde_yaml.
         source: serde_yaml::Error,
     },
     /// Returned when the configuration violates invariants.
     #[error("invalid configuration: {message}")]
-    Validation {
+    Validation
+    {
         /// Human readable message describing the validation problem.
         message: String,
     },
     /// Wraps serialization errors when writing normalized output.
     #[error("failed to serialize targets: {source}")]
-    Serialize {
+    Serialize
+    {
         /// Underlying serialization error.
         source: serde_json::Error,
     },
     /// Wraps I/O errors that occur while writing badge artifacts.
     #[error("failed to write badge artifact at {path:?}: {source}")]
-    BadgeIo {
+    BadgeIo
+    {
         /// Location of the artifact being produced.
-        path: PathBuf,
+        path:   PathBuf,
         /// Underlying I/O error reported by the operating system.
         source: std::io::Error,
     },
 }
 
-impl Error {
+impl Error
+{
     /// Constructs a validation error from the provided displayable value.
     ///
     /// # Parameters
     ///
     /// * `message` - Human-readable description of the validation failure.
-    pub fn validation<M>(message: M) -> Self
+    pub fn validation<M,>(message: M,) -> Self
     where
-        M: Into<String>,
+        M: Into<String,>,
     {
         Self::Validation {
             message: message.into(),
@@ -71,20 +78,29 @@ impl Error {
     /// This method is primarily intended for CLI contexts where the variant
     /// name does not add value to end users. The returned string matches the
     /// [`std::fmt::Display`] implementation.
-    pub fn to_display_string(&self) -> String {
+    pub fn to_display_string(&self,) -> String
+    {
         format!("{self}")
     }
 }
 
-impl From<serde_yaml::Error> for Error {
-    fn from(source: serde_yaml::Error) -> Self {
-        Self::Parse { source }
+impl From<serde_yaml::Error,> for Error
+{
+    fn from(source: serde_yaml::Error,) -> Self
+    {
+        Self::Parse {
+            source,
+        }
     }
 }
 
-impl From<serde_json::Error> for Error {
-    fn from(source: serde_json::Error) -> Self {
-        Self::Serialize { source }
+impl From<serde_json::Error,> for Error
+{
+    fn from(source: serde_json::Error,) -> Self
+    {
+        Self::Serialize {
+            source,
+        }
     }
 }
 
@@ -94,7 +110,8 @@ impl From<serde_json::Error> for Error {
 ///
 /// * `path` - Location of the configuration file that triggered the error.
 /// * `source` - I/O error reported by the operating system.
-pub fn io_error(path: &Path, source: std::io::Error) -> Error {
+pub fn io_error(path: &Path, source: std::io::Error,) -> Error
+{
     Error::Io {
         path: path.to_path_buf(),
         source,
@@ -107,7 +124,8 @@ pub fn io_error(path: &Path, source: std::io::Error) -> Error {
 ///
 /// * `path` - Location of the badge artifact that triggered the error.
 /// * `source` - I/O error reported by the operating system.
-pub fn badge_io_error(path: &Path, source: std::io::Error) -> Error {
+pub fn badge_io_error(path: &Path, source: std::io::Error,) -> Error
+{
     Error::BadgeIo {
         path: path.to_path_buf(),
         source,
@@ -115,14 +133,18 @@ pub fn badge_io_error(path: &Path, source: std::io::Error) -> Error {
 }
 
 #[cfg(test)]
-mod tests {
+mod tests
+{
     use super::Error;
 
     #[test]
-    fn validation_constructor_populates_message() {
-        let error = Error::validation("something went wrong");
+    fn validation_constructor_populates_message()
+    {
+        let error = Error::validation("something went wrong",);
         match error {
-            Error::Validation { ref message } => {
+            Error::Validation {
+                ref message,
+            } => {
                 assert_eq!(message, "something went wrong");
             }
             other => panic!("expected validation error, got {other:?}"),
@@ -130,16 +152,18 @@ mod tests {
     }
 
     #[test]
-    fn to_display_string_matches_display() {
-        let error = Error::validation("display me");
+    fn to_display_string_matches_display()
+    {
+        let error = Error::validation("display me",);
         assert_eq!(error.to_string(), error.to_display_string());
     }
 
     #[test]
-    fn io_error_helper_wraps_path_and_source() {
-        let path = std::path::Path::new("/tmp/example.yaml");
-        let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "missing");
-        let error = super::io_error(path, io_error);
+    fn io_error_helper_wraps_path_and_source()
+    {
+        let path = std::path::Path::new("/tmp/example.yaml",);
+        let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "missing",);
+        let error = super::io_error(path, io_error,);
 
         match error {
             Error::Io {
@@ -154,24 +178,27 @@ mod tests {
     }
 
     #[test]
-    fn serde_yaml_conversion_maps_to_parse_variant() {
-        let error = serde_yaml::from_str::<usize>("not-a-number").unwrap_err();
+    fn serde_yaml_conversion_maps_to_parse_variant()
+    {
+        let error = serde_yaml::from_str::<usize,>("not-a-number",).unwrap_err();
         let mapped: Error = error.into();
         assert!(matches!(mapped, Error::Parse { .. }));
     }
 
     #[test]
-    fn serde_json_conversion_maps_to_serialize_variant() {
-        let invalid = serde_json::from_str::<serde_json::Value>("not-json").unwrap_err();
+    fn serde_json_conversion_maps_to_serialize_variant()
+    {
+        let invalid = serde_json::from_str::<serde_json::Value,>("not-json",).unwrap_err();
         let mapped: Error = invalid.into();
         assert!(matches!(mapped, Error::Serialize { .. }));
     }
 
     #[test]
-    fn badge_io_error_helper_wraps_path_and_source() {
-        let path = std::path::Path::new("/tmp/badge.svg");
-        let io_error = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied");
-        let error = super::badge_io_error(path, io_error);
+    fn badge_io_error_helper_wraps_path_and_source()
+    {
+        let path = std::path::Path::new("/tmp/badge.svg",);
+        let io_error = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied",);
+        let error = super::badge_io_error(path, io_error,);
 
         match error {
             Error::BadgeIo {

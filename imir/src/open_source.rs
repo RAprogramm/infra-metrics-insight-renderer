@@ -11,14 +11,15 @@ use serde::{Deserialize, Serialize};
 use crate::error::Error;
 
 /// Default repositories used when the workflow input is omitted.
-const DEFAULT_REPOSITORIES: &[&str] = &["masterror", "telegram-webapp-sdk"];
+const DEFAULT_REPOSITORIES: &[&str] = &["masterror", "telegram-webapp-sdk",];
 const DEFAULT_CONTRIBUTORS_BRANCH: &str = "main";
 
 /// Normalized descriptor for an open-source repository entry.
-#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
-pub struct OpenSourceRepository {
+#[derive(Debug, Serialize, Clone, PartialEq, Eq,)]
+pub struct OpenSourceRepository
+{
     /// Repository name resolved from workflow input.
-    pub repository: String,
+    pub repository:          String,
     /// Branch analyzed by the contributors plugin.
     pub contributors_branch: String,
 }
@@ -38,28 +39,29 @@ pub struct OpenSourceRepository {
 /// # Examples
 ///
 /// ```
-/// use imir::{resolve_open_source_targets, OpenSourceRepository};
+/// use imir::{OpenSourceRepository, resolve_open_source_targets};
 ///
 /// let targets = resolve_open_source_targets(Some("[{\"repository\":\"repo\"}]",),)?;
-/// assert_eq!(targets, vec![OpenSourceRepository {
-///     repository: "repo".to_owned(),
-///     contributors_branch: "main".to_owned(),
-/// }]);
+/// assert_eq!(
+///     targets,
+///     vec![OpenSourceRepository {
+///         repository:          "repo".to_owned(),
+///         contributors_branch: "main".to_owned(),
+///     }]
+/// );
 /// # Ok::<(), imir::Error>(())
 /// ```
 pub fn resolve_open_source_targets(
-    raw_input: Option<&str>,
-) -> Result<Vec<OpenSourceRepository>, Error> {
+    raw_input: Option<&str,>,
+) -> Result<Vec<OpenSourceRepository,>, Error,>
+{
     match raw_input.and_then(|value| {
         let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed)
-        }
-    }) {
-        Some(value) => parse_user_supplied_repositories(value),
-        None => Ok(default_repositories()),
+        if trimmed.is_empty() { None } else { Some(trimmed,) }
+    },)
+    {
+        Some(value,) => parse_user_supplied_repositories(value,),
+        None => Ok(default_repositories(),),
     }
 }
 
@@ -67,12 +69,11 @@ pub fn resolve_open_source_targets(
 ///
 /// This helper preserves the previous behaviour for callers that only require
 /// repository names.
-pub fn resolve_open_source_repositories(raw_input: Option<&str>) -> Result<Vec<String>, Error> {
-    let targets = resolve_open_source_targets(raw_input)?;
-    Ok(targets
-        .into_iter()
-        .map(|target| target.repository)
-        .collect())
+pub fn resolve_open_source_repositories(raw_input: Option<&str,>,)
+-> Result<Vec<String,>, Error,>
+{
+    let targets = resolve_open_source_targets(raw_input,)?;
+    Ok(targets.into_iter().map(|target| target.repository,).collect(),)
 }
 
 /// Parses and validates repository descriptors supplied as a JSON array.
@@ -81,31 +82,32 @@ pub fn resolve_open_source_repositories(raw_input: Option<&str>) -> Result<Vec<S
 ///
 /// Returns [`Error::Validation`](Error::Validation) when the JSON is invalid,
 /// expands to an empty array, or contains blank entries.
-fn parse_user_supplied_repositories(input: &str) -> Result<Vec<OpenSourceRepository>, Error> {
-    let parsed: Vec<RepositoryInput> = serde_json::from_str(input)
-        .map_err(|error| Error::validation(format!("invalid repositories JSON: {error}")))?;
+fn parse_user_supplied_repositories(input: &str,) -> Result<Vec<OpenSourceRepository,>, Error,>
+{
+    let parsed: Vec<RepositoryInput,> = serde_json::from_str(input,)
+        .map_err(|error| Error::validation(format!("invalid repositories JSON: {error}"),),)?;
 
     if parsed.is_empty() {
         return Err(Error::validation(
             "repositories input must be a non-empty JSON array of repository names",
-        ));
+        ),);
     }
 
-    let mut normalized = Vec::with_capacity(parsed.len());
+    let mut normalized = Vec::with_capacity(parsed.len(),);
     for repository in parsed {
         let descriptor = match repository {
-            RepositoryInput::Name(name) => OpenSourceRepository {
-                repository: normalize_repository(&name)?,
+            RepositoryInput::Name(name,) => OpenSourceRepository {
+                repository:          normalize_repository(&name,)?,
                 contributors_branch: DEFAULT_CONTRIBUTORS_BRANCH.to_owned(),
             },
-            RepositoryInput::Descriptor(descriptor) => {
-                let repository = normalize_repository(&descriptor.repository)?;
+            RepositoryInput::Descriptor(descriptor,) => {
+                let repository = normalize_repository(&descriptor.repository,)?;
                 let contributors_branch = descriptor
                     .contributors_branch
                     .as_deref()
-                    .map(normalize_contributors_branch)
+                    .map(normalize_contributors_branch,)
                     .transpose()?
-                    .unwrap_or_else(|| DEFAULT_CONTRIBUTORS_BRANCH.to_owned());
+                    .unwrap_or_else(|| DEFAULT_CONTRIBUTORS_BRANCH.to_owned(),);
 
                 OpenSourceRepository {
                     repository,
@@ -114,92 +116,96 @@ fn parse_user_supplied_repositories(input: &str) -> Result<Vec<OpenSourceReposit
             }
         };
 
-        normalized.push(descriptor);
+        normalized.push(descriptor,);
     }
 
-    Ok(normalized)
+    Ok(normalized,)
 }
 
 /// Returns the default repository descriptors when no input is supplied.
-fn default_repositories() -> Vec<OpenSourceRepository> {
-    let mut defaults = Vec::with_capacity(DEFAULT_REPOSITORIES.len());
+fn default_repositories() -> Vec<OpenSourceRepository,>
+{
+    let mut defaults = Vec::with_capacity(DEFAULT_REPOSITORIES.len(),);
     for repository in DEFAULT_REPOSITORIES {
         defaults.push(OpenSourceRepository {
-            repository: (*repository).to_owned(),
+            repository:          (*repository).to_owned(),
             contributors_branch: DEFAULT_CONTRIBUTORS_BRANCH.to_owned(),
-        });
+        },);
     }
     defaults
 }
 
-fn normalize_repository(input: &str) -> Result<String, Error> {
+fn normalize_repository(input: &str,) -> Result<String, Error,>
+{
     let trimmed = input.trim();
     if trimmed.is_empty() {
-        return Err(Error::validation(
-            "repository names cannot be empty strings",
-        ));
+        return Err(Error::validation("repository names cannot be empty strings",),);
     }
 
-    Ok(trimmed.to_owned())
+    Ok(trimmed.to_owned(),)
 }
 
-fn normalize_contributors_branch(input: &str) -> Result<String, Error> {
+fn normalize_contributors_branch(input: &str,) -> Result<String, Error,>
+{
     let trimmed = input.trim();
     if trimmed.is_empty() {
-        return Err(Error::validation("contributors_branch cannot be empty"));
+        return Err(Error::validation("contributors_branch cannot be empty",),);
     }
 
-    if trimmed.chars().any(char::is_whitespace) {
-        return Err(Error::validation(
-            "contributors_branch cannot contain whitespace",
-        ));
+    if trimmed.chars().any(char::is_whitespace,) {
+        return Err(Error::validation("contributors_branch cannot contain whitespace",),);
     }
 
-    Ok(trimmed.to_owned())
+    Ok(trimmed.to_owned(),)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize,)]
 #[serde(untagged)]
-enum RepositoryInput {
-    Name(String),
-    Descriptor(RepositoryDescriptor),
+enum RepositoryInput
+{
+    Name(String,),
+    Descriptor(RepositoryDescriptor,),
 }
 
-#[derive(Debug, Deserialize)]
-struct RepositoryDescriptor {
-    repository: String,
+#[derive(Debug, Deserialize,)]
+struct RepositoryDescriptor
+{
+    repository:          String,
     #[serde(default)]
-    contributors_branch: Option<String>,
+    contributors_branch: Option<String,>,
 }
 
 #[cfg(test)]
-mod tests {
+mod tests
+{
     use super::{
         DEFAULT_CONTRIBUTORS_BRANCH, OpenSourceRepository, resolve_open_source_repositories,
         resolve_open_source_targets,
     };
 
     #[test]
-    fn falls_back_to_defaults_when_input_missing() {
-        let repositories = resolve_open_source_repositories(None).expect("expected defaults");
-        assert_eq!(
-            repositories,
-            vec!["masterror".to_owned(), "telegram-webapp-sdk".to_owned()]
-        );
+    fn falls_back_to_defaults_when_input_missing()
+    {
+        let repositories = resolve_open_source_repositories(None,).expect("expected defaults",);
+        assert_eq!(repositories, vec!["masterror".to_owned(), "telegram-webapp-sdk".to_owned()]);
     }
 
     #[test]
-    fn trims_and_normalizes_entries() {
-        let repositories = resolve_open_source_repositories(Some("[\" repo \", \"another\"]"))
-            .expect("expected normalization");
+    fn trims_and_normalizes_entries()
+    {
+        let repositories = resolve_open_source_repositories(Some("[\" repo \", \"another\"]",),)
+            .expect("expected normalization",);
         assert_eq!(repositories, vec!["repo".to_owned(), "another".to_owned()]);
     }
 
     #[test]
-    fn rejects_empty_array() {
-        let error = resolve_open_source_repositories(Some("[]")).unwrap_err();
+    fn rejects_empty_array()
+    {
+        let error = resolve_open_source_repositories(Some("[]",),).unwrap_err();
         match error {
-            crate::Error::Validation { message } => {
+            crate::Error::Validation {
+                message,
+            } => {
                 assert_eq!(
                     message,
                     "repositories input must be a non-empty JSON array of repository names"
@@ -210,10 +216,13 @@ mod tests {
     }
 
     #[test]
-    fn rejects_invalid_json() {
-        let error = resolve_open_source_repositories(Some("not-json")).unwrap_err();
+    fn rejects_invalid_json()
+    {
+        let error = resolve_open_source_repositories(Some("not-json",),).unwrap_err();
         match error {
-            crate::Error::Validation { message } => {
+            crate::Error::Validation {
+                message,
+            } => {
                 assert!(message.starts_with("invalid repositories JSON:"));
             }
             other => panic!("expected validation error, got {other:?}"),
@@ -221,10 +230,13 @@ mod tests {
     }
 
     #[test]
-    fn rejects_empty_entries() {
-        let error = resolve_open_source_repositories(Some("[\"\", \"repo\"]")).unwrap_err();
+    fn rejects_empty_entries()
+    {
+        let error = resolve_open_source_repositories(Some("[\"\", \"repo\"]",),).unwrap_err();
         match error {
-            crate::Error::Validation { message } => {
+            crate::Error::Validation {
+                message,
+            } => {
                 assert_eq!(message, "repository names cannot be empty strings");
             }
             other => panic!("expected validation error, got {other:?}"),
@@ -232,54 +244,57 @@ mod tests {
     }
 
     #[test]
-    fn treats_whitespace_input_as_missing() {
-        let repositories = resolve_open_source_repositories(Some("   "))
-            .expect("expected defaults when input whitespace");
-        assert_eq!(
-            repositories,
-            vec!["masterror".to_owned(), "telegram-webapp-sdk".to_owned()]
-        );
+    fn treats_whitespace_input_as_missing()
+    {
+        let repositories = resolve_open_source_repositories(Some("   ",),)
+            .expect("expected defaults when input whitespace",);
+        assert_eq!(repositories, vec!["masterror".to_owned(), "telegram-webapp-sdk".to_owned()]);
     }
 
     #[test]
-    fn resolves_descriptors_with_default_branch() {
-        let targets = resolve_open_source_targets(Some("[\"repo\"]"))
-            .expect("expected descriptor resolution");
+    fn resolves_descriptors_with_default_branch()
+    {
+        let targets = resolve_open_source_targets(Some("[\"repo\"]",),)
+            .expect("expected descriptor resolution",);
 
         assert_eq!(
             targets,
             vec![OpenSourceRepository {
-                repository: "repo".to_owned(),
+                repository:          "repo".to_owned(),
                 contributors_branch: DEFAULT_CONTRIBUTORS_BRANCH.to_owned(),
             }]
         );
     }
 
     #[test]
-    fn resolves_branch_override_with_trimming() {
+    fn resolves_branch_override_with_trimming()
+    {
         let targets = resolve_open_source_targets(Some(
             "[{\"repository\":\"repo\",\"contributors_branch\":\" feature/main \"}]",
-        ))
-        .expect("expected branch override");
+        ),)
+        .expect("expected branch override",);
 
         assert_eq!(
             targets,
             vec![OpenSourceRepository {
-                repository: "repo".to_owned(),
+                repository:          "repo".to_owned(),
                 contributors_branch: "feature/main".to_owned(),
             }]
         );
     }
 
     #[test]
-    fn rejects_branch_with_internal_whitespace() {
+    fn rejects_branch_with_internal_whitespace()
+    {
         let error = resolve_open_source_targets(Some(
             "[{\"repository\":\"repo\",\"contributors_branch\":\"feature main\"}]",
-        ))
-        .expect_err("expected branch validation error");
+        ),)
+        .expect_err("expected branch validation error",);
 
         match error {
-            crate::Error::Validation { message } => {
+            crate::Error::Validation {
+                message,
+            } => {
                 assert_eq!(message, "contributors_branch cannot contain whitespace");
             }
             other => panic!("expected validation error, got {other:?}"),
