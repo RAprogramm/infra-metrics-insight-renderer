@@ -121,6 +121,30 @@
   schedule. Each entry requires the GitHub account (<code>owner</code>), an optional <code>repository</code>, and the <code>type</code> of metrics card to render:
 </p>
 
+<h3 align="center" id="badge-sync-workflow">Badge synchronization workflow</h3>
+
+<p>
+  Lightweight badge placeholders stay in sync through
+  <a href=".github/workflows/badge-sync.yml"><code>.github/workflows/badge-sync.yml</code></a>.
+  The workflow regenerates affected badges whenever README updates reference a new slug, on-demand through the
+  <code>workflow_dispatch</code> entrypoint, and nightly at 04:00 UTC via the scheduled trigger. Each run calls
+  <code>imir badge generate --target &lt;slug&gt;</code> for every impacted entry and stores the resulting SVG and JSON manifest under
+  <code>metrics/</code>.
+</p>
+
+<p>
+  Scheduled and main-branch invocations push badge refreshes to the dedicated <code>ci/badge-sync</code> branch. The automation
+  opens or updates a pull request labeled <code>ci</code> and <code>badges</code>, so the repository always exposes the latest placeholders
+  without manual intervention. Pull request runs execute in validation mode without committing, ensuring contributors receive
+  immediate feedback if README changes reference unknown slugs.
+</p>
+
+<p>
+  The continuous integration pipeline now includes a smoke test that invokes <code>imir badge generate</code> against the
+  <code>profile</code> target. The test fails fast if CLI changes break badge generation, preventing regressions from entering the
+  workflow.
+</p>
+
 <ul>
   <li><code>profile</code> – render a classic GitHub profile card.</li>
   <li><code>open_source</code> – render the repository template for public projects.</li>
