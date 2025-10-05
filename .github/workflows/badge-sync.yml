@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
     env:
       TARGETS_CONFIG: targets/targets.yaml
       BADGE_BRANCH: ci/badge-sync
@@ -233,39 +232,3 @@ jobs:
 
           echo "default_base=${DEFAULT_BASE}" >> "$GITHUB_OUTPUT"
 
-      - name: Open pull request
-        if: steps.commit.outputs.pushed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH_NAME: ${{ env.BADGE_BRANCH }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
-          DEFAULT_BASE: ${{ steps.commit.outputs.default_base }}
-        run: |
-          set -euo pipefail
-
-          REPO="${GITHUB_REPOSITORY}"
-          BASE="${DEFAULT_BASE:-${DEFAULT_BRANCH}}"
-          HEAD="${BRANCH_NAME}"
-
-          EXISTING="$(gh pr list -R "${REPO}" --head "${HEAD}" --state open --json number --jq '.[0].number' || true)"
-          if [ -n "${EXISTING}" ]; then
-            echo "PR #${EXISTING} already open for ${REPO}:${HEAD} -> ${BASE}"
-            exit 0
-          fi
-
-          LABEL_ARGS=()
-          for LABEL in ci badges; do
-            if gh label view "${LABEL}" -R "${REPO}" >/dev/null 2>&1 || \
-               gh label create "${LABEL}" -R "${REPO}" --description "Infrastructure automation" >/dev/null 2>&1; then
-              LABEL_ARGS+=("--label" "${LABEL}")
-            else
-              echo "Warning: unable to ensure label '${LABEL}'" >&2
-            fi
-          done
-
-          gh pr create -R "${REPO}" \
-            --head "${HEAD}" \
-            --base "${BASE}" \
-            --title "chore(badges): refresh" \
-            --body "Automated badge refresh." \
-            "${LABEL_ARGS[@]}"
