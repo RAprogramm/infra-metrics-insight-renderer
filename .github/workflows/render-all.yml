@@ -10,32 +10,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  build_cli:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache imir build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "imir -> target"
-
-      - name: Build IMIR CLI
-        run: cargo build --release --locked --manifest-path imir/Cargo.toml
-
-      - name: Upload IMIR binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: imir
-          path: imir/target/release/imir
-          if-no-files-found: error
-
   prepare:
-    needs: build_cli
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
@@ -43,19 +18,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Download IMIR binary
-        uses: actions/download-artifact@v4
-        with:
-          name: imir
-          path: dist
+      - name: Setup IMIR
+        uses: ./.github/actions/setup-imir
 
       - name: Generate render targets
         id: generate
         run: |
           set -euo pipefail
-          ORCHESTRATOR="dist/imir"
-          chmod +x "${ORCHESTRATOR}"
-          MATRIX="$(${ORCHESTRATOR} --config targets/targets.yaml)"
+          MATRIX="$(imir --config targets/targets.yaml)"
           printf 'matrix=%s\n' "${MATRIX}" >> "${GITHUB_OUTPUT}"
 
   render:
