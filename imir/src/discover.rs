@@ -120,21 +120,20 @@ pub async fn discover_badge_users(
 
         let octocrab_clone = octocrab.clone();
         let query_clone = query.clone();
-        let search_result =
-            retry_with_backoff(
-                &config.retry_config,
-                &format!("code search page {}", page),
-                || {
-                    let octocrab = octocrab_clone.clone();
-                    let query = query_clone.clone();
-                    async move {
-                        octocrab.search().code(&query,).page(page,).send().await.map_err(|e| {
+        let search_result = retry_with_backoff(
+            &config.retry_config,
+            &format!("code search page {}", page),
+            || {
+                let octocrab = octocrab_clone.clone();
+                let query = query_clone.clone();
+                async move {
+                    octocrab.search().code(&query,).page(page,).send().await.map_err(|e| {
                             AppError::service(format!("GitHub code search failed: {e}"),)
                         },)
-                    }
-                },
-            )
-            .await?;
+                }
+            },
+        )
+        .await?;
 
         let items_count = search_result.items.len();
         debug!("Found {} items on page {}", items_count, page);
@@ -412,5 +411,59 @@ mod tests
         assert_eq!(config.metrics_path_pattern, "/custom/");
         assert_eq!(config.retry_config.max_attempts, 5);
         assert_eq!(config.retry_config.initial_delay_ms, 500);
+    }
+
+    #[test]
+    fn discovery_config_clone_creates_independent_copy()
+    {
+        let config1 = DiscoveryConfig {
+            max_pages:            7,
+            badge_url_pattern:    "org/repo".to_string(),
+            metrics_path_pattern: "/path/".to_string(),
+            retry_config:         RetryConfig::default(),
+        };
+        let config2 = config1.clone();
+        assert_eq!(config1.max_pages, config2.max_pages);
+        assert_eq!(config1.badge_url_pattern, config2.badge_url_pattern);
+        assert_eq!(config1.metrics_path_pattern, config2.metrics_path_pattern);
+    }
+
+    #[test]
+    fn discovery_config_debug_format()
+    {
+        let config = DiscoveryConfig::default();
+        let debug_str = format!("{:?}", config);
+        assert!(debug_str.contains("DiscoveryConfig"));
+        assert!(debug_str.contains("max_pages"));
+    }
+
+    #[test]
+    fn discovered_repository_serialization()
+    {
+        let repo = DiscoveredRepository {
+            owner:      "testowner".to_string(),
+            repository: "testrepo".to_string(),
+        };
+        let json = serde_json::to_string(&repo,).expect("serialization failed",);
+        assert!(json.contains("testowner"));
+        assert!(json.contains("testrepo"));
+
+        let deserialized: DiscoveredRepository =
+            serde_json::from_str(&json,).expect("deserialization failed",);
+        assert_eq!(repo.owner, deserialized.owner);
+        assert_eq!(repo.repository, deserialized.repository);
+    }
+
+    #[test]
+    fn discovered_repository_debug_format()
+    {
+        let repo = DiscoveredRepository {
+            owner:      "owner".to_string(),
+            repository: "repo".to_string(),
+        };
+        let debug_str = format!("{:?}", repo);
+        assert!(debug_str.contains("DiscoveredRepository"));
+        assert!(debug_str.contains("owner"));
+        assert!(debug_str.contains("repository"));
     }
 }

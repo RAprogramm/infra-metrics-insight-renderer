@@ -189,4 +189,55 @@ mod tests
         assert!(result.is_err(), "should fail after max attempts",);
         assert_eq!(*counter.lock().unwrap(), 2);
     }
+
+    #[test]
+    fn retry_config_clone_creates_independent_copy()
+    {
+        let config1 =
+            RetryConfig {
+                max_attempts: 7, initial_delay_ms: 300, backoff_factor: 3.0,
+            };
+        let config2 = config1.clone();
+        assert_eq!(config1.max_attempts, config2.max_attempts);
+        assert_eq!(config1.initial_delay_ms, config2.initial_delay_ms);
+        assert_eq!(config1.backoff_factor, config2.backoff_factor);
+    }
+
+    #[test]
+    fn retry_config_debug_format()
+    {
+        let config = RetryConfig::default();
+        let debug_str = format!("{:?}", config);
+        assert!(debug_str.contains("RetryConfig"));
+        assert!(debug_str.contains("max_attempts"));
+        assert!(debug_str.contains("initial_delay_ms"));
+    }
+
+    #[tokio::test]
+    async fn retry_with_single_attempt_succeeds()
+    {
+        let config =
+            RetryConfig {
+                max_attempts: 1, initial_delay_ms: 100, backoff_factor: 2.0,
+            };
+        let result =
+            retry_with_backoff(&config, "single attempt", || async { Ok::<_, AppError,>(99,) },)
+                .await
+                .expect("should succeed",);
+        assert_eq!(result, 99);
+    }
+
+    #[tokio::test]
+    async fn retry_with_single_attempt_fails()
+    {
+        let config =
+            RetryConfig {
+                max_attempts: 1, initial_delay_ms: 100, backoff_factor: 2.0,
+            };
+        let result = retry_with_backoff(&config, "single attempt", || async {
+            Err::<i32, _,>(AppError::service("immediate failure",),)
+        },)
+        .await;
+        assert!(result.is_err(), "should fail immediately",);
+    }
 }
