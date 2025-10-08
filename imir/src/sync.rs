@@ -8,6 +8,7 @@
 use std::{collections::HashSet, fs, path::Path};
 
 use masterror::AppError;
+use tracing::{debug, info};
 
 use crate::{DiscoveredRepository, TargetConfig, TargetEntry, TargetKind};
 
@@ -43,22 +44,27 @@ pub fn sync_targets(
     discovered: &[DiscoveredRepository],
 ) -> Result<usize, AppError,>
 {
+    debug!("Reading config from {}", config_path.display());
     let yaml_content = fs::read_to_string(config_path,).map_err(|e| {
         AppError::service(format!("failed to read config at {}: {e}", config_path.display(),),)
     },)?;
 
+    debug!("Parsing YAML configuration");
     let mut config: TargetConfig = serde_yaml::from_str(&yaml_content,)
         .map_err(|e| AppError::validation(format!("failed to parse targets config: {e}"),),)?;
 
+    debug!("Building index of {} existing targets", config.targets.len());
     let existing_repos: HashSet<(String, Option<String,>,),> =
         config.targets.iter().map(|t| (t.owner.clone(), t.repository.clone(),),).collect();
 
     let mut added_count = 0;
 
+    info!("Processing {} discovered repositories", discovered.len());
     for repo in discovered {
         let key = (repo.owner.clone(), Some(repo.repository.clone(),),);
 
         if !existing_repos.contains(&key,) {
+            debug!("Adding new repository: {}", repo);
             let new_entry = TargetEntry {
                 owner:               repo.owner.clone(),
                 repository:          Some(repo.repository.clone(),),
@@ -76,22 +82,29 @@ pub fn sync_targets(
 
             config.targets.push(new_entry,);
             added_count += 1;
+        } else {
+            debug!("Skipping existing repository: {}", repo);
         }
     }
 
     if added_count > 0 {
+        info!("Sorting {} total targets alphabetically", config.targets.len());
         config.targets.sort_by(|a, b| {
             a.owner
                 .cmp(&b.owner,)
                 .then_with(|| a.repository.as_deref().cmp(&b.repository.as_deref(),),)
         },);
 
+        debug!("Serializing updated configuration");
         let updated_yaml = serde_yaml::to_string(&config,)
             .map_err(|e| AppError::service(format!("failed to serialize updated config: {e}"),),)?;
 
+        info!("Writing updated config to {}", config_path.display());
         fs::write(config_path, updated_yaml,).map_err(|e| {
             AppError::service(format!("failed to write config to {}: {e}", config_path.display()),)
         },)?;
+    } else {
+        debug!("No new repositories to add");
     }
 
     Ok(added_count,)

@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use masterror::AppError;
 use octocrab::{Octocrab, models::Code};
 use serde::{Deserialize, Serialize};
+use tracing::{debug, info};
 
 const BADGE_URL_PATTERN: &str = "RAprogramm/infra-metrics-insight-renderer";
 const METRICS_PATH_PATTERN: &str = "/metrics/";
@@ -57,11 +58,13 @@ impl std::fmt::Display for DiscoveredRepository
 /// ```
 pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredRepository,>, AppError,>
 {
+    debug!("Initializing GitHub client for badge discovery");
     let octocrab = Octocrab::builder().personal_token(token,).build().map_err(|e| {
         AppError::unauthorized(format!("failed to initialize GitHub client: {e}"),)
     },)?;
 
     let query = format!("{BADGE_URL_PATTERN} {METRICS_PATH_PATTERN}");
+    info!("Searching for repositories using badge pattern");
 
     let mut discovered = Vec::with_capacity(100,);
     let mut seen = HashSet::with_capacity(100,);
@@ -69,6 +72,7 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
     const MAX_PAGES: u32 = 10;
 
     loop {
+        debug!("Fetching page {} of search results", page);
         let search_result = octocrab
             .search()
             .code(&query,)
@@ -78,11 +82,13 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
             .map_err(|e| AppError::service(format!("GitHub code search failed: {e}"),),)?;
 
         let items_count = search_result.items.len();
+        debug!("Found {} items on page {}", items_count, page);
 
         for item in &search_result.items {
             if let Some(repo_info,) = extract_repository_info(item,) {
                 let key = (repo_info.owner.clone(), repo_info.repository.clone(),);
                 if seen.insert(key,) {
+                    debug!("Discovered new repository: {}", repo_info);
                     discovered.push(repo_info,);
                 }
             }
@@ -95,6 +101,7 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
         page += 1;
     }
 
+    info!("Badge discovery complete: {} repositories found", discovered.len());
     Ok(discovered,)
 }
 
@@ -126,16 +133,19 @@ pub async fn discover_stargazer_repositories(
     token: &str,
 ) -> Result<Vec<DiscoveredRepository,>, AppError,>
 {
+    debug!("Initializing GitHub client for stargazer discovery");
     let octocrab = Octocrab::builder().personal_token(token,).build().map_err(|e| {
         AppError::unauthorized(format!("failed to initialize GitHub client: {e}"),)
     },)?;
 
+    info!("Discovering repositories from stargazers of {}/{}", IMIR_REPO_OWNER, IMIR_REPO_NAME);
     let mut discovered = Vec::with_capacity(500,);
     let mut seen = HashSet::with_capacity(500,);
     let mut page = 1u32;
     const MAX_PAGES: u32 = 10;
 
     loop {
+        debug!("Fetching page {} of stargazers", page);
         let stargazers = octocrab
             .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME,)
             .list_stargazers()
@@ -146,6 +156,7 @@ pub async fn discover_stargazer_repositories(
             .map_err(|e| AppError::service(format!("failed to fetch stargazers: {e}"),),)?;
 
         let items_count = stargazers.items.len();
+        debug!("Processing {} stargazers on page {}", items_count, page);
 
         for stargazer in &stargazers.items {
             let user = match &stargazer.user {
@@ -153,6 +164,7 @@ pub async fn discover_stargazer_repositories(
                 None => continue,
             };
             let username = &user.login;
+            debug!("Fetching repositories for user: {}", username);
 
             let user_repos = octocrab
                 .users(username,)
@@ -177,6 +189,7 @@ pub async fn discover_stargazer_repositories(
 
                 let key = (repo_info.owner.clone(), repo_info.repository.clone(),);
                 if seen.insert(key,) {
+                    debug!("Discovered repository: {}", repo_info);
                     discovered.push(repo_info,);
                 }
             }
@@ -189,6 +202,7 @@ pub async fn discover_stargazer_repositories(
         page += 1;
     }
 
+    info!("Stargazer discovery complete: {} repositories found", discovered.len());
     Ok(discovered,)
 }
 

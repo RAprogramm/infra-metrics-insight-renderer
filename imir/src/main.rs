@@ -14,6 +14,7 @@ use imir::{
     Error, TargetsDocument, discover_badge_users, discover_stargazer_repositories,
     generate_badge_assets, load_targets, resolve_open_source_repositories, sync_targets,
 };
+use tracing::info;
 
 /// Command line interface for generating normalized metrics target definitions.
 #[derive(Debug, Parser,)]
@@ -146,6 +147,14 @@ struct SyncArgs
 #[tokio::main]
 async fn main()
 {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info",),),
+        )
+        .with_target(false,)
+        .init();
+
     if let Err(error,) = run().await {
         eprintln!("{}", error.to_display_string());
         process::exit(1,);
@@ -254,7 +263,9 @@ fn run_badge_generate(args: BadgeGenerateArgs,) -> Result<(), Error,>
 
 async fn run_discover(args: DiscoverArgs,) -> Result<(), Error,>
 {
+    info!("Starting repository discovery using source: {}", args.source);
     let repositories = discover_repositories(&args.token, &args.source,).await?;
+    info!("Discovered {} repositories", repositories.len());
 
     let stdout = io::stdout();
     let mut handle = stdout.lock();
@@ -319,11 +330,18 @@ async fn discover_repositories(
 
 async fn run_sync(args: SyncArgs,) -> Result<(), Error,>
 {
+    info!("Starting sync with source: {}", args.source);
     let repositories = discover_repositories(&args.token, &args.source,).await?;
+    info!("Found {} repositories to sync", repositories.len());
 
     let added =
         sync_targets(&args.config, &repositories,).map_err(|e| Error::service(e.to_string(),),)?;
 
+    if added > 0 {
+        info!("Successfully synced {} new repositories to {}", added, args.config.display());
+    } else {
+        info!("No new repositories to sync");
+    }
     println!("Synced {} new repositories to {}", added, args.config.display());
 
     Ok((),)
