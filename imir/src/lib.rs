@@ -15,7 +15,7 @@
 //! use imir::{BadgeStyle, Error, parse_targets};
 //!
 //! # fn main() -> Result<(), Error> {
-//! let yaml = r#"
+//! let yaml = r"
 //! targets:
 //!   - owner: octocat
 //!     repo: metrics
@@ -25,7 +25,7 @@
 //!       widget:
 //!         columns: 2
 //!         alignment: center
-//! "#;
+//! ";
 //!
 //! let document = parse_targets(yaml,)?;
 //! assert_eq!(document.targets[0].badge.style, BadgeStyle::Flat);

@@ -70,8 +70,8 @@ REMOTE_IMAGE="${GHCR_HOST}/${REPO_SLUG}:${PREBUILT_TAG}"
 echo "Preparing metrics docker image ${LOCAL_IMAGE} (prebuilt tag ${PREBUILT_TAG})"
 
 if docker image inspect "${LOCAL_IMAGE}" >/dev/null 2>&1; then
-  echo "Image ${LOCAL_IMAGE} already present locally"
-  exit 0
+  echo "Removing cached image ${LOCAL_IMAGE} to prevent stale data"
+  docker rmi "${LOCAL_IMAGE}" >/dev/null 2>&1 || true
 fi
 
 if [ -n "${TOKEN}" ]; then
