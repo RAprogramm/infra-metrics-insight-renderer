@@ -46,6 +46,8 @@ enum Command
     Discover(DiscoverArgs,),
     /// Synchronize discovered repositories with targets.yaml.
     Sync(SyncArgs,),
+    /// Show contributor activity for the last 30 days.
+    Contributors(ContributorsArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -176,6 +178,22 @@ struct SyncArgs
     metrics_pattern: String,
 }
 
+#[derive(Debug, Args,)]
+struct ContributorsArgs
+{
+    /// Repository owner.
+    #[arg(long = "owner", value_name = "OWNER")]
+    owner: String,
+
+    /// Repository name.
+    #[arg(long = "repo", value_name = "REPO")]
+    repo: String,
+
+    /// GitHub personal access token for API authentication.
+    #[arg(long = "token", env = "GITHUB_TOKEN")]
+    token: String,
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main()
@@ -209,6 +227,7 @@ async fn run() -> Result<(), Error,>
         Some(Command::Badge(args,),) => run_badge(args,),
         Some(Command::Discover(args,),) => run_discover(args,).await,
         Some(Command::Sync(args,),) => run_sync(args,).await,
+        Some(Command::Contributors(args,),) => run_contributors(args,).await,
         None => run_legacy_targets(&cli.legacy,),
     }
 }
@@ -393,6 +412,30 @@ async fn run_sync(args: SyncArgs,) -> Result<(), Error,>
         info!("No new repositories to sync");
     }
     println!("Synced {} new repositories to {}", added, args.config.display());
+
+    Ok((),)
+}
+
+async fn run_contributors(args: ContributorsArgs,) -> Result<(), Error,>
+{
+    use imir::{fetch_contributor_activity, retry::RetryConfig};
+    use octocrab::Octocrab;
+
+    info!("Fetching contributor activity for {}/{}", args.owner, args.repo);
+
+    let octocrab = Octocrab::builder()
+        .personal_token(args.token.clone(),)
+        .build()
+        .map_err(|e| Error::service(format!("failed to initialize GitHub client: {e}"),),)?;
+
+    let retry_config = RetryConfig::default();
+    let contributors =
+        fetch_contributor_activity(&octocrab, &args.owner, &args.repo, &retry_config,).await?;
+
+    let json = serde_json::to_string_pretty(&contributors,)
+        .map_err(|e| Error::service(format!("failed to serialize contributors: {e}"),),)?;
+
+    println!("{json}");
 
     Ok((),)
 }

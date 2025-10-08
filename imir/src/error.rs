@@ -125,6 +125,16 @@ impl From<serde_json::Error,> for Error
     }
 }
 
+impl From<masterror::AppError,> for Error
+{
+    fn from(error: masterror::AppError,) -> Self
+    {
+        Self::Service {
+            message: error.to_string(),
+        }
+    }
+}
+
 /// Creates an [`Error::Io`] variant capturing the failing path and source.
 ///
 /// # Parameters

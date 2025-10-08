@@ -36,6 +36,7 @@
 
 mod badge;
 mod config;
+pub mod contributors;
 mod discover;
 mod error;
 mod normalizer;
@@ -49,6 +50,7 @@ pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
     TargetKind,
 };
+pub use contributors::{ContributorActivity, fetch_contributor_activity};
 pub use discover::{
     DiscoveredRepository, DiscoveryConfig, discover_badge_users, discover_stargazer_repositories,
 };
