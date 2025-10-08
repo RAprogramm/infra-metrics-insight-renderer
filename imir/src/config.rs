@@ -25,7 +25,7 @@ use crate::slug::SlugStrategy;
 /// let config: TargetConfig = serde_yaml::from_str(yaml,).expect("valid configuration",);
 /// assert_eq!(config.targets.len(), 1);
 /// ```
-#[derive(Debug, Deserialize,)]
+#[derive(Debug, Deserialize, Serialize,)]
 pub struct TargetConfig
 {
     /// Collection of metrics targets to render.
@@ -39,7 +39,7 @@ pub struct TargetConfig
 /// Instances are typically created by deserializing YAML documents. Helper
 /// methods are provided to derive slugs and display names in a consistent
 /// manner.
-#[derive(Debug, Deserialize, Clone,)]
+#[derive(Debug, Deserialize, Serialize, Clone,)]
 pub struct TargetEntry
 {
     /// GitHub account that owns the repository or profile.
@@ -181,7 +181,7 @@ impl TargetEntry
 /// };
 /// assert_eq!(options.style, Some(BadgeStyle::FlatSquare));
 /// ```
-#[derive(Debug, Deserialize, Clone, Default,)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default,)]
 #[serde(deny_unknown_fields)]
 pub struct BadgeOptions
 {
@@ -216,7 +216,7 @@ pub enum BadgeStyle
 /// The configuration is intentionally conservative to avoid generating
 /// widgets that violate rendering constraints. Values outside the documented
 /// ranges are rejected during deserialization.
-#[derive(Debug, Deserialize, Clone, Default,)]
+#[derive(Debug, Deserialize, Serialize, Clone, Default,)]
 #[serde(deny_unknown_fields)]
 pub struct BadgeWidgetOptions
 {

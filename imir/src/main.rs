@@ -11,7 +11,8 @@ use std::{
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
-    Error, TargetsDocument, generate_badge_assets, load_targets, resolve_open_source_repositories,
+    Error, TargetsDocument, discover_badge_users, discover_stargazer_repositories,
+    generate_badge_assets, load_targets, resolve_open_source_repositories, sync_targets,
 };
 
 /// Command line interface for generating normalized metrics target definitions.
@@ -39,6 +40,10 @@ enum Command
     OpenSource(OpenSourceArgs,),
     /// Generate badge assets for a normalized target.
     Badge(BadgeArgs,),
+    /// Discover repositories using IMIR badges.
+    Discover(DiscoverArgs,),
+    /// Synchronize discovered repositories with targets.yaml.
+    Sync(SyncArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -105,10 +110,43 @@ struct BadgeGenerateArgs
     output: PathBuf,
 }
 
-/// Entry point that reports errors and sets the appropriate exit status.
-fn main()
+#[derive(Debug, Args,)]
+struct DiscoverArgs
 {
-    if let Err(error,) = run() {
+    /// GitHub personal access token for API authentication.
+    #[arg(long = "token", env = "GITHUB_TOKEN")]
+    token: String,
+
+    /// Discovery source: badge, stargazers, or all.
+    #[arg(long = "source", value_name = "SOURCE", default_value = "all")]
+    source: String,
+
+    /// Output format (json or yaml).
+    #[arg(long = "format", value_name = "FORMAT", default_value = "json")]
+    format: String,
+}
+
+#[derive(Debug, Args,)]
+struct SyncArgs
+{
+    /// Path to the YAML configuration file to update.
+    #[arg(long = "config", value_name = "PATH")]
+    config: PathBuf,
+
+    /// GitHub personal access token for API authentication.
+    #[arg(long = "token", env = "GITHUB_TOKEN")]
+    token: String,
+
+    /// Discovery source: badge, stargazers, or all.
+    #[arg(long = "source", value_name = "SOURCE", default_value = "all")]
+    source: String,
+}
+
+/// Entry point that reports errors and sets the appropriate exit status.
+#[tokio::main]
+async fn main()
+{
+    if let Err(error,) = run().await {
         eprintln!("{}", error.to_display_string());
         process::exit(1,);
     }
@@ -119,7 +157,7 @@ fn main()
 /// # Errors
 ///
 /// Propagates errors originating from configuration loading and normalization.
-fn run() -> Result<(), Error,>
+async fn run() -> Result<(), Error,>
 {
     let cli = Cli::parse();
 
@@ -127,6 +165,8 @@ fn run() -> Result<(), Error,>
         Some(Command::Targets(args,),) => run_targets(args,),
         Some(Command::OpenSource(args,),) => run_open_source(args,),
         Some(Command::Badge(args,),) => run_badge(args,),
+        Some(Command::Discover(args,),) => run_discover(args,).await,
+        Some(Command::Sync(args,),) => run_sync(args,).await,
         None => run_legacy_targets(&cli.legacy,),
     }
 }
@@ -208,6 +248,83 @@ fn run_badge_generate(args: BadgeGenerateArgs,) -> Result<(), Error,>
         .ok_or_else(|| Error::validation(format!("target '{slug}' was not found",),),)?;
 
     generate_badge_assets(target, &args.output,)?;
+
+    Ok((),)
+}
+
+async fn run_discover(args: DiscoverArgs,) -> Result<(), Error,>
+{
+    let repositories = discover_repositories(&args.token, &args.source,).await?;
+
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
+
+    match args.format.as_str() {
+        "json" => {
+            serde_json::to_writer_pretty(&mut handle, &repositories,)?;
+        }
+        "yaml" => {
+            serde_yaml::to_writer(&mut handle, &repositories,)?;
+        }
+        format => {
+            return Err(Error::validation(format!("unsupported format: {format}"),),);
+        }
+    }
+
+    Ok((),)
+}
+
+async fn discover_repositories(
+    token: &str,
+    source: &str,
+) -> Result<Vec<imir::DiscoveredRepository,>, Error,>
+{
+    let mut repositories = Vec::new();
+
+    match source {
+        "badge" => {
+            let badge_repos =
+                discover_badge_users(token,).await.map_err(|e| Error::service(e.to_string(),),)?;
+            repositories.extend(badge_repos,);
+        }
+        "stargazers" => {
+            let star_repos = discover_stargazer_repositories(token,)
+                .await
+                .map_err(|e| Error::service(e.to_string(),),)?;
+            repositories.extend(star_repos,);
+        }
+        "all" => {
+            let badge_repos =
+                discover_badge_users(token,).await.map_err(|e| Error::service(e.to_string(),),)?;
+            let star_repos = discover_stargazer_repositories(token,)
+                .await
+                .map_err(|e| Error::service(e.to_string(),),)?;
+            repositories.extend(badge_repos,);
+            repositories.extend(star_repos,);
+
+            repositories.sort_by(|a, b| {
+                a.owner.cmp(&b.owner,).then_with(|| a.repository.cmp(&b.repository,),)
+            },);
+            repositories.dedup_by(|a, b| a.owner == b.owner && a.repository == b.repository,);
+        }
+        source => {
+            return Err(Error::validation(format!(
+                "unsupported source: {source}. Use: badge, stargazers, or all"
+            ),),);
+        }
+    }
+
+    Ok(repositories,)
+}
+
+async fn run_sync(args: SyncArgs,) -> Result<(), Error,>
+{
+    let repositories = discover_repositories(&args.token, &args.source,).await?;
+
+    let added =
+        sync_targets(&args.config, &repositories,).map_err(|e| Error::service(e.to_string(),),)?;
+
+    println!("Synced {} new repositories to {}", added, args.config.display());
 
     Ok((),)
 }
