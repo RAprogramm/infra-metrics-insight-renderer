@@ -20,3 +20,13 @@ indicatif = "0.17"
 [dev-dependencies]
 proptest = "1.4"
 tempfile = "3.13"
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
