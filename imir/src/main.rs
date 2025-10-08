@@ -11,8 +11,9 @@ use std::{
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
-    Error, TargetsDocument, discover_badge_users, discover_stargazer_repositories,
-    generate_badge_assets, load_targets, resolve_open_source_repositories, sync_targets,
+    DiscoveryConfig, Error, TargetsDocument, discover_badge_users,
+    discover_stargazer_repositories, generate_badge_assets, load_targets,
+    resolve_open_source_repositories, sync_targets,
 };
 use tracing::info;
 
@@ -125,6 +126,22 @@ struct DiscoverArgs
     /// Output format (json or yaml).
     #[arg(long = "format", value_name = "FORMAT", default_value = "json")]
     format: String,
+
+    /// Maximum number of pages to fetch from GitHub API.
+    #[arg(long = "max-pages", value_name = "COUNT", default_value = "10")]
+    max_pages: u32,
+
+    /// Badge URL pattern to search for.
+    #[arg(
+        long = "badge-pattern",
+        value_name = "PATTERN",
+        default_value = "RAprogramm/infra-metrics-insight-renderer"
+    )]
+    badge_pattern: String,
+
+    /// Metrics path pattern to search for.
+    #[arg(long = "metrics-pattern", value_name = "PATTERN", default_value = "/metrics/")]
+    metrics_pattern: String,
 }
 
 #[derive(Debug, Args,)]
@@ -141,6 +158,22 @@ struct SyncArgs
     /// Discovery source: badge, stargazers, or all.
     #[arg(long = "source", value_name = "SOURCE", default_value = "all")]
     source: String,
+
+    /// Maximum number of pages to fetch from GitHub API.
+    #[arg(long = "max-pages", value_name = "COUNT", default_value = "10")]
+    max_pages: u32,
+
+    /// Badge URL pattern to search for.
+    #[arg(
+        long = "badge-pattern",
+        value_name = "PATTERN",
+        default_value = "RAprogramm/infra-metrics-insight-renderer"
+    )]
+    badge_pattern: String,
+
+    /// Metrics path pattern to search for.
+    #[arg(long = "metrics-pattern", value_name = "PATTERN", default_value = "/metrics/")]
+    metrics_pattern: String,
 }
 
 /// Entry point that reports errors and sets the appropriate exit status.
@@ -263,8 +296,14 @@ fn run_badge_generate(args: BadgeGenerateArgs,) -> Result<(), Error,>
 
 async fn run_discover(args: DiscoverArgs,) -> Result<(), Error,>
 {
+    let config = DiscoveryConfig {
+        max_pages:            args.max_pages,
+        badge_url_pattern:    args.badge_pattern.clone(),
+        metrics_path_pattern: args.metrics_pattern.clone(),
+    };
+
     info!("Starting repository discovery using source: {}", args.source);
-    let repositories = discover_repositories(&args.token, &args.source,).await?;
+    let repositories = discover_repositories(&args.token, &args.source, &config,).await?;
     info!("Discovered {} repositories", repositories.len());
 
     let stdout = io::stdout();
@@ -288,26 +327,29 @@ async fn run_discover(args: DiscoverArgs,) -> Result<(), Error,>
 async fn discover_repositories(
     token: &str,
     source: &str,
+    config: &DiscoveryConfig,
 ) -> Result<Vec<imir::DiscoveredRepository,>, Error,>
 {
     let mut repositories = Vec::new();
 
     match source {
         "badge" => {
-            let badge_repos =
-                discover_badge_users(token,).await.map_err(|e| Error::service(e.to_string(),),)?;
+            let badge_repos = discover_badge_users(token, config,)
+                .await
+                .map_err(|e| Error::service(e.to_string(),),)?;
             repositories.extend(badge_repos,);
         }
         "stargazers" => {
-            let star_repos = discover_stargazer_repositories(token,)
+            let star_repos = discover_stargazer_repositories(token, config,)
                 .await
                 .map_err(|e| Error::service(e.to_string(),),)?;
             repositories.extend(star_repos,);
         }
         "all" => {
-            let badge_repos =
-                discover_badge_users(token,).await.map_err(|e| Error::service(e.to_string(),),)?;
-            let star_repos = discover_stargazer_repositories(token,)
+            let badge_repos = discover_badge_users(token, config,)
+                .await
+                .map_err(|e| Error::service(e.to_string(),),)?;
+            let star_repos = discover_stargazer_repositories(token, config,)
                 .await
                 .map_err(|e| Error::service(e.to_string(),),)?;
             repositories.extend(badge_repos,);
@@ -330,8 +372,14 @@ async fn discover_repositories(
 
 async fn run_sync(args: SyncArgs,) -> Result<(), Error,>
 {
+    let config = DiscoveryConfig {
+        max_pages:            args.max_pages,
+        badge_url_pattern:    args.badge_pattern.clone(),
+        metrics_path_pattern: args.metrics_pattern.clone(),
+    };
+
     info!("Starting sync with source: {}", args.source);
-    let repositories = discover_repositories(&args.token, &args.source,).await?;
+    let repositories = discover_repositories(&args.token, &args.source, &config,).await?;
     info!("Found {} repositories to sync", repositories.len());
 
     let added =
