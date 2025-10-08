@@ -13,6 +13,8 @@ serde_yaml = "0.9"
 masterror = "0.24"
 octocrab = "0.42"
 tokio = { version = "1.42", features = ["rt-multi-thread", "macros"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 proptest = "1.4"
