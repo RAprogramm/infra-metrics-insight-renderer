@@ -41,6 +41,24 @@ pub struct BadgeAssets
 /// Returns [`Error::BadgeIo`](Error::BadgeIo) when directories or files cannot
 /// be created and [`Error::Serialize`](Error::Serialize) if the manifest cannot
 /// be encoded.
+///
+/// # Example
+///
+/// ```no_run
+/// use std::path::Path;
+///
+/// use imir::{generate_badge_assets, load_targets};
+///
+/// # fn main() -> Result<(), imir::Error> {
+/// let document = load_targets(Path::new("targets/targets.yaml",),)?;
+/// let target = &document.targets[0];
+///
+/// let assets = generate_badge_assets(target, Path::new("metrics",),)?;
+/// println!("SVG: {}", assets.svg_path.display());
+/// println!("Manifest: {}", assets.manifest_path.display());
+/// # Ok(())
+/// # }
+/// ```
 pub fn generate_badge_assets(
     target: &RenderTarget,
     output_dir: &Path,
