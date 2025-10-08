@@ -5,6 +5,8 @@
 ///
 /// Searches for repositories referencing badge URLs from the configured
 /// metrics repository and returns their owner/repository identifiers.
+use std::collections::HashSet;
+
 use masterror::AppError;
 use octocrab::{Octocrab, models::Code};
 use serde::{Deserialize, Serialize};
@@ -55,14 +57,14 @@ impl std::fmt::Display for DiscoveredRepository
 /// ```
 pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredRepository,>, AppError,>
 {
-    let octocrab = Octocrab::builder()
-        .personal_token(token.to_string(),)
-        .build()
-        .map_err(|e| AppError::service(format!("failed to initialize GitHub client: {e}"),),)?;
+    let octocrab = Octocrab::builder().personal_token(token,).build().map_err(|e| {
+        AppError::unauthorized(format!("failed to initialize GitHub client: {e}"),)
+    },)?;
 
     let query = format!("{BADGE_URL_PATTERN} {METRICS_PATH_PATTERN}");
 
-    let mut discovered = Vec::new();
+    let mut discovered = Vec::with_capacity(100,);
+    let mut seen = HashSet::with_capacity(100,);
     let mut page = 1u32;
     const MAX_PAGES: u32 = 10;
 
@@ -79,10 +81,8 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
 
         for item in &search_result.items {
             if let Some(repo_info,) = extract_repository_info(item,) {
-                let is_duplicate = discovered.iter().any(|r: &DiscoveredRepository| {
-                    r.owner == repo_info.owner && r.repository == repo_info.repository
-                },);
-                if !is_duplicate {
+                let key = (repo_info.owner.clone(), repo_info.repository.clone(),);
+                if seen.insert(key,) {
                     discovered.push(repo_info,);
                 }
             }
@@ -126,12 +126,12 @@ pub async fn discover_stargazer_repositories(
     token: &str,
 ) -> Result<Vec<DiscoveredRepository,>, AppError,>
 {
-    let octocrab = Octocrab::builder()
-        .personal_token(token.to_string(),)
-        .build()
-        .map_err(|e| AppError::service(format!("failed to initialize GitHub client: {e}"),),)?;
+    let octocrab = Octocrab::builder().personal_token(token,).build().map_err(|e| {
+        AppError::unauthorized(format!("failed to initialize GitHub client: {e}"),)
+    },)?;
 
-    let mut discovered = Vec::new();
+    let mut discovered = Vec::with_capacity(500,);
+    let mut seen = HashSet::with_capacity(500,);
     let mut page = 1u32;
     const MAX_PAGES: u32 = 10;
 
@@ -175,11 +175,8 @@ pub async fn discover_stargazer_repositories(
                     repository: repo.name.clone(),
                 };
 
-                let is_duplicate = discovered.iter().any(|r: &DiscoveredRepository| {
-                    r.owner == repo_info.owner && r.repository == repo_info.repository
-                },);
-
-                if !is_duplicate {
+                let key = (repo_info.owner.clone(), repo_info.repository.clone(),);
+                if seen.insert(key,) {
                     discovered.push(repo_info,);
                 }
             }
@@ -223,5 +220,31 @@ mod tests
             repository: "testrepo".to_string(),
         };
         assert_eq!(repo.to_string(), "testowner/testrepo");
+    }
+
+    #[test]
+    fn discovered_repository_clone()
+    {
+        let repo = DiscoveredRepository {
+            owner:      "owner".to_string(),
+            repository: "repo".to_string(),
+        };
+        let cloned = repo.clone();
+        assert_eq!(repo.owner, cloned.owner);
+        assert_eq!(repo.repository, cloned.repository);
+    }
+
+    #[tokio::test]
+    async fn discover_badge_users_fails_with_invalid_token()
+    {
+        let result = discover_badge_users("invalid_token",).await;
+        assert!(result.is_err(), "should fail with invalid token",);
+    }
+
+    #[tokio::test]
+    async fn discover_stargazer_repositories_fails_with_invalid_token()
+    {
+        let result = discover_stargazer_repositories("invalid_token",).await;
+        assert!(result.is_err(), "should fail with invalid token",);
     }
 }

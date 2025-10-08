@@ -99,18 +99,17 @@ fn path_to_string(path: &Path,) -> String
 
 fn build_svg_content(target: &RenderTarget,) -> String
 {
+    use std::fmt::Write as _;
+
     let mut buffer = String::with_capacity(256,);
     let background = badge_background(target.kind,);
     let label = badge_label(target,);
     let escaped_label = escape_xml(&label,);
     let escaped_display = escape_xml(&target.display_name,);
 
-    use std::fmt::Write as _;
-
     let _ = writeln!(
         buffer,
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"{}\" width=\"440\" height=\"140\" viewBox=\"0 0 440 140\">",
-        escaped_display,
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" role=\"img\" aria-label=\"{escaped_display}\" width=\"440\" height=\"140\" viewBox=\"0 0 440 140\">",
     );
     let _ = writeln!(
         buffer,
@@ -120,13 +119,11 @@ fn build_svg_content(target: &RenderTarget,) -> String
     buffer.push_str("  <rect x=\"8\" y=\"8\" width=\"424\" height=\"124\" rx=\"16\" fill=\"url(#imir-badge)\"/>");
     let _ = writeln!(
         buffer,
-        "\n  <text x=\"220\" y=\"60\" text-anchor=\"middle\" font-family=\"'Segoe UI', 'SF Pro Display', sans-serif\" font-size=\"22\" fill=\"#ffffff\">{}</text>",
-        escaped_label,
+        "\n  <text x=\"220\" y=\"60\" text-anchor=\"middle\" font-family=\"'Segoe UI', 'SF Pro Display', sans-serif\" font-size=\"22\" fill=\"#ffffff\">{escaped_label}</text>",
     );
     let _ = writeln!(
         buffer,
-        "  <text x=\"220\" y=\"98\" text-anchor=\"middle\" font-family=\"'Segoe UI', 'SF Pro Display', sans-serif\" font-size=\"18\" fill=\"#f6f8fa\">{}</text>",
-        escaped_display,
+        "  <text x=\"220\" y=\"98\" text-anchor=\"middle\" font-family=\"'Segoe UI', 'SF Pro Display', sans-serif\" font-size=\"18\" fill=\"#f6f8fa\">{escaped_display}</text>",
     );
     buffer.push_str("</svg>\n",);
 

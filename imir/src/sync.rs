@@ -153,4 +153,146 @@ targets:
         let added = sync_targets(&config_path, &discovered,).expect("sync failed",);
         assert_eq!(added, 0);
     }
+
+    #[test]
+    fn sync_targets_adds_multiple_repositories()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("targets.yaml",);
+        let initial_yaml = r#"
+targets:
+  - owner: existing
+    repository: repo
+    type: open_source
+"#;
+        fs::write(&config_path, initial_yaml,).expect("failed to write config",);
+
+        let discovered = vec![
+            DiscoveredRepository {
+                owner:      "user1".to_string(),
+                repository: "repo1".to_string(),
+            },
+            DiscoveredRepository {
+                owner:      "user2".to_string(),
+                repository: "repo2".to_string(),
+            },
+            DiscoveredRepository {
+                owner:      "user1".to_string(),
+                repository: "repo3".to_string(),
+            },
+        ];
+
+        let added = sync_targets(&config_path, &discovered,).expect("sync failed",);
+        assert_eq!(added, 3);
+
+        let updated = fs::read_to_string(&config_path,).expect("failed to read updated config",);
+        assert!(updated.contains("user1"));
+        assert!(updated.contains("repo1"));
+        assert!(updated.contains("user2"));
+        assert!(updated.contains("repo2"));
+        assert!(updated.contains("repo3"));
+    }
+
+    #[test]
+    fn sync_targets_preserves_existing_customizations()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("targets.yaml",);
+        let initial_yaml = r#"
+targets:
+  - owner: existing
+    repository: repo
+    type: open_source
+    slug: custom-slug
+    display_name: Custom Name
+"#;
+        fs::write(&config_path, initial_yaml,).expect("failed to write config",);
+
+        let discovered = vec![DiscoveredRepository {
+            owner:      "newuser".to_string(),
+            repository: "newrepo".to_string(),
+        }];
+
+        sync_targets(&config_path, &discovered,).expect("sync failed",);
+
+        let updated = fs::read_to_string(&config_path,).expect("failed to read updated config",);
+        assert!(updated.contains("custom-slug"));
+        assert!(updated.contains("Custom Name"));
+    }
+
+    #[test]
+    fn sync_targets_sorts_alphabetically()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("targets.yaml",);
+        let initial_yaml = r#"
+targets:
+  - owner: zebra
+    repository: repo
+    type: open_source
+"#;
+        fs::write(&config_path, initial_yaml,).expect("failed to write config",);
+
+        let discovered = vec![DiscoveredRepository {
+            owner:      "alpha".to_string(),
+            repository: "repo".to_string(),
+        }];
+
+        sync_targets(&config_path, &discovered,).expect("sync failed",);
+
+        let updated = fs::read_to_string(&config_path,).expect("failed to read updated config",);
+        let alpha_pos = updated.find("alpha",).expect("alpha not found",);
+        let zebra_pos = updated.find("zebra",).expect("zebra not found",);
+        assert!(alpha_pos < zebra_pos, "entries should be sorted alphabetically",);
+    }
+
+    #[test]
+    fn sync_targets_returns_error_for_invalid_yaml()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("targets.yaml",);
+        fs::write(&config_path, "invalid: [yaml: structure",).expect("failed to write config",);
+
+        let discovered = vec![DiscoveredRepository {
+            owner:      "user".to_string(),
+            repository: "repo".to_string(),
+        }];
+
+        let result = sync_targets(&config_path, &discovered,);
+        assert!(result.is_err(), "should fail on invalid YAML",);
+    }
+
+    #[test]
+    fn sync_targets_returns_error_for_missing_file()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("nonexistent.yaml",);
+
+        let discovered = vec![DiscoveredRepository {
+            owner:      "user".to_string(),
+            repository: "repo".to_string(),
+        }];
+
+        let result = sync_targets(&config_path, &discovered,);
+        assert!(result.is_err(), "should fail when file doesn't exist",);
+    }
+
+    #[test]
+    fn sync_targets_handles_empty_discovered_list()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("targets.yaml",);
+        let initial_yaml = r#"
+targets:
+  - owner: existing
+    repository: repo
+    type: open_source
+"#;
+        fs::write(&config_path, initial_yaml,).expect("failed to write config",);
+
+        let discovered = vec![];
+
+        let added = sync_targets(&config_path, &discovered,).expect("sync failed",);
+        assert_eq!(added, 0);
+    }
 }
