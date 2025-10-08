@@ -297,8 +297,8 @@ fn run_badge_generate(args: BadgeGenerateArgs,) -> Result<(), Error,>
 async fn run_discover(args: DiscoverArgs,) -> Result<(), Error,>
 {
     let config = DiscoveryConfig {
-        max_pages:            args.max_pages,
-        badge_url_pattern:    args.badge_pattern.clone(),
+        max_pages: args.max_pages,
+        badge_url_pattern: args.badge_pattern.clone(),
         metrics_path_pattern: args.metrics_pattern.clone(),
         ..Default::default()
     };
@@ -374,8 +374,8 @@ async fn discover_repositories(
 async fn run_sync(args: SyncArgs,) -> Result<(), Error,>
 {
     let config = DiscoveryConfig {
-        max_pages:            args.max_pages,
-        badge_url_pattern:    args.badge_pattern.clone(),
+        max_pages: args.max_pages,
+        badge_url_pattern: args.badge_pattern.clone(),
         metrics_path_pattern: args.metrics_pattern.clone(),
         ..Default::default()
     };
@@ -565,6 +565,223 @@ targets:
                 assert!(message.contains("target 'missing' was not found"));
             }
             other => panic!("unexpected error variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn targets_command_reads_valid_config()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("targets.yaml",);
+        let yaml = r#"
+targets:
+  - owner: testuser
+    repository: testrepo
+    type: open_source
+    slug: test-slug
+    display_name: Test Repository
+"#;
+        fs::write(&config_path, yaml,).expect("failed to write config",);
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "targets",
+            "--config",
+            config_path.to_str().expect("utf8",),
+        ],)
+        .expect("failed to parse targets command",);
+
+        match cli.command.expect("missing command",) {
+            Command::Targets(args,) => {
+                assert_eq!(args.config, config_path);
+                assert!(!args.pretty);
+            }
+            other => panic!("unexpected command variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn targets_command_reports_missing_file()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let nonexistent = temp.path().join("nonexistent.yaml",);
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "targets",
+            "--config",
+            nonexistent.to_str().expect("utf8",),
+        ],)
+        .expect("failed to parse targets command",);
+
+        let args = match cli.command.expect("missing command",) {
+            Command::Targets(args,) => args,
+            other => panic!("unexpected command variant: {other:?}"),
+        };
+
+        let result = super::run_targets(args,);
+        assert!(result.is_err(), "should fail for missing file",);
+    }
+
+    #[test]
+    fn targets_command_reports_invalid_yaml()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("invalid.yaml",);
+        fs::write(&config_path, "invalid: [yaml: syntax",).expect("failed to write config",);
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "targets",
+            "--config",
+            config_path.to_str().expect("utf8",),
+        ],)
+        .expect("failed to parse targets command",);
+
+        let args = match cli.command.expect("missing command",) {
+            Command::Targets(args,) => args,
+            other => panic!("unexpected command variant: {other:?}"),
+        };
+
+        let result = super::run_targets(args,);
+        assert!(result.is_err(), "should fail for invalid YAML",);
+    }
+
+    #[test]
+    fn discover_command_parses_all_flags()
+    {
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "discover",
+            "--token",
+            "test_token",
+            "--source",
+            "badge",
+            "--format",
+            "yaml",
+            "--max-pages",
+            "5",
+            "--badge-pattern",
+            "custom/repo",
+            "--metrics-pattern",
+            "/custom/",
+        ],)
+        .expect("failed to parse discover command",);
+
+        match cli.command.expect("missing command",) {
+            Command::Discover(args,) => {
+                assert_eq!(args.token, "test_token");
+                assert_eq!(args.source, "badge");
+                assert_eq!(args.format, "yaml");
+                assert_eq!(args.max_pages, 5);
+                assert_eq!(args.badge_pattern, "custom/repo");
+                assert_eq!(args.metrics_pattern, "/custom/");
+            }
+            other => panic!("unexpected command variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn sync_command_parses_all_flags()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("targets.yaml",);
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "sync",
+            "--config",
+            config_path.to_str().expect("utf8",),
+            "--token",
+            "test_token",
+            "--source",
+            "stargazers",
+            "--max-pages",
+            "3",
+            "--badge-pattern",
+            "org/metrics",
+            "--metrics-pattern",
+            "/dash/",
+        ],)
+        .expect("failed to parse sync command",);
+
+        match cli.command.expect("missing command",) {
+            Command::Sync(args,) => {
+                assert_eq!(args.config, config_path);
+                assert_eq!(args.token, "test_token");
+                assert_eq!(args.source, "stargazers");
+                assert_eq!(args.max_pages, 3);
+                assert_eq!(args.badge_pattern, "org/metrics");
+                assert_eq!(args.metrics_pattern, "/dash/");
+            }
+            other => panic!("unexpected command variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn open_source_command_handles_empty_input()
+    {
+        let cli = Cli::try_parse_from([env!("CARGO_PKG_NAME"), "open-source", "--input", "",],)
+            .expect("failed to parse open-source command",);
+
+        match cli.command.expect("missing command",) {
+            Command::OpenSource(args,) => {
+                assert_eq!(args.input, Some(String::new()));
+            }
+            other => panic!("unexpected command variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn open_source_command_parses_valid_json()
+    {
+        let json_input = r#"[{"owner":"user1","repo":"repo1"},{"owner":"user2","repo":"repo2"}]"#;
+
+        let cli =
+            Cli::try_parse_from([env!("CARGO_PKG_NAME"), "open-source", "--input", json_input,],)
+                .expect("failed to parse open-source command",);
+
+        match cli.command.expect("missing command",) {
+            Command::OpenSource(args,) => {
+                assert_eq!(args.input, Some(json_input.to_string()));
+            }
+            other => panic!("unexpected command variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn badge_generate_uses_default_output_dir()
+    {
+        let temp = tempdir().expect("failed to create tempdir",);
+        let config_path = temp.path().join("targets.yaml",);
+        let yaml = r#"
+targets:
+  - owner: example
+    type: profile
+    slug: example-profile
+"#;
+        fs::write(&config_path, yaml,).expect("failed to write config",);
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "badge",
+            "generate",
+            "--config",
+            config_path.to_str().expect("utf8",),
+            "--target",
+            "example-profile",
+        ],)
+        .expect("failed to parse badge command",);
+
+        let args = match cli.command.expect("missing command",) {
+            Command::Badge(arguments,) => arguments,
+            other => panic!("unexpected command variant: {other:?}"),
+        };
+
+        match args.command {
+            super::BadgeCommand::Generate(gen_args,) => {
+                assert_eq!(gen_args.output, Path::new("metrics"));
+            }
         }
     }
 }
