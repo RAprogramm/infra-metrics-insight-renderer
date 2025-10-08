@@ -48,7 +48,9 @@ pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
     TargetKind,
 };
-pub use discover::{DiscoveredRepository, discover_badge_users, discover_stargazer_repositories};
+pub use discover::{
+    DiscoveredRepository, DiscoveryConfig, discover_badge_users, discover_stargazer_repositories,
+};
 pub use error::{Error, io_error};
 pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,

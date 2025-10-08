@@ -18,6 +18,31 @@ const METRICS_PATH_PATTERN: &str = "/metrics/";
 const IMIR_REPO_OWNER: &str = "RAprogramm";
 const IMIR_REPO_NAME: &str = "infra-metrics-insight-renderer";
 
+/// Configuration for repository discovery operations.
+#[derive(Debug, Clone,)]
+pub struct DiscoveryConfig
+{
+    /// Maximum number of pages to fetch from GitHub API (default: 10).
+    pub max_pages:            u32,
+    /// Badge URL pattern to search for (default:
+    /// RAprogramm/infra-metrics-insight-renderer).
+    pub badge_url_pattern:    String,
+    /// Metrics path pattern to search for (default: /metrics/).
+    pub metrics_path_pattern: String,
+}
+
+impl Default for DiscoveryConfig
+{
+    fn default() -> Self
+    {
+        Self {
+            max_pages:            10,
+            badge_url_pattern:    BADGE_URL_PATTERN.to_string(),
+            metrics_path_pattern: METRICS_PATH_PATTERN.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize,)]
 pub struct DiscoveredRepository
 {
@@ -38,6 +63,7 @@ impl std::fmt::Display for DiscoveredRepository
 /// # Arguments
 ///
 /// * `token` - GitHub personal access token for API authentication
+/// * `config` - Discovery configuration (max pages, search patterns)
 ///
 /// # Errors
 ///
@@ -46,26 +72,30 @@ impl std::fmt::Display for DiscoveredRepository
 /// # Example
 ///
 /// ```no_run
-/// use imir::discover_badge_users;
+/// use imir::{DiscoveryConfig, discover_badge_users};
 ///
 /// # async fn example() -> Result<(), masterror::AppError> {
 /// let token = std::env::var("GITHUB_TOKEN",).unwrap();
-/// let repos = discover_badge_users(&token,).await?;
+/// let config = DiscoveryConfig::default();
+/// let repos = discover_badge_users(&token, &config,).await?;
 /// for repo in repos {
 ///     println!("Found: {}", repo);
 /// }
 /// # Ok(())
 /// # }
 /// ```
-pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredRepository,>, AppError,>
+pub async fn discover_badge_users(
+    token: &str,
+    config: &DiscoveryConfig,
+) -> Result<Vec<DiscoveredRepository,>, AppError,>
 {
     debug!("Initializing GitHub client for badge discovery");
     let octocrab = Octocrab::builder().personal_token(token,).build().map_err(|e| {
         AppError::unauthorized(format!("failed to initialize GitHub client: {e}"),)
     },)?;
 
-    let query = format!("{BADGE_URL_PATTERN} {METRICS_PATH_PATTERN}");
-    info!("Searching for repositories using badge pattern");
+    let query = format!("{} {}", config.badge_url_pattern, config.metrics_path_pattern);
+    info!("Searching for repositories using badge pattern: {}", query);
 
     let pb = ProgressBar::new_spinner();
     pb.set_style(
@@ -78,10 +108,9 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
     let mut discovered = Vec::with_capacity(100,);
     let mut seen = HashSet::with_capacity(100,);
     let mut page = 1u32;
-    const MAX_PAGES: u32 = 10;
 
     loop {
-        pb.set_message(format!("Searching page {}/{}...", page, MAX_PAGES),);
+        pb.set_message(format!("Searching page {}/{}...", page, config.max_pages),);
         debug!("Fetching page {} of search results", page);
         let search_result = octocrab
             .search()
@@ -104,13 +133,13 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
                         "Found {} repositories (page {}/{})...",
                         discovered.len(),
                         page,
-                        MAX_PAGES
+                        config.max_pages
                     ),);
                 }
             }
         }
 
-        if items_count == 0 || page >= MAX_PAGES {
+        if items_count == 0 || page >= config.max_pages {
             break;
         }
 
@@ -130,6 +159,7 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
 /// # Arguments
 ///
 /// * `token` - GitHub personal access token for API authentication
+/// * `config` - Discovery configuration (max pages to fetch)
 ///
 /// # Errors
 ///
@@ -138,11 +168,12 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
 /// # Example
 ///
 /// ```no_run
-/// use imir::discover_stargazer_repositories;
+/// use imir::{DiscoveryConfig, discover_stargazer_repositories};
 ///
 /// # async fn example() -> Result<(), masterror::AppError> {
 /// let token = std::env::var("GITHUB_TOKEN",).unwrap();
-/// let repos = discover_stargazer_repositories(&token,).await?;
+/// let config = DiscoveryConfig::default();
+/// let repos = discover_stargazer_repositories(&token, &config,).await?;
 /// for repo in repos {
 ///     println!("Found: {}", repo);
 /// }
@@ -151,6 +182,7 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
 /// ```
 pub async fn discover_stargazer_repositories(
     token: &str,
+    config: &DiscoveryConfig,
 ) -> Result<Vec<DiscoveredRepository,>, AppError,>
 {
     debug!("Initializing GitHub client for stargazer discovery");
@@ -171,10 +203,9 @@ pub async fn discover_stargazer_repositories(
     let mut discovered = Vec::with_capacity(500,);
     let mut seen = HashSet::with_capacity(500,);
     let mut page = 1u32;
-    const MAX_PAGES: u32 = 10;
 
     loop {
-        pb.set_message(format!("Fetching stargazers page {}/{}...", page, MAX_PAGES),);
+        pb.set_message(format!("Fetching stargazers page {}/{}...", page, config.max_pages),);
         debug!("Fetching page {} of stargazers", page);
         let stargazers = octocrab
             .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME,)
@@ -231,13 +262,13 @@ pub async fn discover_stargazer_repositories(
                         "Found {} repositories (processing page {}/{})...",
                         discovered.len(),
                         page,
-                        MAX_PAGES
+                        config.max_pages
                     ),);
                 }
             }
         }
 
-        if items_count == 0 || page >= MAX_PAGES {
+        if items_count == 0 || page >= config.max_pages {
             break;
         }
 
@@ -297,14 +328,38 @@ mod tests
     #[tokio::test]
     async fn discover_badge_users_fails_with_invalid_token()
     {
-        let result = discover_badge_users("invalid_token",).await;
+        let config = DiscoveryConfig::default();
+        let result = discover_badge_users("invalid_token", &config,).await;
         assert!(result.is_err(), "should fail with invalid token",);
     }
 
     #[tokio::test]
     async fn discover_stargazer_repositories_fails_with_invalid_token()
     {
-        let result = discover_stargazer_repositories("invalid_token",).await;
+        let config = DiscoveryConfig::default();
+        let result = discover_stargazer_repositories("invalid_token", &config,).await;
         assert!(result.is_err(), "should fail with invalid token",);
+    }
+
+    #[test]
+    fn discovery_config_default_values()
+    {
+        let config = DiscoveryConfig::default();
+        assert_eq!(config.max_pages, 10);
+        assert_eq!(config.badge_url_pattern, "RAprogramm/infra-metrics-insight-renderer");
+        assert_eq!(config.metrics_path_pattern, "/metrics/");
+    }
+
+    #[test]
+    fn discovery_config_custom_values()
+    {
+        let config = DiscoveryConfig {
+            max_pages:            5,
+            badge_url_pattern:    "custom/repo".to_string(),
+            metrics_path_pattern: "/custom/".to_string(),
+        };
+        assert_eq!(config.max_pages, 5);
+        assert_eq!(config.badge_url_pattern, "custom/repo");
+        assert_eq!(config.metrics_path_pattern, "/custom/");
     }
 }
