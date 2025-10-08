@@ -1,0 +1,92 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+# SPDX-License-Identifier: MIT
+
+# Multi-repository configuration for organization-wide metrics
+targets:
+  # Frontend repositories
+  - owner: acme-corp
+    repository: web-client
+    type: open_source
+    slug: acme-web-client
+    display_name: ACME Web Client
+    badge:
+      style: flat
+      widget:
+        columns: 2
+        alignment: center
+
+  - owner: acme-corp
+    repository: mobile-app
+    type: open_source
+    slug: acme-mobile
+    display_name: ACME Mobile App
+    badge:
+      style: flat
+      widget:
+        columns: 2
+        alignment: center
+
+  # Backend services
+  - owner: acme-corp
+    repository: api-gateway
+    type: private_project
+    slug: acme-api-gateway
+    display_name: API Gateway
+    include_private: true
+    badge:
+      style: classic
+      widget:
+        columns: 3
+        alignment: start
+
+  - owner: acme-corp
+    repository: auth-service
+    type: private_project
+    slug: acme-auth
+    display_name: Authentication Service
+    include_private: true
+
+  - owner: acme-corp
+    repository: payment-service
+    type: private_project
+    slug: acme-payments
+    display_name: Payment Service
+    include_private: true
+
+  # Infrastructure
+  - owner: acme-corp
+    repository: terraform-infra
+    type: open_source
+    slug: acme-infra
+    display_name: Infrastructure as Code
+    badge:
+      style: for_the_badge
+      widget:
+        columns: 2
+        alignment: center
+        border_radius: 10
+
+  # Documentation
+  - owner: acme-corp
+    repository: docs
+    type: open_source
+    slug: acme-docs
+    display_name: Documentation
+    branch_name: gh-pages
+    contributors_branch: main
+
+  # Team profiles
+  - owner: alice
+    type: profile
+    slug: alice-profile
+    display_name: Alice - Team Lead
+
+  - owner: bob
+    type: profile
+    slug: bob-profile
+    display_name: Bob - Backend Developer
+
+  - owner: charlie
+    type: profile
+    slug: charlie-profile
+    display_name: Charlie - Frontend Developer

@@ -1,0 +1,87 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+# SPDX-License-Identifier: MIT
+
+# Full-featured configuration showcasing all available options
+targets:
+  # Profile dashboard with custom badge styling
+  - owner: RAprogramm
+    type: profile
+    slug: raprogramm-profile
+    display_name: "RA's Developer Profile"
+    branch_name: main
+    target_path: metrics/profile.svg
+    temp_artifact: tmp/profile.svg
+    time_zone: Europe/Moscow
+    include_private: false
+    badge:
+      style: for_the_badge
+      widget:
+        columns: 3
+        alignment: center
+        border_radius: 12
+
+  # Open source repository with contributors tracking
+  - owner: RAprogramm
+    repository: masterror
+    type: open_source
+    slug: masterror
+    display_name: Masterror - Error Handling
+    branch_name: main
+    contributors_branch: main
+    target_path: metrics/masterror.svg
+    temp_artifact: tmp/masterror.svg
+    time_zone: UTC
+    badge:
+      style: classic
+      widget:
+        columns: 2
+        alignment: start
+        border_radius: 6
+
+  # Private project with custom configuration
+  - owner: myorg
+    repository: private-backend
+    type: private_project
+    slug: backend-metrics
+    display_name: Backend API Metrics
+    branch_name: develop
+    contributors_branch: develop
+    target_path: metrics/private/backend.svg
+    temp_artifact: tmp/backend.svg
+    time_zone: America/New_York
+    include_private: true
+    badge:
+      style: flat
+      widget:
+        columns: 4
+        alignment: end
+        border_radius: 8
+
+  # Minimal open source project (defaults applied)
+  - owner: octocat
+    repository: Hello-World
+    type: open_source
+    # slug auto-generated: octocat-hello-world
+    # display_name auto-generated: octocat/Hello-World
+    # branch_name defaults to: main
+    # contributors_branch defaults to: main
+    # time_zone defaults to: UTC
+    # badge style defaults to: classic
+    # widget defaults to: columns=2, alignment=center, border_radius=6
+
+  # Multi-target configuration for different branches
+  - owner: myproject
+    repository: webapp
+    type: open_source
+    slug: webapp-main
+    display_name: WebApp (Main Branch)
+    branch_name: main
+    contributors_branch: main
+
+  - owner: myproject
+    repository: webapp
+    type: open_source
+    slug: webapp-staging
+    display_name: WebApp (Staging)
+    branch_name: staging
+    contributors_branch: staging
