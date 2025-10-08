@@ -8,7 +8,6 @@
 use std::{collections::HashSet, fs, path::Path};
 
 use masterror::AppError;
-use serde_yaml;
 
 use crate::{DiscoveredRepository, TargetConfig, TargetEntry, TargetKind};
 
