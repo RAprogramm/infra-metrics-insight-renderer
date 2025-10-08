@@ -195,24 +195,38 @@
 
 <h2 align="center" id="imir-badge-integration">IMIR badge integration</h2>
 
+<h3 align="center">Quick start for users</h3>
+
 <p>
-  Register a repository or profile by adding a new entry to
-  <a href="targets/targets.yaml"><code>targets/targets.yaml</code></a>. The orchestrator normalizes the identifier into a slug that becomes the SVG filename and forms the basis for badge embeds. Scheduled renders run on the cadence defined in the repository workflows, so dashboards refresh automatically once the target is listed.
+  <strong>No configuration needed!</strong> Simply add the badge to your README and star ⭐ this repository:
+</p>
+
+<pre><code class="language-markdown">![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/YOUR-REPO-NAME.svg)</code></pre>
+
+<p>
+  Replace <code>YOUR-REPO-NAME</code> with your repository name (e.g., <code>masterror</code> for <code>RAprogramm/masterror</code>).
+  The automated discovery system will detect your repository within 24 hours and start generating metrics automatically.
+</p>
+
+<h4>How it works</h4>
+
+<ol>
+  <li>Add the badge URL to your repository's README</li>
+  <li>Star ⭐ the <code>infra-metrics-insight-renderer</code> repository</li>
+  <li>Wait for automatic discovery (runs daily at 02:00 UTC)</li>
+  <li>Your metrics badge will be generated and auto-updated</li>
+</ol>
+
+<h3 align="center">Manual registration (optional)</h3>
+
+<p>
+  For immediate registration or custom configuration, add an entry to
+  <a href="targets/targets.yaml"><code>targets/targets.yaml</code></a>. The orchestrator normalizes the identifier into a slug that becomes the SVG filename. Scheduled renders run automatically once the target is listed.
 </p>
 
 <p>
-  After the initial registration lands in <code>main</code>, trigger the on-demand workflow named <code>render-&lt;slug&gt;.yml</code> to produce the first
-  badge artifact. This pre-populates the SVG before linking to it in documentation.
-</p>
-
-<p>Embed the rendered badge in Markdown using the slugged artifact path:</p>
-
-<pre><code class="language-markdown">![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/&lt;slug&gt;.svg)</code></pre>
-
-<p>
-  Replace <code>&lt;slug&gt;</code> with the normalized identifier emitted for the target (for example, <code>owner-repository</code> for repository cards or
-  <code>owner</code> for profile cards). Once the slug exists under <code>metrics/</code>, the badge can be referenced from any README or documentation
-  page.
+  After registration lands in <code>main</code>, trigger the on-demand workflow named <code>render-&lt;slug&gt;.yml</code> to produce the first
+  badge artifact immediately.
 </p>
 
 <h3 align="center" id="badge-catalogue">Badge catalogue</h3>
