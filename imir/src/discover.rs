@@ -7,6 +7,7 @@
 /// metrics repository and returns their owner/repository identifiers.
 use std::collections::HashSet;
 
+use indicatif::{ProgressBar, ProgressStyle};
 use masterror::AppError;
 use octocrab::{Octocrab, models::Code};
 use serde::{Deserialize, Serialize};
@@ -66,12 +67,21 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
     let query = format!("{BADGE_URL_PATTERN} {METRICS_PATH_PATTERN}");
     info!("Searching for repositories using badge pattern");
 
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .template("{spinner:.green} [{elapsed_precise}] {msg}",)
+            .expect("valid template",),
+    );
+    pb.set_message("Searching for badge users...",);
+
     let mut discovered = Vec::with_capacity(100,);
     let mut seen = HashSet::with_capacity(100,);
     let mut page = 1u32;
     const MAX_PAGES: u32 = 10;
 
     loop {
+        pb.set_message(format!("Searching page {}/{}...", page, MAX_PAGES),);
         debug!("Fetching page {} of search results", page);
         let search_result = octocrab
             .search()
@@ -90,6 +100,12 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
                 if seen.insert(key,) {
                     debug!("Discovered new repository: {}", repo_info);
                     discovered.push(repo_info,);
+                    pb.set_message(format!(
+                        "Found {} repositories (page {}/{})...",
+                        discovered.len(),
+                        page,
+                        MAX_PAGES
+                    ),);
                 }
             }
         }
@@ -101,6 +117,10 @@ pub async fn discover_badge_users(token: &str,) -> Result<Vec<DiscoveredReposito
         page += 1;
     }
 
+    pb.finish_with_message(format!(
+        "Badge discovery complete: {} repositories found",
+        discovered.len()
+    ),);
     info!("Badge discovery complete: {} repositories found", discovered.len());
     Ok(discovered,)
 }
@@ -139,12 +159,22 @@ pub async fn discover_stargazer_repositories(
     },)?;
 
     info!("Discovering repositories from stargazers of {}/{}", IMIR_REPO_OWNER, IMIR_REPO_NAME);
+
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .template("{spinner:.cyan} [{elapsed_precise}] {msg}",)
+            .expect("valid template",),
+    );
+    pb.set_message("Fetching stargazers...",);
+
     let mut discovered = Vec::with_capacity(500,);
     let mut seen = HashSet::with_capacity(500,);
     let mut page = 1u32;
     const MAX_PAGES: u32 = 10;
 
     loop {
+        pb.set_message(format!("Fetching stargazers page {}/{}...", page, MAX_PAGES),);
         debug!("Fetching page {} of stargazers", page);
         let stargazers = octocrab
             .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME,)
@@ -158,12 +188,18 @@ pub async fn discover_stargazer_repositories(
         let items_count = stargazers.items.len();
         debug!("Processing {} stargazers on page {}", items_count, page);
 
-        for stargazer in &stargazers.items {
+        for (idx, stargazer,) in stargazers.items.iter().enumerate() {
             let user = match &stargazer.user {
                 Some(u,) => u,
                 None => continue,
             };
             let username = &user.login;
+            pb.set_message(format!(
+                "Processing stargazer {}/{} on page {}...",
+                idx + 1,
+                items_count,
+                page
+            ),);
             debug!("Fetching repositories for user: {}", username);
 
             let user_repos = octocrab
@@ -191,6 +227,12 @@ pub async fn discover_stargazer_repositories(
                 if seen.insert(key,) {
                     debug!("Discovered repository: {}", repo_info);
                     discovered.push(repo_info,);
+                    pb.set_message(format!(
+                        "Found {} repositories (processing page {}/{})...",
+                        discovered.len(),
+                        page,
+                        MAX_PAGES
+                    ),);
                 }
             }
         }
@@ -202,6 +244,10 @@ pub async fn discover_stargazer_repositories(
         page += 1;
     }
 
+    pb.finish_with_message(format!(
+        "Stargazer discovery complete: {} repositories found",
+        discovered.len()
+    ),);
     info!("Stargazer discovery complete: {} repositories found", discovered.len());
     Ok(discovered,)
 }

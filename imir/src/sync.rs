@@ -7,6 +7,7 @@
 /// without duplicating entries or overwriting user customizations.
 use std::{collections::HashSet, fs, path::Path};
 
+use indicatif::{ProgressBar, ProgressStyle};
 use masterror::AppError;
 use tracing::{debug, info};
 
@@ -44,21 +45,32 @@ pub fn sync_targets(
     discovered: &[DiscoveredRepository],
 ) -> Result<usize, AppError,>
 {
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .template("{spinner:.yellow} [{elapsed_precise}] {msg}",)
+            .expect("valid template",),
+    );
+
+    pb.set_message(format!("Reading config from {}...", config_path.display()),);
     debug!("Reading config from {}", config_path.display());
     let yaml_content = fs::read_to_string(config_path,).map_err(|e| {
         AppError::service(format!("failed to read config at {}: {e}", config_path.display(),),)
     },)?;
 
+    pb.set_message("Parsing YAML configuration...",);
     debug!("Parsing YAML configuration");
     let mut config: TargetConfig = serde_yaml::from_str(&yaml_content,)
         .map_err(|e| AppError::validation(format!("failed to parse targets config: {e}"),),)?;
 
+    pb.set_message(format!("Building index of {} existing targets...", config.targets.len()),);
     debug!("Building index of {} existing targets", config.targets.len());
     let existing_repos: HashSet<(String, Option<String,>,),> =
         config.targets.iter().map(|t| (t.owner.clone(), t.repository.clone(),),).collect();
 
     let mut added_count = 0;
 
+    pb.set_message(format!("Processing {} discovered repositories...", discovered.len()),);
     info!("Processing {} discovered repositories", discovered.len());
     for repo in discovered {
         let key = (repo.owner.clone(), Some(repo.repository.clone(),),);
@@ -82,12 +94,17 @@ pub fn sync_targets(
 
             config.targets.push(new_entry,);
             added_count += 1;
+            pb.set_message(format!("Added {} new repositories...", added_count),);
         } else {
             debug!("Skipping existing repository: {}", repo);
         }
     }
 
     if added_count > 0 {
+        pb.set_message(format!(
+            "Sorting {} total targets alphabetically...",
+            config.targets.len()
+        ),);
         info!("Sorting {} total targets alphabetically", config.targets.len());
         config.targets.sort_by(|a, b| {
             a.owner
@@ -95,15 +112,20 @@ pub fn sync_targets(
                 .then_with(|| a.repository.as_deref().cmp(&b.repository.as_deref(),),)
         },);
 
+        pb.set_message("Serializing updated configuration...",);
         debug!("Serializing updated configuration");
         let updated_yaml = serde_yaml::to_string(&config,)
             .map_err(|e| AppError::service(format!("failed to serialize updated config: {e}"),),)?;
 
+        pb.set_message(format!("Writing updated config to {}...", config_path.display()),);
         info!("Writing updated config to {}", config_path.display());
         fs::write(config_path, updated_yaml,).map_err(|e| {
             AppError::service(format!("failed to write config to {}: {e}", config_path.display()),)
         },)?;
+
+        pb.finish_with_message(format!("Sync complete: {} new repositories added", added_count),);
     } else {
+        pb.finish_with_message("Sync complete: no new repositories to add",);
         debug!("No new repositories to add");
     }
 
