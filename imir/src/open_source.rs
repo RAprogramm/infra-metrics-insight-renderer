@@ -300,4 +300,111 @@ mod tests
             other => panic!("expected validation error, got {other:?}"),
         }
     }
+
+    #[test]
+    fn resolves_mixed_input_string_and_descriptor()
+    {
+        let targets = resolve_open_source_targets(Some(
+            "[\"simple\", {\"repository\":\"advanced\",\"contributors_branch\":\"develop\"}]",
+        ),)
+        .expect("expected mixed resolution",);
+
+        assert_eq!(targets.len(), 2);
+        assert_eq!(targets[0].repository, "simple");
+        assert_eq!(targets[0].contributors_branch, DEFAULT_CONTRIBUTORS_BRANCH);
+        assert_eq!(targets[1].repository, "advanced");
+        assert_eq!(targets[1].contributors_branch, "develop");
+    }
+
+    #[test]
+    fn rejects_empty_contributors_branch()
+    {
+        let error = resolve_open_source_targets(Some(
+            "[{\"repository\":\"repo\",\"contributors_branch\":\"\"}]",
+        ),)
+        .expect_err("expected empty branch validation error",);
+
+        match error {
+            crate::Error::Validation {
+                message,
+            } => {
+                assert_eq!(message, "contributors_branch cannot be empty");
+            }
+            other => panic!("expected validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn handles_descriptor_without_contributors_branch()
+    {
+        let targets = resolve_open_source_targets(Some("[{\"repository\":\"repo\"}]",),)
+            .expect("expected descriptor without branch",);
+
+        assert_eq!(targets.len(), 1);
+        assert_eq!(targets[0].repository, "repo");
+        assert_eq!(targets[0].contributors_branch, DEFAULT_CONTRIBUTORS_BRANCH);
+    }
+
+    #[test]
+    fn default_repositories_returns_expected_list()
+    {
+        let defaults = super::default_repositories();
+        assert_eq!(defaults.len(), 2);
+        assert_eq!(defaults[0].repository, "masterror");
+        assert_eq!(defaults[0].contributors_branch, DEFAULT_CONTRIBUTORS_BRANCH);
+        assert_eq!(defaults[1].repository, "telegram-webapp-sdk");
+        assert_eq!(defaults[1].contributors_branch, DEFAULT_CONTRIBUTORS_BRANCH);
+    }
+
+    #[test]
+    fn normalize_repository_trims_whitespace()
+    {
+        let result = super::normalize_repository("  repo  ",).expect("should normalize",);
+        assert_eq!(result, "repo");
+    }
+
+    #[test]
+    fn normalize_contributors_branch_trims_whitespace()
+    {
+        let result = super::normalize_contributors_branch("  main  ",).expect("should normalize",);
+        assert_eq!(result, "main");
+    }
+
+    #[test]
+    fn open_source_repository_equality()
+    {
+        let repo1 = OpenSourceRepository {
+            repository:          "test".to_owned(),
+            contributors_branch: "main".to_owned(),
+        };
+        let repo2 = OpenSourceRepository {
+            repository:          "test".to_owned(),
+            contributors_branch: "main".to_owned(),
+        };
+        assert_eq!(repo1, repo2);
+    }
+
+    #[test]
+    fn open_source_repository_clone()
+    {
+        let repo = OpenSourceRepository {
+            repository:          "original".to_owned(),
+            contributors_branch: "develop".to_owned(),
+        };
+        let cloned = repo.clone();
+        assert_eq!(repo.repository, cloned.repository);
+        assert_eq!(repo.contributors_branch, cloned.contributors_branch);
+    }
+
+    #[test]
+    fn open_source_repository_debug_format()
+    {
+        let repo = OpenSourceRepository {
+            repository:          "test".to_owned(),
+            contributors_branch: "main".to_owned(),
+        };
+        let debug_str = format!("{:?}", repo);
+        assert!(debug_str.contains("OpenSourceRepository"));
+        assert!(debug_str.contains("repository"));
+    }
 }
