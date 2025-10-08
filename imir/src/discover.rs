@@ -13,6 +13,8 @@ use octocrab::{Octocrab, models::Code};
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
+use crate::retry::{RetryConfig, retry_with_backoff};
+
 const BADGE_URL_PATTERN: &str = "RAprogramm/infra-metrics-insight-renderer";
 const METRICS_PATH_PATTERN: &str = "/metrics/";
 const IMIR_REPO_OWNER: &str = "RAprogramm";
@@ -29,6 +31,8 @@ pub struct DiscoveryConfig
     pub badge_url_pattern:    String,
     /// Metrics path pattern to search for (default: /metrics/).
     pub metrics_path_pattern: String,
+    /// Retry configuration for API calls.
+    pub retry_config:         RetryConfig,
 }
 
 impl Default for DiscoveryConfig
@@ -39,6 +43,7 @@ impl Default for DiscoveryConfig
             max_pages:            10,
             badge_url_pattern:    BADGE_URL_PATTERN.to_string(),
             metrics_path_pattern: METRICS_PATH_PATTERN.to_string(),
+            retry_config:         RetryConfig::default(),
         }
     }
 }
@@ -112,13 +117,24 @@ pub async fn discover_badge_users(
     loop {
         pb.set_message(format!("Searching page {}/{}...", page, config.max_pages),);
         debug!("Fetching page {} of search results", page);
-        let search_result = octocrab
-            .search()
-            .code(&query,)
-            .page(page,)
-            .send()
-            .await
-            .map_err(|e| AppError::service(format!("GitHub code search failed: {e}"),),)?;
+
+        let octocrab_clone = octocrab.clone();
+        let query_clone = query.clone();
+        let search_result =
+            retry_with_backoff(
+                &config.retry_config,
+                &format!("code search page {}", page),
+                || {
+                    let octocrab = octocrab_clone.clone();
+                    let query = query_clone.clone();
+                    async move {
+                        octocrab.search().code(&query,).page(page,).send().await.map_err(|e| {
+                            AppError::service(format!("GitHub code search failed: {e}"),)
+                        },)
+                    }
+                },
+            )
+            .await?;
 
         let items_count = search_result.items.len();
         debug!("Found {} items on page {}", items_count, page);
@@ -207,14 +223,25 @@ pub async fn discover_stargazer_repositories(
     loop {
         pb.set_message(format!("Fetching stargazers page {}/{}...", page, config.max_pages),);
         debug!("Fetching page {} of stargazers", page);
-        let stargazers = octocrab
-            .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME,)
-            .list_stargazers()
-            .per_page(100,)
-            .page(page,)
-            .send()
-            .await
-            .map_err(|e| AppError::service(format!("failed to fetch stargazers: {e}"),),)?;
+
+        let octocrab_clone = octocrab.clone();
+        let stargazers =
+            retry_with_backoff(&config.retry_config, &format!("stargazers page {}", page), || {
+                let octocrab = octocrab_clone.clone();
+                async move {
+                    octocrab
+                        .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME,)
+                        .list_stargazers()
+                        .per_page(100,)
+                        .page(page,)
+                        .send()
+                        .await
+                        .map_err(
+                            |e| AppError::service(format!("failed to fetch stargazers: {e}"),),
+                        )
+                }
+            },)
+            .await?;
 
         let items_count = stargazers.items.len();
         debug!("Processing {} stargazers on page {}", items_count, page);
@@ -233,16 +260,31 @@ pub async fn discover_stargazer_repositories(
             ),);
             debug!("Fetching repositories for user: {}", username);
 
-            let user_repos = octocrab
-                .users(username,)
-                .repos()
-                .per_page(100,)
-                .page(1u32,)
-                .send()
-                .await
-                .map_err(|e| {
-                    AppError::service(format!("failed to fetch repos for {username}: {e}"),)
-                },)?;
+            let octocrab_clone = octocrab.clone();
+            let username_clone = username.to_string();
+            let user_repos = retry_with_backoff(
+                &config.retry_config,
+                &format!("repos for user {}", username),
+                || {
+                    let octocrab = octocrab_clone.clone();
+                    let username = username_clone.clone();
+                    async move {
+                        octocrab
+                            .users(&username,)
+                            .repos()
+                            .per_page(100,)
+                            .page(1u32,)
+                            .send()
+                            .await
+                            .map_err(|e| {
+                                AppError::service(format!(
+                                    "failed to fetch repos for {username}: {e}"
+                                ),)
+                            },)
+                    }
+                },
+            )
+            .await?;
 
             for repo in &user_repos.items {
                 if repo.fork.unwrap_or(false,) {
@@ -348,6 +390,8 @@ mod tests
         assert_eq!(config.max_pages, 10);
         assert_eq!(config.badge_url_pattern, "RAprogramm/infra-metrics-insight-renderer");
         assert_eq!(config.metrics_path_pattern, "/metrics/");
+        assert_eq!(config.retry_config.max_attempts, 3);
+        assert_eq!(config.retry_config.initial_delay_ms, 1000);
     }
 
     #[test]
@@ -357,9 +401,16 @@ mod tests
             max_pages:            5,
             badge_url_pattern:    "custom/repo".to_string(),
             metrics_path_pattern: "/custom/".to_string(),
+            retry_config:         RetryConfig {
+                max_attempts:     5,
+                initial_delay_ms: 500,
+                backoff_factor:   1.5,
+            },
         };
         assert_eq!(config.max_pages, 5);
         assert_eq!(config.badge_url_pattern, "custom/repo");
         assert_eq!(config.metrics_path_pattern, "/custom/");
+        assert_eq!(config.retry_config.max_attempts, 5);
+        assert_eq!(config.retry_config.initial_delay_ms, 500);
     }
 }

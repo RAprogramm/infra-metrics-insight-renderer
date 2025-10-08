@@ -40,6 +40,7 @@ mod discover;
 mod error;
 mod normalizer;
 mod open_source;
+pub mod retry;
 mod slug;
 mod sync;
 

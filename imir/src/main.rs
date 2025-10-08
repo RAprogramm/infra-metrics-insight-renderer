@@ -300,6 +300,7 @@ async fn run_discover(args: DiscoverArgs,) -> Result<(), Error,>
         max_pages:            args.max_pages,
         badge_url_pattern:    args.badge_pattern.clone(),
         metrics_path_pattern: args.metrics_pattern.clone(),
+        ..Default::default()
     };
 
     info!("Starting repository discovery using source: {}", args.source);
@@ -376,6 +377,7 @@ async fn run_sync(args: SyncArgs,) -> Result<(), Error,>
         max_pages:            args.max_pages,
         badge_url_pattern:    args.badge_pattern.clone(),
         metrics_path_pattern: args.metrics_pattern.clone(),
+        ..Default::default()
     };
 
     info!("Starting sync with source: {}", args.source);
