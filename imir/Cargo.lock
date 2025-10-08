@@ -904,6 +904,7 @@ dependencies = [
  "masterror",
  "octocrab",
  "proptest",
+ "rayon",
  "serde",
  "serde_json",
  "serde_yaml",
