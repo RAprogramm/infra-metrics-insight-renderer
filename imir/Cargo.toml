@@ -16,6 +16,7 @@ tokio = { version = "1.42", features = ["rt-multi-thread", "macros", "time"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 indicatif = "0.17"
+rayon = "1.10"
 
 [dev-dependencies]
 proptest = "1.4"

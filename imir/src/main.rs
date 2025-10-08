@@ -96,6 +96,8 @@ enum BadgeCommand
 {
     /// Materialize deterministic badge assets for a target slug.
     Generate(BadgeGenerateArgs,),
+    /// Generate all badge assets in parallel.
+    GenerateAll(BadgeGenerateAllArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -108,6 +110,18 @@ struct BadgeGenerateArgs
     /// Slug identifying the target to generate badge assets for.
     #[arg(long = "target", value_name = "SLUG")]
     target: String,
+
+    /// Directory that will receive the SVG and manifest artifacts.
+    #[arg(long = "output", value_name = "DIR", default_value = "metrics")]
+    output: PathBuf,
+}
+
+#[derive(Debug, Args,)]
+struct BadgeGenerateAllArgs
+{
+    /// Path to the YAML configuration file describing metrics targets.
+    #[arg(long = "config", value_name = "PATH")]
+    config: PathBuf,
 
     /// Directory that will receive the SVG and manifest artifacts.
     #[arg(long = "output", value_name = "DIR", default_value = "metrics")]
@@ -295,21 +309,57 @@ fn run_badge(args: BadgeArgs,) -> Result<(), Error,>
 {
     match args.command {
         BadgeCommand::Generate(arguments,) => run_badge_generate(arguments,),
+        BadgeCommand::GenerateAll(arguments,) => run_badge_generate_all(arguments,),
     }
 }
 
 fn run_badge_generate(args: BadgeGenerateArgs,) -> Result<(), Error,>
 {
     let document = load_targets(&args.config,)?;
-    let slug = args.target.as_str();
-    let target = document
-        .targets
-        .iter()
-        .find(|candidate| candidate.slug.as_str() == slug,)
-        .ok_or_else(|| Error::validation(format!("target '{slug}' was not found",),),)?;
+    let target =
+        document.targets.iter().find(|candidate| candidate.slug == args.target,).ok_or_else(
+            || Error::validation(format!("target '{}' was not found", args.target),),
+        )?;
 
     generate_badge_assets(target, &args.output,)?;
 
+    Ok((),)
+}
+
+fn run_badge_generate_all(args: BadgeGenerateAllArgs,) -> Result<(), Error,>
+{
+    use rayon::prelude::*;
+    use tracing::{debug, info};
+
+    let document = load_targets(&args.config,)?;
+    let output_dir = &args.output;
+
+    info!("Generating {} badge assets in parallel", document.targets.len());
+
+    let results: Vec<_,> = document
+        .targets
+        .par_iter()
+        .map(|target| {
+            debug!("Generating badge for {}", target.slug);
+            generate_badge_assets(target, output_dir,).map(|_| target.slug.clone(),)
+        },)
+        .collect();
+
+    let mut error_count = 0;
+    let mut failed_targets = Vec::new();
+    for result in results {
+        if let Err(e,) = result {
+            eprintln!("Failed to generate badge: {}", e);
+            error_count += 1;
+            failed_targets.push(e.to_string(),);
+        }
+    }
+
+    if error_count > 0 {
+        return Err(Error::validation(format!("{} badge(s) failed to generate", error_count),),);
+    }
+
+    info!("Successfully generated {} badge assets", document.targets.len());
     Ok((),)
 }
 
@@ -824,6 +874,9 @@ targets:
         match args.command {
             super::BadgeCommand::Generate(gen_args,) => {
                 assert_eq!(gen_args.output, Path::new("metrics"));
+            }
+            super::BadgeCommand::GenerateAll(_,) => {
+                panic!("unexpected generate-all command in this test");
             }
         }
     }
