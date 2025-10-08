@@ -18,23 +18,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache build artifacts
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "imir -> target"
-
-      - name: Build IMIR CLI
-        run: cargo build --release --locked --manifest-path imir/Cargo.toml
+      - name: Setup IMIR
+        uses: ./.github/actions/setup-imir
 
       - name: Discover and sync repositories
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          ./imir/target/release/imir sync \
+          imir sync \
             --config targets/targets.yaml \
             --token "${GITHUB_TOKEN}" \
             --source all

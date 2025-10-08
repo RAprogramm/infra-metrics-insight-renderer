@@ -33,21 +33,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache build artifacts
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "imir -> target"
+      - name: Setup IMIR
+        uses: ./.github/actions/setup-imir
 
       - name: Normalize targets document
         id: targets
         run: |
           set -euo pipefail
 
-          cargo +stable run --locked --manifest-path imir/Cargo.toml -- \
-            --config "${TARGETS_CONFIG}" > targets.json
+          imir --config "${TARGETS_CONFIG}" > targets.json
 
           echo "path=targets.json" >> "$GITHUB_OUTPUT"
 
@@ -130,8 +124,7 @@ jobs:
             fi
 
             echo "Rendering badge for ${SLUG}" >&2
-            cargo +stable run --locked --manifest-path imir/Cargo.toml -- \
-              badge generate --config "${TARGETS_CONFIG}" --target "${SLUG}" --output metrics
+            imir badge generate --config "${TARGETS_CONFIG}" --target "${SLUG}" --output metrics
           done
 
       - name: Commit badge updates

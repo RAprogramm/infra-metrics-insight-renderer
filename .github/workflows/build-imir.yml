@@ -1,0 +1,103 @@
+name: Build and Release IMIR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'imir/**'
+      - '.github/workflows/build-imir.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build IMIR and create release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Get imir version
+        id: version
+        run: |
+          VERSION=$(grep '^version' imir/Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Check if release exists
+        id: check_release
+        run: |
+          if gh release view ${{ steps.version.outputs.tag }} &>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build release binary
+        if: steps.check_release.outputs.exists == 'false'
+        run: cargo build --release --locked --manifest-path imir/Cargo.toml
+
+      - name: Package binary
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          set -euo pipefail
+          BIN="imir/target/release/imir"
+          ARCHIVE="imir-x86_64-unknown-linux-gnu.tar.gz"
+          chmod +x "${BIN}"
+          tar -C "$(dirname "${BIN}")" -czf "${ARCHIVE}" "$(basename "${BIN}")"
+          echo "ARCHIVE=${ARCHIVE}" >> $GITHUB_ENV
+
+      - name: Generate changelog
+        if: steps.check_release.outputs.exists == 'false'
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --grep="^imir\|^#[0-9]" || echo "- Initial release")
+          else
+            CHANGELOG="- Initial release"
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: IMIR ${{ steps.version.outputs.version }}
+          body: |
+            ## IMIR v${{ steps.version.outputs.version }}
+
+            ### Changes
+            ${{ steps.changelog.outputs.changelog }}
+
+            ### Installation
+            ```bash
+            wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.tag }}/imir-x86_64-unknown-linux-gnu.tar.gz
+            tar -xzf imir-x86_64-unknown-linux-gnu.tar.gz
+            chmod +x imir
+            ```
+
+            ### Usage
+            See [documentation](https://github.com/${{ github.repository }}/tree/main/imir) for details.
+          files: ${{ env.ARCHIVE }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release already exists
+        if: steps.check_release.outputs.exists == 'true'
+        run: |
+          echo "Release ${{ steps.version.outputs.tag }} already exists, skipping build"

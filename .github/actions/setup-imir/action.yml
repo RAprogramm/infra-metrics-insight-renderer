@@ -1,0 +1,51 @@
+name: Setup IMIR
+description: Download and setup pre-built imir binary from releases
+
+inputs:
+  version:
+    description: 'Version to download (e.g., v0.4.0). If not specified, downloads latest release'
+    required: false
+    default: ''
+
+outputs:
+  version:
+    description: 'Downloaded imir version'
+    value: ${{ steps.download.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Determine version to download
+      id: version
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          VERSION=$(gh release list --repo ${{ github.repository }} --limit 100 | grep '^v' | head -1 | awk '{print $1}')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        fi
+      env:
+        GH_TOKEN: ${{ github.token }}
+
+    - name: Download imir binary
+      id: download
+      shell: bash
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        ARCHIVE="imir-x86_64-unknown-linux-gnu.tar.gz"
+        DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/${ARCHIVE}"
+
+        echo "Downloading imir ${VERSION}..."
+        curl -fsSL "${DOWNLOAD_URL}" -o "${ARCHIVE}"
+        tar -xzf "${ARCHIVE}"
+        chmod +x imir
+        mkdir -p "${HOME}/.local/bin"
+        mv imir "${HOME}/.local/bin/imir"
+        echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+    - name: Verify installation
+      shell: bash
+      run: |
+        imir --version
