@@ -55,6 +55,13 @@ pub enum Error
         /// Underlying I/O error reported by the operating system.
         source: std::io::Error,
     },
+    /// Service errors when interacting with external APIs.
+    #[error("service error: {message}")]
+    Service
+    {
+        /// Human readable message describing the service error.
+        message: String,
+    },
 }
 
 impl Error
@@ -69,6 +76,20 @@ impl Error
         M: Into<String,>,
     {
         Self::Validation {
+            message: message.into(),
+        }
+    }
+
+    /// Constructs a service error from the provided displayable value.
+    ///
+    /// # Parameters
+    ///
+    /// * `message` - Human-readable description of the service error.
+    pub fn service<M,>(message: M,) -> Self
+    where
+        M: Into<String,>,
+    {
+        Self::Service {
             message: message.into(),
         }
     }

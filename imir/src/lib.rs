@@ -36,16 +36,19 @@
 
 mod badge;
 mod config;
+mod discover;
 mod error;
 mod normalizer;
 mod open_source;
 mod slug;
+mod sync;
 
 pub use badge::{BadgeAssets, generate_badge_assets};
 pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
     TargetKind,
 };
+pub use discover::{DiscoveredRepository, discover_badge_users, discover_stargazer_repositories};
 pub use error::{Error, io_error};
 pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,
@@ -55,3 +58,4 @@ pub use open_source::{
     OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
 };
 pub use slug::SlugStrategy;
+pub use sync::sync_targets;
