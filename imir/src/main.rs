@@ -492,13 +492,13 @@ mod tests
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
         let output_dir = temp.path().join("artifacts",);
-        let yaml = r#"
+        let yaml = r"
 targets:
   - owner: example
     repository: repo
     type: open_source
     slug: example-repo
-"#;
+";
         fs::write(&config_path, yaml,).expect("failed to write config",);
 
         let cli = Cli::try_parse_from([
@@ -532,13 +532,13 @@ targets:
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let yaml = r#"
+        let yaml = r"
 targets:
   - owner: example
     repository: repo
     type: open_source
     slug: existing
-"#;
+";
         fs::write(&config_path, yaml,).expect("failed to write config",);
 
         let cli = Cli::try_parse_from([
@@ -573,14 +573,14 @@ targets:
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let yaml = r#"
+        let yaml = r"
 targets:
   - owner: testuser
     repository: testrepo
     type: open_source
     slug: test-slug
     display_name: Test Repository
-"#;
+";
         fs::write(&config_path, yaml,).expect("failed to write config",);
 
         let cli = Cli::try_parse_from([
@@ -754,12 +754,12 @@ targets:
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let yaml = r#"
+        let yaml = r"
 targets:
   - owner: example
     type: profile
     slug: example-profile
-"#;
+";
         fs::write(&config_path, yaml,).expect("failed to write config",);
 
         let cli = Cli::try_parse_from([

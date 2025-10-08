@@ -686,12 +686,12 @@ mod tests
     #[test]
     fn parse_targets_handles_valid_document()
     {
-        let yaml = r#"
+        let yaml = r"
             targets:
               - owner: octocat
                 repo: metrics
                 type: open_source
-        "#;
+        ";
 
         let document = parse_targets(yaml,).expect("expected parse success",);
         assert_eq!(document.targets.len(), 1);
@@ -700,13 +700,13 @@ mod tests
     #[test]
     fn parse_targets_supports_branch_alias()
     {
-        let yaml = r#"
+        let yaml = r"
             targets:
               - owner: octocat
                 repository: metrics
                 type: open_source
                 branch:  feature/metrics
-        "#;
+        ";
 
         let document = parse_targets(yaml,).expect("expected parse success",);
         assert_eq!(document.targets.len(), 1);
@@ -716,7 +716,7 @@ mod tests
     #[test]
     fn parse_targets_handles_badge_configuration()
     {
-        let yaml = r#"
+        let yaml = r"
             targets:
               - owner: octocat
                 repo: metrics
@@ -727,7 +727,7 @@ mod tests
                     columns: 2
                     alignment: end
                     border_radius: 6
-        "#;
+        ";
 
         let document = parse_targets(yaml,).expect("expected parse success",);
         assert_eq!(document.targets.len(), 1);
@@ -748,7 +748,7 @@ mod tests
     #[test]
     fn parse_targets_rejects_badge_validation_errors()
     {
-        let yaml = r#"
+        let yaml = r"
             targets:
               - owner: octocat
                 repo: metrics
@@ -756,7 +756,7 @@ mod tests
                 badge:
                   widget:
                     columns: 8
-        "#;
+        ";
 
         let error = parse_targets(yaml,).expect_err("expected badge validation failure",);
         match error {

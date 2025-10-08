@@ -16,12 +16,12 @@ use crate::slug::SlugStrategy;
 /// ```
 /// use imir::TargetConfig;
 ///
-/// let yaml = r#"
+/// let yaml = r"
 /// targets:
 ///   - owner: octocat
 ///     repo: hello-world
 ///     type: open_source
-/// "#;
+/// ";
 /// let config: TargetConfig = serde_yaml::from_str(yaml,).expect("valid configuration",);
 /// assert_eq!(config.targets.len(), 1);
 /// ```
@@ -432,13 +432,13 @@ mod tests
     #[test]
     fn badge_options_supports_alignment_presets()
     {
-        let yaml = r#"
+        let yaml = r"
             style: plastic
             widget:
               alignment: center
               columns: 2
               border_radius: 12
-        "#;
+        ";
 
         let options: BadgeOptions =
             serde_yaml::from_str(yaml,).expect("expected badge configuration to deserialize",);
@@ -452,11 +452,11 @@ mod tests
     #[test]
     fn badge_widget_options_reject_invalid_columns()
     {
-        let yaml = r#"
+        let yaml = r"
             style: flat
             widget:
               columns: 6
-        "#;
+        ";
 
         let error = serde_yaml::from_str::<BadgeOptions,>(yaml,).unwrap_err();
         assert!(error.to_string().contains("columns must be between 1 and 4"));
@@ -465,10 +465,10 @@ mod tests
     #[test]
     fn badge_widget_options_reject_invalid_border_radius()
     {
-        let yaml = r#"
+        let yaml = r"
             widget:
               border_radius: 64
-        "#;
+        ";
 
         let error = serde_yaml::from_str::<BadgeOptions,>(yaml,).unwrap_err();
         assert!(error.to_string().contains("border_radius must not exceed 32"));

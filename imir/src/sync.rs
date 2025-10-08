@@ -146,12 +146,12 @@ mod tests
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let initial_yaml = r#"
+        let initial_yaml = r"
 targets:
   - owner: existing
     repository: repo
     type: open_source
-"#;
+";
         fs::write(&config_path, initial_yaml,).expect("failed to write config",);
 
         let discovered = vec![DiscoveredRepository {
@@ -172,12 +172,12 @@ targets:
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let initial_yaml = r#"
+        let initial_yaml = r"
 targets:
   - owner: existing
     repository: repo
     type: open_source
-"#;
+";
         fs::write(&config_path, initial_yaml,).expect("failed to write config",);
 
         let discovered = vec![DiscoveredRepository {
@@ -194,12 +194,12 @@ targets:
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let initial_yaml = r#"
+        let initial_yaml = r"
 targets:
   - owner: existing
     repository: repo
     type: open_source
-"#;
+";
         fs::write(&config_path, initial_yaml,).expect("failed to write config",);
 
         let discovered = vec![
@@ -233,14 +233,14 @@ targets:
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let initial_yaml = r#"
+        let initial_yaml = r"
 targets:
   - owner: existing
     repository: repo
     type: open_source
     slug: custom-slug
     display_name: Custom Name
-"#;
+";
         fs::write(&config_path, initial_yaml,).expect("failed to write config",);
 
         let discovered = vec![DiscoveredRepository {
@@ -260,12 +260,12 @@ targets:
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let initial_yaml = r#"
+        let initial_yaml = r"
 targets:
   - owner: zebra
     repository: repo
     type: open_source
-"#;
+";
         fs::write(&config_path, initial_yaml,).expect("failed to write config",);
 
         let discovered = vec![DiscoveredRepository {
@@ -317,12 +317,12 @@ targets:
     {
         let temp = tempdir().expect("failed to create tempdir",);
         let config_path = temp.path().join("targets.yaml",);
-        let initial_yaml = r#"
+        let initial_yaml = r"
 targets:
   - owner: existing
     repository: repo
     type: open_source
-"#;
+";
         fs::write(&config_path, initial_yaml,).expect("failed to write config",);
 
         let discovered = vec![];
