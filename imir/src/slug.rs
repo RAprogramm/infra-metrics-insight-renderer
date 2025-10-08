@@ -118,4 +118,107 @@ mod tests
         let slug = SlugStrategy::builder("HelloWorld",).build();
         assert_eq!(slug.as_deref(), Some("helloworld"));
     }
+
+    #[test]
+    fn builder_handles_slashes_and_dots()
+    {
+        let slug = SlugStrategy::builder("path/to/file.txt",).build();
+        assert_eq!(slug.as_deref(), Some("path-to-file-txt"));
+    }
+
+    #[test]
+    fn builder_removes_trailing_hyphens()
+    {
+        let slug = SlugStrategy::builder("test---",).build();
+        assert_eq!(slug.as_deref(), Some("test"));
+    }
+
+    #[test]
+    fn builder_handles_leading_separators()
+    {
+        let slug = SlugStrategy::builder("---test",).build();
+        assert_eq!(slug.as_deref(), Some("test"));
+    }
+
+    #[test]
+    fn builder_handles_numbers()
+    {
+        let slug = SlugStrategy::builder("test123",).build();
+        assert_eq!(slug.as_deref(), Some("test123"));
+    }
+
+    #[test]
+    fn builder_handles_unicode_characters()
+    {
+        let slug = SlugStrategy::builder("hello-世界-test",).build();
+        assert_eq!(slug.as_deref(), Some("hello-test"));
+    }
+
+    #[test]
+    fn builder_handles_underscores()
+    {
+        let slug = SlugStrategy::builder("snake_case_name",).build();
+        assert_eq!(slug.as_deref(), Some("snake-case-name"));
+    }
+
+    #[test]
+    fn builder_handles_spaces()
+    {
+        let slug = SlugStrategy::builder("word with spaces",).build();
+        assert_eq!(slug.as_deref(), Some("word-with-spaces"));
+    }
+
+    #[test]
+    fn builder_handles_special_characters()
+    {
+        let slug = SlugStrategy::builder("test!@#$%^&*()",).build();
+        assert_eq!(slug.as_deref(), Some("test"));
+    }
+
+    #[test]
+    fn builder_handles_mixed_case_with_separators()
+    {
+        let slug = SlugStrategy::builder("My Project/Version 2.0",).build();
+        assert_eq!(slug.as_deref(), Some("my-project-version-2-0"));
+    }
+
+    #[test]
+    fn slug_strategy_copy_trait()
+    {
+        let builder1 = SlugStrategy::builder("test",);
+        let builder2 = builder1;
+        assert_eq!(builder1.build(), builder2.build());
+    }
+
+    #[test]
+    fn slug_strategy_clone_trait()
+    {
+        let builder = SlugStrategy::builder("clone-test",);
+        let cloned = builder;
+        assert_eq!(builder.build(), cloned.build());
+    }
+
+    #[test]
+    fn slug_strategy_debug_format()
+    {
+        let builder = SlugStrategy::builder("debug",);
+        let debug_str = format!("{:?}", builder);
+        assert!(debug_str.contains("SlugStrategy"));
+        assert!(debug_str.contains("source"));
+    }
+
+    #[test]
+    fn builder_handles_only_separators()
+    {
+        let slug = SlugStrategy::builder("---___...///",).build();
+        assert!(slug.is_none());
+    }
+
+    #[test]
+    fn builder_preserves_capacity_optimization()
+    {
+        let input = "a".repeat(100,);
+        let slug = SlugStrategy::builder(&input,).build();
+        assert_eq!(slug.as_deref(), Some(input.as_str()));
+    }
 }

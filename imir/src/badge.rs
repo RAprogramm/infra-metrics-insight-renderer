@@ -318,4 +318,162 @@ mod tests
         assert!(svg.contains("Org &gt; Team"));
         assert!(svg.contains("ACME &amp; &lt;Partners&gt;"));
     }
+
+    #[test]
+    fn escape_xml_handles_all_special_characters()
+    {
+        let input = "&<>\"'normal";
+        let result = escape_xml(input,);
+        assert_eq!(result, "&amp;&lt;&gt;&quot;&apos;normal");
+    }
+
+    #[test]
+    fn escape_xml_returns_borrowed_when_no_escaping_needed()
+    {
+        let input = "no special characters";
+        let result = escape_xml(input,);
+        match result {
+            Cow::Borrowed(s,) => assert_eq!(s, input),
+            Cow::Owned(_,) => panic!("expected borrowed variant",),
+        }
+    }
+
+    #[test]
+    fn badge_label_formats_repository_correctly()
+    {
+        let target = sample_target(TargetKind::OpenSource,);
+        let label = badge_label(&target,);
+        assert_eq!(label, "octocat/example");
+    }
+
+    #[test]
+    fn badge_label_uses_owner_when_no_repository()
+    {
+        let mut target = sample_target(TargetKind::Profile,);
+        target.repository = None;
+        let label = badge_label(&target,);
+        assert_eq!(label, "octocat");
+    }
+
+    #[test]
+    fn badge_background_returns_correct_gradient_for_profile()
+    {
+        let gradient = badge_background(TargetKind::Profile,);
+        assert_eq!(gradient.primary, "#6f42c1");
+        assert_eq!(gradient.secondary, "#8648d1");
+    }
+
+    #[test]
+    fn badge_background_returns_correct_gradient_for_open_source()
+    {
+        let gradient = badge_background(TargetKind::OpenSource,);
+        assert_eq!(gradient.primary, "#1f883d");
+        assert_eq!(gradient.secondary, "#2ea043");
+    }
+
+    #[test]
+    fn badge_background_returns_correct_gradient_for_private()
+    {
+        let gradient = badge_background(TargetKind::PrivateProject,);
+        assert_eq!(gradient.primary, "#0a3069");
+        assert_eq!(gradient.secondary, "#1b4b91");
+    }
+
+    #[test]
+    fn path_to_string_converts_path_correctly()
+    {
+        let path = Path::new("/tmp/test.svg",);
+        let result = path_to_string(path,);
+        assert_eq!(result, "/tmp/test.svg");
+    }
+
+    #[test]
+    fn badge_assets_equality()
+    {
+        let assets1 = BadgeAssets {
+            svg_path:      PathBuf::from("/tmp/a.svg",),
+            manifest_path: PathBuf::from("/tmp/a.json",),
+        };
+        let assets2 = BadgeAssets {
+            svg_path:      PathBuf::from("/tmp/a.svg",),
+            manifest_path: PathBuf::from("/tmp/a.json",),
+        };
+        assert_eq!(assets1, assets2);
+    }
+
+    #[test]
+    fn badge_assets_clone()
+    {
+        let assets = BadgeAssets {
+            svg_path:      PathBuf::from("/tmp/test.svg",),
+            manifest_path: PathBuf::from("/tmp/test.json",),
+        };
+        let cloned = assets.clone();
+        assert_eq!(assets.svg_path, cloned.svg_path);
+        assert_eq!(assets.manifest_path, cloned.manifest_path);
+    }
+
+    #[test]
+    fn badge_assets_debug_format()
+    {
+        let assets = BadgeAssets {
+            svg_path:      PathBuf::from("/tmp/debug.svg",),
+            manifest_path: PathBuf::from("/tmp/debug.json",),
+        };
+        let debug_str = format!("{:?}", assets);
+        assert!(debug_str.contains("BadgeAssets"));
+        assert!(debug_str.contains("svg_path"));
+    }
+
+    #[test]
+    fn write_svg_creates_valid_file()
+    {
+        let target = sample_target(TargetKind::OpenSource,);
+        let directory = tempdir().expect("failed to create temp dir",);
+        let svg_path = directory.path().join("test.svg",);
+
+        write_svg(&svg_path, &target,).expect("write should succeed",);
+
+        assert!(svg_path.exists());
+        let contents = fs::read_to_string(&svg_path,).expect("should read svg",);
+        assert!(contents.contains("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
+        assert!(contents.contains("octocat/example"));
+    }
+
+    #[test]
+    fn write_manifest_creates_valid_json()
+    {
+        let target = sample_target(TargetKind::Profile,);
+        let directory = tempdir().expect("failed to create temp dir",);
+        let manifest_path = directory.path().join("test.json",);
+        let svg_path = PathBuf::from("/tmp/test.svg",);
+
+        write_manifest(&manifest_path, &target, &svg_path,).expect("write should succeed",);
+
+        assert!(manifest_path.exists());
+        let contents = fs::read_to_string(&manifest_path,).expect("should read manifest",);
+        let value: Value = serde_json::from_str(&contents,).expect("should parse json",);
+        assert_eq!(value["slug"], "sample");
+        assert_eq!(value["kind"], "profile");
+    }
+
+    #[test]
+    fn svg_content_includes_gradient_definition()
+    {
+        let target = sample_target(TargetKind::PrivateProject,);
+        let svg = build_svg_content(&target,);
+        assert!(svg.contains("<linearGradient id=\"imir-badge\""));
+        assert!(svg.contains("#0a3069"));
+        assert!(svg.contains("#1b4b91"));
+    }
+
+    #[test]
+    fn svg_content_includes_text_elements()
+    {
+        let target = sample_target(TargetKind::OpenSource,);
+        let svg = build_svg_content(&target,);
+        assert!(svg.contains("<text"));
+        assert!(svg.contains("octocat/example"));
+        assert!(svg.contains("Example Dashboard"));
+    }
 }

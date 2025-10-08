@@ -86,11 +86,11 @@ impl std::fmt::Display for ContributorActivity
 ///
 /// # async fn example() -> Result<(), AppError> {
 /// let octocrab = Octocrab::builder()
-///     .personal_token("token")
+///     .personal_token("token",)
 ///     .build()
-///     .map_err(|e| AppError::service(format!("failed to build octocrab: {e}")))?;
+///     .map_err(|e| AppError::service(format!("failed to build octocrab: {e}"),),)?;
 /// let config = RetryConfig::default();
-/// let activity = fetch_contributor_activity(&octocrab, "owner", "repo", &config).await?;
+/// let activity = fetch_contributor_activity(&octocrab, "owner", "repo", &config,).await?;
 /// for contributor in activity {
 ///     println!("{}", contributor);
 /// }
