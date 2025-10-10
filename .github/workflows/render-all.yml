@@ -20,6 +20,8 @@ jobs:
 
       - name: Setup IMIR
         uses: ./.github/actions/setup-imir
+        with:
+          token: ${{ secrets.CLASSIC }}
 
       - name: Generate render targets
         id: generate
