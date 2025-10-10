@@ -39,3 +39,4 @@ jobs:
           temp_artifact: .metrics-tmp/profile.svg
           time_zone: Asia/Ho_Chi_Minh
           display_name: profile
+          include_private: true
