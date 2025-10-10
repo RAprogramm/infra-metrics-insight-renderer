@@ -45,11 +45,11 @@ pub fn sync_targets(
     discovered: &[DiscoveredRepository]
 ) -> Result<usize, AppError> {
     let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.yellow} [{elapsed_precise}] {msg}")
-            .expect("valid template")
-    );
+    if let Ok(style) = ProgressStyle::default_spinner()
+        .template("{spinner:.yellow} [{elapsed_precise}] {msg}")
+    {
+        pb.set_style(style);
+    }
 
     pb.set_message(format!("Reading config from {}...", config_path.display()));
     debug!("Reading config from {}", config_path.display());
