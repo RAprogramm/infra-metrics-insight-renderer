@@ -51,4 +51,4 @@ jobs:
 
           git add targets/targets.yaml
           git commit -m "chore(targets): sync discovered repositories"
-          git push origin main
+          git push origin HEAD:main

@@ -145,5 +145,5 @@ jobs:
           fi
 
           git commit -m "chore(badges): refresh"
-          git push origin main
+          git push origin HEAD:main
 
