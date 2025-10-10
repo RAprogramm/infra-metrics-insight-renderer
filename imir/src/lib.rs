@@ -53,6 +53,7 @@ pub use config::{
 pub use contributors::{ContributorActivity, fetch_contributor_activity};
 pub use discover::{
     DiscoveredRepository, DiscoveryConfig, discover_badge_users, discover_stargazer_repositories,
+    extract_repo_from_readme,
 };
 pub use error::{Error, io_error};
 pub use normalizer::{
