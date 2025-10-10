@@ -2,7 +2,12 @@
 
 **I**nfra **M**etrics **I**nsight **R**enderer - Generate rendering instructions for [lowlighter/metrics](https://github.com/lowlighter/metrics) targets.
 
+[![IMIR](https://img.shields.io/badge/📊_IMIR-Metrics_Renderer-5B86E5?style=for-the-badge&labelColor=36D1DC&logoColor=white)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+
+[![Crates.io](https://img.shields.io/crates/v/imir.svg)](https://crates.io/crates/imir)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
+[![CI](https://github.com/RAprogramm/infra-metrics-insight-renderer/workflows/Continuous%20Integration/badge.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer/actions)
+[![Rust Version](https://img.shields.io/badge/rust-2024%20edition-orange.svg)](https://www.rust-lang.org)
 
 ## Overview
 
@@ -14,6 +19,7 @@
 - **Repository Discovery**: Find repositories using IMIR badges via GitHub Code Search
 - **Automatic Sync**: Merge discovered repositories into existing configurations
 - **Badge Generation**: Create deterministic SVG badges with JSON manifests
+- **Workflow Automation**: CLI commands for GitHub Actions (slug detection, git operations, PR creation)
 - **Robust API Calls**: Exponential backoff retry logic for GitHub API failures
 - **Progress Tracking**: Real-time progress indicators for long-running operations
 - **Structured Logging**: Configurable log levels (debug, info, warn, error)
@@ -85,6 +91,86 @@ imir badge generate \
   --config targets/targets.yaml \
   --target my-profile \
   --output metrics/
+```
+
+### Workflow Automation Commands
+
+Commands designed for GitHub Actions workflows:
+
+#### Detect Impacted Slugs
+
+Detect which targets are impacted by git changes:
+
+```bash
+imir slugs detect \
+  --base-ref origin/main \
+  --head-ref HEAD \
+  --file README.md \
+  --file targets/targets.yaml
+```
+
+#### Locate Artifact
+
+Find temporary artifact paths:
+
+```bash
+imir artifact locate \
+  --temp-artifact .metrics-tmp/profile.svg \
+  --target-path metrics/profile.svg
+```
+
+#### Move Files
+
+Move files with automatic directory creation:
+
+```bash
+imir file move \
+  --source .metrics-tmp/profile.svg \
+  --destination metrics/profile.svg
+```
+
+#### Git Commit and Push
+
+Commit and push changes with retry logic:
+
+```bash
+imir git commit-push \
+  --branch-name ci/metrics-refresh-profile \
+  --file-path metrics/profile.svg \
+  --commit-message "chore(metrics): refresh profile"
+```
+
+#### Create Pull Request
+
+Create PR with proper base branch detection:
+
+```bash
+imir gh pr-create \
+  --branch-name ci/metrics-refresh-profile \
+  --default-base main \
+  --title "chore(metrics): refresh profile" \
+  --body "Automated metrics update"
+```
+
+#### Normalize Render Inputs
+
+Normalize profile render inputs:
+
+```bash
+imir render normalize-profile \
+  --target-user octocat \
+  --branch-name ci/metrics-refresh \
+  --include-private false
+```
+
+Normalize repository render inputs:
+
+```bash
+imir render normalize-repository \
+  --target-repo my-repo \
+  --target-owner octocat \
+  --github-repo octocat/my-repo \
+  --contributors-branch main
 ```
 
 ## Library Usage
