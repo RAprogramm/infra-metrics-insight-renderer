@@ -1,23 +1,21 @@
 // SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-/// Discovers repositories using IMIR badges through GitHub Code Search API.
+/// Discovers repositories using IMIR badges through README parsing.
 ///
-/// Searches for repositories referencing badge URLs from the configured
-/// metrics repository and returns their owner/repository identifiers.
+/// Scans repositories from stargazers and checks README files for badge
+/// presence and metrics links to identify repositories using IMIR.
 use std::collections::HashSet;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use masterror::AppError;
-use octocrab::{Octocrab, models::Code};
+use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
 use crate::retry::{RetryConfig, retry_with_backoff};
 
-const BADGE_URL_PATTERN: &str = "RAprogramm/infra-metrics-insight-renderer";
 const BADGE_SVG_FILENAME: &str = "badge.svg";
-const METRICS_PATH_PATTERN: &str = "/metrics/";
 const IMIR_REPO_OWNER: &str = "RAprogramm";
 const IMIR_REPO_NAME: &str = "infra-metrics-insight-renderer";
 
@@ -26,14 +24,9 @@ const IMIR_REPO_NAME: &str = "infra-metrics-insight-renderer";
 pub struct DiscoveryConfig
 {
     /// Maximum number of pages to fetch from GitHub API (default: 10).
-    pub max_pages:            u32,
-    /// Badge URL pattern to search for (default:
-    /// RAprogramm/infra-metrics-insight-renderer).
-    pub badge_url_pattern:    String,
-    /// Metrics path pattern to search for (default: /metrics/).
-    pub metrics_path_pattern: String,
+    pub max_pages:    u32,
     /// Retry configuration for API calls.
-    pub retry_config:         RetryConfig,
+    pub retry_config: RetryConfig,
 }
 
 impl Default for DiscoveryConfig
@@ -41,10 +34,7 @@ impl Default for DiscoveryConfig
     fn default() -> Self
     {
         Self {
-            max_pages:            10,
-            badge_url_pattern:    BADGE_URL_PATTERN.to_string(),
-            metrics_path_pattern: METRICS_PATH_PATTERN.to_string(),
-            retry_config:         RetryConfig::default(),
+            max_pages: 10, retry_config: RetryConfig::default(),
         }
     }
 }
@@ -64,12 +54,15 @@ impl std::fmt::Display for DiscoveredRepository
     }
 }
 
-/// Discovers repositories using IMIR badges via GitHub Code Search API.
+/// Discovers repositories using IMIR badges via stargazers.
+///
+/// This is an alias for [`discover_stargazer_repositories`] to maintain
+/// backward compatibility with existing code.
 ///
 /// # Arguments
 ///
 /// * `token` - GitHub personal access token for API authentication
-/// * `config` - Discovery configuration (max pages, search patterns)
+/// * `config` - Discovery configuration (max pages to fetch)
 ///
 /// # Errors
 ///
@@ -95,79 +88,63 @@ pub async fn discover_badge_users(
     config: &DiscoveryConfig,
 ) -> Result<Vec<DiscoveredRepository,>, AppError,>
 {
-    debug!("Initializing GitHub client for badge discovery");
-    let octocrab = Octocrab::builder().personal_token(token,).build().map_err(|e| {
-        AppError::unauthorized(format!("failed to initialize GitHub client: {e}"),)
-    },)?;
+    discover_stargazer_repositories(token, config,).await
+}
 
-    let query = format!("{} {}", config.badge_url_pattern, config.metrics_path_pattern);
-    info!("Searching for repositories using badge pattern: {}", query);
+/// Fetches README content from a repository and checks for IMIR badge.
+///
+/// # Arguments
+///
+/// * `octocrab` - Authenticated GitHub API client
+/// * `owner` - Repository owner
+/// * `repo` - Repository name
+/// * `retry_config` - Retry configuration for API calls
+///
+/// # Returns
+///
+/// Repository name extracted from metrics link if badge is present, None
+/// otherwise.
+///
+/// # Errors
+///
+/// Returns [`AppError`] when README fetch fails or API errors occur.
+async fn check_repo_has_badge(
+    octocrab: &Octocrab,
+    owner: &str,
+    repo: &str,
+    retry_config: &RetryConfig,
+) -> Result<Option<String,>, AppError,>
+{
+    let octocrab_clone = octocrab.clone();
+    let owner_str = owner.to_string();
+    let repo_str = repo.to_string();
 
-    let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.green} [{elapsed_precise}] {msg}",)
-            .expect("valid template",),
-    );
-    pb.set_message("Searching for badge users...",);
+    let readme_result =
+        retry_with_backoff(retry_config, &format!("README for {}/{}", owner, repo), || {
+            let octocrab = octocrab_clone.clone();
+            let owner = owner_str.clone();
+            let repo = repo_str.clone();
+            async move {
+                octocrab
+                    .repos(&owner, &repo,)
+                    .get_readme()
+                    .send()
+                    .await
+                    .map_err(|e| AppError::service(format!("failed to fetch README: {e}"),),)
+            }
+        },)
+        .await;
 
-    let mut discovered = Vec::with_capacity(100,);
-    let mut seen = HashSet::with_capacity(100,);
-    let mut page = 1u32;
-
-    loop {
-        pb.set_message(format!("Searching page {}/{}...", page, config.max_pages),);
-        debug!("Fetching page {} of search results", page);
-
-        let octocrab_clone = octocrab.clone();
-        let query_clone = query.clone();
-        let search_result = retry_with_backoff(
-            &config.retry_config,
-            &format!("code search page {}", page),
-            || {
-                let octocrab = octocrab_clone.clone();
-                let query = query_clone.clone();
-                async move {
-                    octocrab.search().code(&query,).page(page,).send().await.map_err(|e| {
-                            AppError::service(format!("GitHub code search failed: {e}"),)
-                        },)
-                }
-            },
-        )
-        .await?;
-
-        let items_count = search_result.items.len();
-        debug!("Found {} items on page {}", items_count, page);
-
-        for item in &search_result.items {
-            if let Some(repo_info,) = extract_repository_info(item,) {
-                let key = (repo_info.owner.clone(), repo_info.repository.clone(),);
-                if seen.insert(key,) {
-                    debug!("Discovered new repository: {}", repo_info);
-                    discovered.push(repo_info,);
-                    pb.set_message(format!(
-                        "Found {} repositories (page {}/{})...",
-                        discovered.len(),
-                        page,
-                        config.max_pages
-                    ),);
-                }
+    match readme_result {
+        Ok(content,) => {
+            if let Some(decoded,) = content.decoded_content() {
+                Ok(extract_repo_from_readme(&decoded,),)
+            } else {
+                Ok(None,)
             }
         }
-
-        if items_count == 0 || page >= config.max_pages {
-            break;
-        }
-
-        page += 1;
+        Err(_,) => Ok(None,),
     }
-
-    pb.finish_with_message(format!(
-        "Badge discovery complete: {} repositories found",
-        discovered.len()
-    ),);
-    info!("Badge discovery complete: {} repositories found", discovered.len());
-    Ok(discovered,)
 }
 
 /// Discovers repositories from users who starred the IMIR repository.
@@ -291,17 +268,28 @@ pub async fn discover_stargazer_repositories(
                     continue;
                 }
 
-                let repo_info = DiscoveredRepository {
-                    owner:      username.to_string(),
-                    repository: repo.name.clone(),
-                };
+                let key = (username.to_string(), repo.name.clone(),);
+                if seen.contains(&key,) {
+                    continue;
+                }
 
-                let key = (repo_info.owner.clone(), repo_info.repository.clone(),);
-                if seen.insert(key,) {
-                    debug!("Discovered repository: {}", repo_info);
+                pb.set_message(format!("Checking README in {}/{}...", username, repo.name),);
+                debug!("Checking README in {}/{}", username, repo.name);
+
+                let has_badge =
+                    check_repo_has_badge(&octocrab, username, &repo.name, &config.retry_config,)
+                        .await?;
+
+                if has_badge.is_some() {
+                    seen.insert(key,);
+                    let repo_info = DiscoveredRepository {
+                        owner:      username.to_string(),
+                        repository: repo.name.clone(),
+                    };
+                    debug!("Found IMIR badge in repository: {}", repo_info);
                     discovered.push(repo_info,);
                     pb.set_message(format!(
-                        "Found {} repositories (processing page {}/{})...",
+                        "Found {} repositories with badge (page {}/{})...",
                         discovered.len(),
                         page,
                         config.max_pages
@@ -375,21 +363,6 @@ pub fn extract_repo_from_readme(readme_content: &str,) -> Option<String,>
     }
 
     None
-}
-
-fn extract_repository_info(code: &Code,) -> Option<DiscoveredRepository,>
-{
-    let repo_url = code.repository.html_url.as_ref()?;
-    let parts: Vec<&str,> = repo_url.path_segments()?.collect();
-
-    if parts.len() >= 2 {
-        Some(DiscoveredRepository {
-            owner:      parts[0].to_string(),
-            repository: parts[1].to_string(),
-        },)
-    } else {
-        None
-    }
 }
 
 #[cfg(test)]
@@ -555,8 +528,6 @@ More content.
     {
         let config = DiscoveryConfig::default();
         assert_eq!(config.max_pages, 10);
-        assert_eq!(config.badge_url_pattern, "RAprogramm/infra-metrics-insight-renderer");
-        assert_eq!(config.metrics_path_pattern, "/metrics/");
         assert_eq!(config.retry_config.max_attempts, 3);
         assert_eq!(config.retry_config.initial_delay_ms, 1000);
     }
@@ -565,18 +536,14 @@ More content.
     fn discovery_config_custom_values()
     {
         let config = DiscoveryConfig {
-            max_pages:            5,
-            badge_url_pattern:    "custom/repo".to_string(),
-            metrics_path_pattern: "/custom/".to_string(),
-            retry_config:         RetryConfig {
+            max_pages:    5,
+            retry_config: RetryConfig {
                 max_attempts:     5,
                 initial_delay_ms: 500,
                 backoff_factor:   1.5,
             },
         };
         assert_eq!(config.max_pages, 5);
-        assert_eq!(config.badge_url_pattern, "custom/repo");
-        assert_eq!(config.metrics_path_pattern, "/custom/");
         assert_eq!(config.retry_config.max_attempts, 5);
         assert_eq!(config.retry_config.initial_delay_ms, 500);
     }
@@ -585,15 +552,10 @@ More content.
     fn discovery_config_clone_creates_independent_copy()
     {
         let config1 = DiscoveryConfig {
-            max_pages:            7,
-            badge_url_pattern:    "org/repo".to_string(),
-            metrics_path_pattern: "/path/".to_string(),
-            retry_config:         RetryConfig::default(),
+            max_pages: 7, retry_config: RetryConfig::default(),
         };
         let config2 = config1.clone();
         assert_eq!(config1.max_pages, config2.max_pages);
-        assert_eq!(config1.badge_url_pattern, config2.badge_url_pattern);
-        assert_eq!(config1.metrics_path_pattern, config2.metrics_path_pattern);
     }
 
     #[test]
