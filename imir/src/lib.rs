@@ -31,7 +31,7 @@
 //!         alignment: center
 //! ";
 //!
-//! let document = parse_targets(yaml,)?;
+//! let document = parse_targets(yaml)?;
 //! assert_eq!(document.targets[0].badge.style, BadgeStyle::Flat);
 //! assert_eq!(document.targets[0].badge.widget.columns, 2);
 //! # Ok(())
@@ -59,12 +59,12 @@ pub use artifact::{ArtifactLocation, locate_artifact};
 pub use badge::{BadgeAssets, generate_badge_assets};
 pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
-    TargetKind,
+    TargetKind
 };
 pub use contributors::{ContributorActivity, fetch_contributor_activity};
 pub use discover::{
     DiscoveredRepository, DiscoveryConfig, discover_badge_users, discover_stargazer_repositories,
-    extract_repo_from_readme,
+    extract_repo_from_readme
 };
 pub use error::{Error, io_error};
 pub use file::{FileMoveResult, move_file};
@@ -72,13 +72,13 @@ pub use gh::{PrCreateResult, gh_pr_create};
 pub use git::{GitPushResult, git_commit_push};
 pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,
-    parse_targets,
+    parse_targets
 };
 pub use open_source::{
-    OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
+    OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets
 };
 pub use render::{
-    ProfileInputs, RepositoryInputs, normalize_profile_inputs, normalize_repository_inputs,
+    ProfileInputs, RepositoryInputs, normalize_profile_inputs, normalize_repository_inputs
 };
 pub use slug::SlugStrategy;
 pub use slugs::{SlugDetectionResult, detect_impacted_slugs};
