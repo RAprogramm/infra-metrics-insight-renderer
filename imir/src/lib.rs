@@ -41,6 +41,7 @@ pub mod contributors;
 mod discover;
 mod error;
 mod file;
+mod gh;
 mod git;
 mod normalizer;
 mod open_source;
@@ -62,6 +63,7 @@ pub use discover::{
 };
 pub use error::{Error, io_error};
 pub use file::{FileMoveResult, move_file};
+pub use gh::{PrCreateResult, gh_pr_create};
 pub use git::{GitPushResult, git_commit_push};
 pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,

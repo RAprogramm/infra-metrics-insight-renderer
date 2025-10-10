@@ -12,8 +12,8 @@ use std::{
 use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
     DiscoveryConfig, Error, TargetsDocument, detect_impacted_slugs, discover_badge_users,
-    discover_stargazer_repositories, generate_badge_assets, git_commit_push, load_targets,
-    locate_artifact, move_file, resolve_open_source_repositories, sync_targets,
+    discover_stargazer_repositories, generate_badge_assets, gh_pr_create, git_commit_push,
+    load_targets, locate_artifact, move_file, resolve_open_source_repositories, sync_targets,
 };
 use tracing::info;
 
@@ -56,6 +56,8 @@ enum Command
     File(FileArgs,),
     /// Git operations for commits and pushes.
     Git(GitArgs,),
+    /// GitHub CLI operations for PRs.
+    Gh(GhArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -285,6 +287,53 @@ struct GitCommitPushArgs
     message: String,
 }
 
+#[derive(Debug, Args,)]
+struct GhArgs
+{
+    #[command(subcommand)]
+    command: GhCommand,
+}
+
+#[derive(Debug, Subcommand,)]
+enum GhCommand
+{
+    /// Create a pull request idempotently.
+    #[command(name = "pr-create")]
+    PrCreate(GhPrCreateArgs,),
+}
+
+#[derive(Debug, Args,)]
+struct GhPrCreateArgs
+{
+    /// Repository in owner/repo format.
+    #[arg(long = "repo", value_name = "REPO", required = true)]
+    repo: String,
+
+    /// Head branch name.
+    #[arg(long = "head", value_name = "BRANCH", required = true)]
+    head: String,
+
+    /// Base branch name.
+    #[arg(long = "base", value_name = "BRANCH", required = true)]
+    base: String,
+
+    /// PR title.
+    #[arg(long = "title", value_name = "TITLE", required = true)]
+    title: String,
+
+    /// PR body.
+    #[arg(long = "body", value_name = "BODY", required = true)]
+    body: String,
+
+    /// Labels to add.
+    #[arg(long = "labels", value_name = "LABELS", num_args = 1.., required = false)]
+    labels: Vec<String,>,
+
+    /// GitHub token.
+    #[arg(long = "token", value_name = "TOKEN", required = true)]
+    token: String,
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main()
@@ -323,6 +372,7 @@ async fn run() -> Result<(), Error,>
         Some(Command::Artifact(args,),) => run_artifact(args,),
         Some(Command::File(args,),) => run_file(args,),
         Some(Command::Git(args,),) => run_git(args,),
+        Some(Command::Gh(args,),) => run_gh(args,),
         None => run_legacy_targets(&cli.legacy,),
     }
 }
@@ -639,6 +689,37 @@ fn run_git(args: GitArgs,) -> Result<(), Error,>
             );
 
             let result = git_commit_push(&push_args.branch, &push_args.path, &push_args.message,)?;
+
+            let json = serde_json::to_string(&result,)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;
+
+            println!("{json}");
+
+            Ok((),)
+        },
+    }
+}
+
+fn run_gh(args: GhArgs,) -> Result<(), Error,>
+{
+    match args.command {
+        GhCommand::PrCreate(pr_args,) => {
+            info!(
+                "Creating PR: repo={}, head={}, base={}",
+                pr_args.repo, pr_args.head, pr_args.base
+            );
+
+            let label_refs: Vec<&str,> = pr_args.labels.iter().map(|s| s.as_str(),).collect();
+
+            let result = gh_pr_create(
+                &pr_args.repo,
+                &pr_args.head,
+                &pr_args.base,
+                &pr_args.title,
+                &pr_args.body,
+                &label_refs,
+                &pr_args.token,
+            )?;
 
             let json = serde_json::to_string(&result,)
                 .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;

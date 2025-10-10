@@ -311,34 +311,15 @@ runs:
 
     - name: Open PR (idempotent)
       if: steps.update.outputs.pushed == 'true'
-      env:
-        GH_TOKEN: ${{ inputs.classic_token }}
       shell: bash
       run: |
         set -euo pipefail
-        REPO="${GITHUB_REPOSITORY}"
-        BASE="${{ steps.update.outputs.default_base }}"
-        HEAD="${BRANCH_NAME}"
 
-        EXISTING="$(gh pr list -R "${REPO}" --head "${HEAD}" --state open --json number --jq '.[0].number' || true)"
-        if [ -n "${EXISTING}" ]; then
-          echo "PR #${EXISTING} already open for ${REPO}:${HEAD} -> ${BASE}"
-          exit 0
-        fi
-
-        LABEL_ARGS=()
-        for LABEL in ci metrics; do
-          if gh label view "${LABEL}" -R "${REPO}" >/dev/null 2>&1 || \
-             gh label create "${LABEL}" -R "${REPO}" --description "Infrastructure automation" >/dev/null 2>&1; then
-            LABEL_ARGS+=("--label" "${LABEL}")
-          else
-            echo "Warning: unable to ensure label '${LABEL}' on ${REPO}, skipping" >&2
-          fi
-        done
-
-        gh pr create -R "${REPO}" \
-          --head "${HEAD}" \
-          --base "${BASE}" \
+        imir gh pr-create \
+          --repo "${GITHUB_REPOSITORY}" \
+          --head "${BRANCH_NAME}" \
+          --base "${{ steps.update.outputs.default_base }}" \
           --title "chore(metrics): refresh" \
-          --body  "Auto-generated metrics update" \
-          "${LABEL_ARGS[@]}"
+          --body "Auto-generated metrics update" \
+          --labels ci metrics \
+          --token "${{ inputs.classic_token }}"
