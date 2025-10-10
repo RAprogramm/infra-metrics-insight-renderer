@@ -16,6 +16,7 @@ use tracing::{debug, info};
 use crate::retry::{RetryConfig, retry_with_backoff};
 
 const BADGE_URL_PATTERN: &str = "RAprogramm/infra-metrics-insight-renderer";
+const BADGE_SVG_FILENAME: &str = "badge.svg";
 const METRICS_PATH_PATTERN: &str = "/metrics/";
 const IMIR_REPO_OWNER: &str = "RAprogramm";
 const IMIR_REPO_NAME: &str = "infra-metrics-insight-renderer";
@@ -324,6 +325,58 @@ pub async fn discover_stargazer_repositories(
     Ok(discovered,)
 }
 
+/// Extracts repository owner and name from README content.
+///
+/// Searches for IMIR badge and metrics link pattern, extracting the repository
+/// name from the metrics SVG path.
+///
+/// # Arguments
+///
+/// * `readme_content` - Raw README file content
+///
+/// # Returns
+///
+/// Repository name if both badge and metrics link are found, None otherwise.
+///
+/// # Example
+///
+/// ```
+/// use imir::extract_repo_from_readme;
+///
+/// let readme = r#"
+/// [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+/// ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/my-repo.svg)
+/// "#;
+/// let repo = extract_repo_from_readme(readme,);
+/// assert_eq!(repo, Some("my-repo".to_string()));
+/// ```
+pub fn extract_repo_from_readme(readme_content: &str,) -> Option<String,>
+{
+    if !readme_content.contains(BADGE_SVG_FILENAME,) {
+        return None;
+    }
+
+    for line in readme_content.lines() {
+        if !line.contains(".svg",) {
+            continue;
+        }
+
+        for pattern in ["./metrics/", "metrics/", "/metrics/",] {
+            if let Some(metrics_idx,) = line.find(pattern,) {
+                let after_metrics = &line[metrics_idx + pattern.len()..];
+                if let Some(svg_idx,) = after_metrics.find(".svg",) {
+                    let repo_name = &after_metrics[..svg_idx];
+                    if !repo_name.is_empty() && !repo_name.contains('/',) {
+                        return Some(repo_name.to_string(),);
+                    }
+                }
+            }
+        }
+    }
+
+    None
+}
+
 fn extract_repository_info(code: &Code,) -> Option<DiscoveredRepository,>
 {
     let repo_url = code.repository.html_url.as_ref()?;
@@ -343,6 +396,121 @@ fn extract_repository_info(code: &Code,) -> Option<DiscoveredRepository,>
 mod tests
 {
     use super::*;
+
+    #[test]
+    fn extract_repo_from_readme_finds_valid_pattern()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/test-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("test-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_returns_none_without_badge()
+    {
+        let readme = r#"
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/test-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn extract_repo_from_readme_returns_none_without_metrics_link()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+Some other content
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn extract_repo_from_readme_handles_multiline_content()
+    {
+        let readme = r#"
+# My Project
+
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+
+Some description here.
+
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/my-project.svg)
+
+More content.
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("my-project".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_rejects_invalid_repo_names()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/owner/repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn extract_repo_from_readme_handles_empty_content()
+    {
+        let readme = "";
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn extract_repo_from_readme_finds_first_valid_match()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/first-repo.svg)
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/second-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("first-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_handles_relative_path_dot_slash()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](./metrics/relative-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("relative-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_handles_relative_path_no_prefix()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](metrics/no-prefix-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("no-prefix-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_prefers_dot_slash_over_others()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](./metrics/dot-slash.svg)
+![Metrics](metrics/no-prefix.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("dot-slash".to_string()));
+    }
 
     #[test]
     fn discovered_repository_display()
