@@ -196,6 +196,10 @@ fn push_with_retry(
             return Ok(true,);
         }
 
+        if attempt == 3 {
+            return Err(AppError::service("unable to push after 3 attempts",),);
+        }
+
         let _ = run_git(&[
             "fetch",
             "--no-tags",
@@ -218,13 +222,9 @@ fn push_with_retry(
         if try_force_push(branch_name, upstream_before,)? {
             return Ok(true,);
         }
-
-        if attempt == 3 {
-            return Err(AppError::service("unable to push after 3 attempts",),);
-        }
     }
 
-    Ok(false,)
+    Err(AppError::service("push retry loop exited unexpectedly",),)
 }
 
 fn try_push(branch_name: &str,) -> Result<bool, AppError,>
