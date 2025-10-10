@@ -13,7 +13,8 @@ use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
     DiscoveryConfig, Error, TargetsDocument, detect_impacted_slugs, discover_badge_users,
     discover_stargazer_repositories, generate_badge_assets, gh_pr_create, git_commit_push,
-    load_targets, locate_artifact, move_file, resolve_open_source_repositories, sync_targets,
+    load_targets, locate_artifact, move_file, normalize_profile_inputs,
+    normalize_repository_inputs, resolve_open_source_repositories, sync_targets,
 };
 use tracing::info;
 
@@ -58,6 +59,8 @@ enum Command
     Git(GitArgs,),
     /// GitHub CLI operations for PRs.
     Gh(GhArgs,),
+    /// Render action input normalization.
+    Render(RenderArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -334,6 +337,77 @@ struct GhPrCreateArgs
     token: String,
 }
 
+#[derive(Debug, Args,)]
+struct RenderArgs
+{
+    #[command(subcommand)]
+    command: RenderCommand,
+}
+
+#[derive(Debug, Subcommand,)]
+enum RenderCommand
+{
+    /// Normalize profile render inputs.
+    #[command(name = "normalize-profile")]
+    NormalizeProfile(NormalizeProfileArgs,),
+    /// Normalize repository render inputs.
+    #[command(name = "normalize-repository")]
+    NormalizeRepository(NormalizeRepositoryArgs,),
+}
+
+#[derive(Debug, Args,)]
+struct NormalizeProfileArgs
+{
+    #[arg(long = "target-user", value_name = "USER", required = true)]
+    target_user: String,
+
+    #[arg(long = "branch-name", value_name = "BRANCH")]
+    branch_name: Option<String,>,
+
+    #[arg(long = "target-path", value_name = "PATH")]
+    target_path: Option<String,>,
+
+    #[arg(long = "temp-artifact", value_name = "PATH")]
+    temp_artifact: Option<String,>,
+
+    #[arg(long = "time-zone", value_name = "TZ")]
+    time_zone: Option<String,>,
+
+    #[arg(long = "display-name", value_name = "NAME")]
+    display_name: Option<String,>,
+
+    #[arg(long = "include-private", value_name = "BOOL")]
+    include_private: Option<String,>,
+}
+
+#[derive(Debug, Args,)]
+struct NormalizeRepositoryArgs
+{
+    #[arg(long = "target-repo", value_name = "REPO", required = true)]
+    target_repo: String,
+
+    #[arg(long = "target-owner", value_name = "OWNER")]
+    target_owner: Option<String,>,
+
+    #[arg(long = "github-repo", value_name = "REPO", required = true)]
+    github_repo: String,
+
+    #[arg(long = "target-path", value_name = "PATH")]
+    target_path: Option<String,>,
+
+    #[arg(long = "temp-artifact", value_name = "PATH")]
+    temp_artifact: Option<String,>,
+
+    #[arg(long = "branch-name", value_name = "BRANCH")]
+    branch_name: Option<String,>,
+
+    #[arg(long = "contributors-branch", value_name = "BRANCH")]
+    contributors_branch: Option<String,>,
+
+    #[arg(long = "time-zone", value_name = "TZ")]
+    time_zone: Option<String,>,
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main()
@@ -373,6 +447,7 @@ async fn run() -> Result<(), Error,>
         Some(Command::File(args,),) => run_file(args,),
         Some(Command::Git(args,),) => run_git(args,),
         Some(Command::Gh(args,),) => run_gh(args,),
+        Some(Command::Render(args,),) => run_render(args,),
         None => run_legacy_targets(&cli.legacy,),
     }
 }
@@ -719,6 +794,56 @@ fn run_gh(args: GhArgs,) -> Result<(), Error,>
                 &pr_args.body,
                 &label_refs,
                 &pr_args.token,
+            )?;
+
+            let json = serde_json::to_string(&result,)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;
+
+            println!("{json}");
+
+            Ok((),)
+        },
+    }
+}
+
+fn run_render(args: RenderArgs,) -> Result<(), Error,>
+{
+    match args.command {
+        RenderCommand::NormalizeProfile(profile_args,) => {
+            info!("Normalizing profile inputs: user={}", profile_args.target_user);
+
+            let result = normalize_profile_inputs(
+                &profile_args.target_user,
+                profile_args.branch_name.as_deref(),
+                profile_args.target_path.as_deref(),
+                profile_args.temp_artifact.as_deref(),
+                profile_args.time_zone.as_deref(),
+                profile_args.display_name.as_deref(),
+                profile_args.include_private.as_deref(),
+            )?;
+
+            let json = serde_json::to_string(&result,)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;
+
+            println!("{json}");
+
+            Ok((),)
+        },
+        RenderCommand::NormalizeRepository(repo_args,) => {
+            info!(
+                "Normalizing repository inputs: repo={}",
+                repo_args.target_repo
+            );
+
+            let result = normalize_repository_inputs(
+                &repo_args.target_repo,
+                repo_args.target_owner.as_deref(),
+                &repo_args.github_repo,
+                repo_args.target_path.as_deref(),
+                repo_args.temp_artifact.as_deref(),
+                repo_args.branch_name.as_deref(),
+                repo_args.contributors_branch.as_deref(),
+                repo_args.time_zone.as_deref(),
             )?;
 
             let json = serde_json::to_string(&result,)

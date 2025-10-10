@@ -46,73 +46,23 @@ runs:
       run: |
         set -euo pipefail
 
-        TARGET_REPO="${{ inputs.target_repo }}"
-        if [ -z "${TARGET_REPO}" ]; then
-          echo "The target_repo input must be provided." >&2
-          exit 1
-        fi
+        INPUTS=$(imir render normalize-repository \
+          --target-repo "${{ inputs.target_repo }}" \
+          --github-repo "${GITHUB_REPOSITORY}" \
+          ${{ inputs.target_owner && format('--target-owner "{0}"', inputs.target_owner) || '' }} \
+          ${{ inputs.target_path && format('--target-path "{0}"', inputs.target_path) || '' }} \
+          ${{ inputs.temp_artifact && format('--temp-artifact "{0}"', inputs.temp_artifact) || '' }} \
+          ${{ inputs.branch_name && format('--branch-name "{0}"', inputs.branch_name) || '' }} \
+          ${{ inputs.contributors_branch && format('--contributors-branch "{0}"', inputs.contributors_branch) || '' }} \
+          ${{ inputs.time_zone && format('--time-zone "{0}"', inputs.time_zone) || '' }})
 
-        TARGET_OWNER_INPUT="${{ inputs.target_owner }}"
-        if [ -n "${TARGET_OWNER_INPUT}" ]; then
-          TARGET_OWNER="${TARGET_OWNER_INPUT}"
-        else
-          TARGET_OWNER="${GITHUB_REPOSITORY%%/*}"
-        fi
-
-        TARGET_PATH_INPUT="${{ inputs.target_path }}"
-        if [ -n "${TARGET_PATH_INPUT}" ]; then
-          TARGET_PATH="${TARGET_PATH_INPUT}"
-        else
-          TARGET_PATH="metrics/${TARGET_REPO}.svg"
-        fi
-
-        TEMP_ARTIFACT_INPUT="${{ inputs.temp_artifact }}"
-        if [ -n "${TEMP_ARTIFACT_INPUT}" ]; then
-          TEMP_ARTIFACT="${TEMP_ARTIFACT_INPUT}"
-        else
-          TEMP_ARTIFACT=".metrics-tmp/${TARGET_REPO}.svg"
-        fi
-
-        BRANCH_NAME_INPUT="${{ inputs.branch_name }}"
-        if [ -n "${BRANCH_NAME_INPUT}" ]; then
-          BRANCH_NAME="${BRANCH_NAME_INPUT}"
-        else
-          BRANCH_NAME="ci/metrics-refresh-${TARGET_REPO}"
-        fi
-
-        CONTRIBUTORS_BRANCH_INPUT="${{ inputs.contributors_branch }}"
-        if [ -n "${CONTRIBUTORS_BRANCH_INPUT}" ]; then
-          CONTRIBUTORS_BRANCH="$(printf '%s' "${CONTRIBUTORS_BRANCH_INPUT}" | xargs)"
-        else
-          CONTRIBUTORS_BRANCH="main"
-        fi
-
-        if [ -z "${CONTRIBUTORS_BRANCH}" ]; then
-          echo "The contributors_branch input cannot be empty." >&2
-          exit 1
-        fi
-
-        case "${CONTRIBUTORS_BRANCH}" in
-          *[[:space:]]*)
-            echo "The contributors_branch input cannot contain whitespace." >&2
-            exit 1
-            ;;
-        esac
-
-        TIME_ZONE_INPUT="${{ inputs.time_zone }}"
-        if [ -n "${TIME_ZONE_INPUT}" ]; then
-          TIME_ZONE="${TIME_ZONE_INPUT}"
-        else
-          TIME_ZONE="Asia/Ho_Chi_Minh"
-        fi
-
-        echo "TARGET_OWNER=${TARGET_OWNER}" >> "${GITHUB_ENV}"
-        echo "TARGET_REPO=${TARGET_REPO}" >> "${GITHUB_ENV}"
-        echo "TARGET_PATH=${TARGET_PATH}" >> "${GITHUB_ENV}"
-        echo "TEMP_ARTIFACT=${TEMP_ARTIFACT}" >> "${GITHUB_ENV}"
-        echo "BRANCH_NAME=${BRANCH_NAME}" >> "${GITHUB_ENV}"
-        echo "CONTRIBUTORS_BRANCH=${CONTRIBUTORS_BRANCH}" >> "${GITHUB_ENV}"
-        echo "TIME_ZONE=${TIME_ZONE}" >> "${GITHUB_ENV}"
+        echo "TARGET_OWNER=$(echo "${INPUTS}" | jq -r '.target_owner')" >> "${GITHUB_ENV}"
+        echo "TARGET_REPO=$(echo "${INPUTS}" | jq -r '.target_repo')" >> "${GITHUB_ENV}"
+        echo "TARGET_PATH=$(echo "${INPUTS}" | jq -r '.target_path')" >> "${GITHUB_ENV}"
+        echo "TEMP_ARTIFACT=$(echo "${INPUTS}" | jq -r '.temp_artifact')" >> "${GITHUB_ENV}"
+        echo "BRANCH_NAME=$(echo "${INPUTS}" | jq -r '.branch_name')" >> "${GITHUB_ENV}"
+        echo "CONTRIBUTORS_BRANCH=$(echo "${INPUTS}" | jq -r '.contributors_branch')" >> "${GITHUB_ENV}"
+        echo "TIME_ZONE=$(echo "${INPUTS}" | jq -r '.time_zone')" >> "${GITHUB_ENV}"
 
     - name: Checkout renderer
       uses: actions/checkout@v5

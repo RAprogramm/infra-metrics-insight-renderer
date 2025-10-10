@@ -45,6 +45,7 @@ mod gh;
 mod git;
 mod normalizer;
 mod open_source;
+mod render;
 pub mod retry;
 mod slug;
 mod slugs;
@@ -71,6 +72,9 @@ pub use normalizer::{
 };
 pub use open_source::{
     OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
+};
+pub use render::{
+    ProfileInputs, RepositoryInputs, normalize_profile_inputs, normalize_repository_inputs,
 };
 pub use slug::SlugStrategy;
 pub use slugs::{SlugDetectionResult, detect_impacted_slugs};
