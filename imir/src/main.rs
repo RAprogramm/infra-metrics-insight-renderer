@@ -12,7 +12,7 @@ use std::{
 use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
     DiscoveryConfig, Error, TargetsDocument, detect_impacted_slugs, discover_badge_users,
-    discover_stargazer_repositories, generate_badge_assets, load_targets,
+    discover_stargazer_repositories, generate_badge_assets, load_targets, locate_artifact,
     resolve_open_source_repositories, sync_targets,
 };
 use tracing::info;
@@ -50,6 +50,8 @@ enum Command
     Contributors(ContributorsArgs,),
     /// Detect impacted slugs from git changes.
     Slugs(SlugsArgs,),
+    /// Locate generated metrics artifacts.
+    Artifact(ArtifactArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -210,6 +212,18 @@ struct SlugsArgs
     event: Option<String,>,
 }
 
+#[derive(Debug, Args,)]
+struct ArtifactArgs
+{
+    /// Expected filename or relative path.
+    #[arg(long = "temp-artifact", value_name = "PATH", required = true)]
+    temp_artifact: String,
+
+    /// GitHub workspace directory.
+    #[arg(long = "workspace", value_name = "PATH", required = true)]
+    workspace: String,
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main()
@@ -245,6 +259,7 @@ async fn run() -> Result<(), Error,>
         Some(Command::Sync(args,),) => run_sync(args,).await,
         Some(Command::Contributors(args,),) => run_contributors(args,).await,
         Some(Command::Slugs(args,),) => run_slugs(args,),
+        Some(Command::Artifact(args,),) => run_artifact(args,),
         None => run_legacy_targets(&cli.legacy,),
     }
 }
@@ -507,6 +522,23 @@ fn run_slugs(args: SlugsArgs,) -> Result<(), Error,>
 
     let json = serde_json::to_string(&result,)
         .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;
+
+    println!("{json}");
+
+    Ok((),)
+}
+
+fn run_artifact(args: ArtifactArgs,) -> Result<(), Error,>
+{
+    info!(
+        "Locating artifact: temp={}, workspace={}",
+        args.temp_artifact, args.workspace
+    );
+
+    let location = locate_artifact(&args.temp_artifact, &args.workspace,)?;
+
+    let json = serde_json::to_string(&location,)
+        .map_err(|e| Error::service(format!("failed to serialize location: {e}"),),)?;
 
     println!("{json}");
 

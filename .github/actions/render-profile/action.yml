@@ -279,34 +279,12 @@ runs:
       run: |
         set -euo pipefail
 
-        if [ -z "${TEMP_ARTIFACT}" ]; then
-          echo "Temporary artifact path is empty." >&2
-          exit 1
-        fi
+        RESULT=$(imir artifact \
+          --temp-artifact "${TEMP_ARTIFACT}" \
+          --workspace "${GITHUB_WORKSPACE}")
 
-        CANDIDATES=(
-          "${GITHUB_WORKSPACE}/${TEMP_ARTIFACT}"
-          "/metrics_renders/${TEMP_ARTIFACT}"
-          "/metrics_renders/$(basename "${TEMP_ARTIFACT}")"
-        )
-
-        for CANDIDATE in "${CANDIDATES[@]}"; do
-          if [ -f "${CANDIDATE}" ]; then
-            echo "Located metrics artifact at ${CANDIDATE}"
-            echo "path=${CANDIDATE}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-        }
-
-        echo "Unable to locate metrics artifact. Searched paths:" >&2
-        printf '  - %s\n' "${CANDIDATES[@]}" >&2
-
-        if [ -d "/metrics_renders" ]; then
-          echo "Discovered files under /metrics_renders:" >&2
-          find /metrics_renders -maxdepth 2 -type f -print >&2 || true
-        fi
-
-        exit 1
+        ARTIFACT_PATH=$(echo "${RESULT}" | jq -r '.path')
+        echo "path=${ARTIFACT_PATH}" >> "$GITHUB_OUTPUT"
 
     - name: Move artifact into repository workspace
       shell: bash

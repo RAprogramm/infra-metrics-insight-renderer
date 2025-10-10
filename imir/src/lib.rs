@@ -34,6 +34,7 @@
 //! # }
 //! ```
 
+mod artifact;
 mod badge;
 mod config;
 pub mod contributors;
@@ -46,6 +47,7 @@ mod slug;
 mod slugs;
 mod sync;
 
+pub use artifact::{ArtifactLocation, locate_artifact};
 pub use badge::{BadgeAssets, generate_badge_assets};
 pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
