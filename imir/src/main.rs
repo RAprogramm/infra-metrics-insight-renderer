@@ -146,18 +146,6 @@ struct DiscoverArgs
     /// Maximum number of pages to fetch from GitHub API.
     #[arg(long = "max-pages", value_name = "COUNT", default_value = "10")]
     max_pages: u32,
-
-    /// Badge URL pattern to search for.
-    #[arg(
-        long = "badge-pattern",
-        value_name = "PATTERN",
-        default_value = "RAprogramm/infra-metrics-insight-renderer"
-    )]
-    badge_pattern: String,
-
-    /// Metrics path pattern to search for.
-    #[arg(long = "metrics-pattern", value_name = "PATTERN", default_value = "/metrics/")]
-    metrics_pattern: String,
 }
 
 #[derive(Debug, Args,)]
@@ -178,18 +166,6 @@ struct SyncArgs
     /// Maximum number of pages to fetch from GitHub API.
     #[arg(long = "max-pages", value_name = "COUNT", default_value = "10")]
     max_pages: u32,
-
-    /// Badge URL pattern to search for.
-    #[arg(
-        long = "badge-pattern",
-        value_name = "PATTERN",
-        default_value = "RAprogramm/infra-metrics-insight-renderer"
-    )]
-    badge_pattern: String,
-
-    /// Metrics path pattern to search for.
-    #[arg(long = "metrics-pattern", value_name = "PATTERN", default_value = "/metrics/")]
-    metrics_pattern: String,
 }
 
 #[derive(Debug, Args,)]
@@ -367,8 +343,6 @@ async fn run_discover(args: DiscoverArgs,) -> Result<(), Error,>
 {
     let config = DiscoveryConfig {
         max_pages: args.max_pages,
-        badge_url_pattern: args.badge_pattern.clone(),
-        metrics_path_pattern: args.metrics_pattern.clone(),
         ..Default::default()
     };
 
@@ -444,8 +418,6 @@ async fn run_sync(args: SyncArgs,) -> Result<(), Error,>
 {
     let config = DiscoveryConfig {
         max_pages: args.max_pages,
-        badge_url_pattern: args.badge_pattern.clone(),
-        metrics_path_pattern: args.metrics_pattern.clone(),
         ..Default::default()
     };
 
@@ -754,10 +726,6 @@ targets:
             "yaml",
             "--max-pages",
             "5",
-            "--badge-pattern",
-            "custom/repo",
-            "--metrics-pattern",
-            "/custom/",
         ],)
         .expect("failed to parse discover command",);
 
@@ -767,8 +735,6 @@ targets:
                 assert_eq!(args.source, "badge");
                 assert_eq!(args.format, "yaml");
                 assert_eq!(args.max_pages, 5);
-                assert_eq!(args.badge_pattern, "custom/repo");
-                assert_eq!(args.metrics_pattern, "/custom/");
             }
             other => panic!("unexpected command variant: {other:?}"),
         }
@@ -791,10 +757,6 @@ targets:
             "stargazers",
             "--max-pages",
             "3",
-            "--badge-pattern",
-            "org/metrics",
-            "--metrics-pattern",
-            "/dash/",
         ],)
         .expect("failed to parse sync command",);
 
@@ -804,8 +766,6 @@ targets:
                 assert_eq!(args.token, "test_token");
                 assert_eq!(args.source, "stargazers");
                 assert_eq!(args.max_pages, 3);
-                assert_eq!(args.badge_pattern, "org/metrics");
-                assert_eq!(args.metrics_pattern, "/dash/");
             }
             other => panic!("unexpected command variant: {other:?}"),
         }
