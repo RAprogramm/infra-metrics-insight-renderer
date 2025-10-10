@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+//
+// SPDX-License-Identifier: MIT
+
 //! Utilities for deriving stable slugs from user-supplied strings.
 //!
 //! Slugs produced by this module contain only lowercase ASCII alphanumeric

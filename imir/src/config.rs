@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+//
+// SPDX-License-Identifier: MIT
+
 //! Configuration document types describing metrics renderer targets.
 //!
 //! The types in this module mirror the structure of the YAML documents

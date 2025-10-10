@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+
+SPDX-License-Identifier: MIT
+-->
+
 <a id="top"></a>
 <h1 align="center">IMIR</h1>
 <div align="right">

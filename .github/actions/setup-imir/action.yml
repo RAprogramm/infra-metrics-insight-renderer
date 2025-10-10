@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 name: Setup IMIR
 description: Download and setup pre-built imir binary from releases
 

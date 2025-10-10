@@ -1,5 +1,10 @@
 #![allow(non_shorthand_field_patterns)]
 #![doc = "Error handling primitives shared across the orchestrator crate."]
+
+// SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+//
+// SPDX-License-Identifier: MIT
+
 //! The derive emitted by [`masterror::Error`] expands pattern matches that
 //! trigger the `non_shorthand_field_patterns` lint. The lint is disabled for
 //! the module to keep the generated implementations warning-free while still

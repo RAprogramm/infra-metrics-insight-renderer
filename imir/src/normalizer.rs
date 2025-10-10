@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+//
+// SPDX-License-Identifier: MIT
+
 //! Transformation logic that converts raw configuration entries into
 //! normalized render targets.
 //!
