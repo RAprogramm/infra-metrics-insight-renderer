@@ -357,14 +357,18 @@ pub fn extract_repo_from_readme(readme_content: &str,) -> Option<String,>
     }
 
     for line in readme_content.lines() {
-        if line.contains(METRICS_PATH_PATTERN,) && line.contains(".svg",)
-            && let Some(metrics_idx,) = line.find(METRICS_PATH_PATTERN,)
-        {
-            let after_metrics = &line[metrics_idx + METRICS_PATH_PATTERN.len()..];
-            if let Some(svg_idx,) = after_metrics.find(".svg",) {
-                let repo_name = &after_metrics[..svg_idx];
-                if !repo_name.is_empty() && !repo_name.contains('/',) {
-                    return Some(repo_name.to_string(),);
+        if !line.contains(".svg",) {
+            continue;
+        }
+
+        for pattern in ["./metrics/", "metrics/", "/metrics/",] {
+            if let Some(metrics_idx,) = line.find(pattern,) {
+                let after_metrics = &line[metrics_idx + pattern.len()..];
+                if let Some(svg_idx,) = after_metrics.find(".svg",) {
+                    let repo_name = &after_metrics[..svg_idx];
+                    if !repo_name.is_empty() && !repo_name.contains('/',) {
+                        return Some(repo_name.to_string(),);
+                    }
                 }
             }
         }
@@ -472,6 +476,40 @@ More content.
 "#;
         let result = extract_repo_from_readme(readme,);
         assert_eq!(result, Some("first-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_handles_relative_path_dot_slash()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](./metrics/relative-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("relative-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_handles_relative_path_no_prefix()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](metrics/no-prefix-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("no-prefix-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_prefers_dot_slash_over_others()
+    {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+![Metrics](./metrics/dot-slash.svg)
+![Metrics](metrics/no-prefix.svg)
+"#;
+        let result = extract_repo_from_readme(readme,);
+        assert_eq!(result, Some("dot-slash".to_string()));
     }
 
     #[test]
