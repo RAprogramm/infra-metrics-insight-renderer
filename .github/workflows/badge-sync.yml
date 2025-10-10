@@ -48,69 +48,25 @@ jobs:
 
       - name: Detect impacted badge slugs
         id: slugs
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-          PUSH_BEFORE_SHA: ${{ github.event.before || '' }}
-          HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
-          TARGETS_JSON="${{ steps.targets.outputs.path }}"
-          if [ -z "${TARGETS_JSON}" ] || [ ! -f "${TARGETS_JSON}" ]; then
-            echo "Targets JSON is missing." >&2
-            exit 1
+          BASE_REF=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            BASE_REF="${{ github.event.before }}"
           fi
 
-          ALL_SLUGS_JSON="$(jq -c '[.targets[].slug]' "${TARGETS_JSON}")"
+          RESULT=$(imir slugs \
+            --base-ref "${BASE_REF}" \
+            --head-ref "${{ github.sha }}" \
+            --files README.md targets/targets.yaml \
+            --config "${TARGETS_CONFIG}" \
+            --event "${{ github.event_name }}")
 
-          if [ "${EVENT_NAME}" = "schedule" ]; then
-            SELECTED="${ALL_SLUGS_JSON}"
-          else
-            BASE_REF=""
-            if [ "${EVENT_NAME}" = "pull_request" ]; then
-              BASE_REF="${PR_BASE_SHA}"
-            elif [ "${EVENT_NAME}" = "push" ]; then
-              BASE_REF="${PUSH_BEFORE_SHA}"
-            fi
-
-            if [ -n "${BASE_REF}" ]; then
-              if ! git rev-parse --verify "${BASE_REF}" >/dev/null 2>&1; then
-                git fetch --no-tags --prune --depth=1 origin "+${BASE_REF}:${BASE_REF}" || true
-              fi
-            fi
-
-            HEAD_REF="${HEAD_SHA}"
-            if [ -z "${HEAD_REF}" ]; then
-              HEAD_REF="$(git rev-parse HEAD)"
-            fi
-
-            if [ -n "${BASE_REF}" ]; then
-              DIFF_OUTPUT="$(git diff --unified=0 "${BASE_REF}" "${HEAD_REF}" -- README.md targets/targets.yaml || true)"
-            else
-              DIFF_OUTPUT="$(git show "${HEAD_REF}" -- README.md targets/targets.yaml || true)"
-            fi
-
-            SLUGS_FROM_DIFF="$(printf '%s' "${DIFF_OUTPUT}" | grep -oE 'metrics/([A-Za-z0-9_.-]+)\\.svg' || true)"
-            if [ -n "${SLUGS_FROM_DIFF}" ]; then
-              SLUGS="$(printf '%s' "${SLUGS_FROM_DIFF}" | sed -E 's#metrics/##;s#\\.svg##' | sort -u)"
-            else
-              SLUGS=""
-            fi
-
-            if [ -n "${SLUGS}" ]; then
-              SELECTED="$(printf '%s\n' "${SLUGS}" | jq -Rsc 'split("\n") | map(select(length > 0))')"
-            else
-              SELECTED="[]"
-            fi
-          fi
-
-          echo "slugs=${SELECTED}" >> "$GITHUB_OUTPUT"
-          if [ "${SELECTED}" != "[]" ]; then
-            echo "has=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has=false" >> "$GITHUB_OUTPUT"
-          fi
+          echo "slugs=$(echo "${RESULT}" | jq -c '.slugs')" >> "$GITHUB_OUTPUT"
+          echo "has=$(echo "${RESULT}" | jq -r '.has_any')" >> "$GITHUB_OUTPUT"
 
       - name: Generate badge assets
         if: steps.slugs.outputs.has == 'true'

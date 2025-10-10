@@ -46,84 +46,27 @@ runs:
       run: |
         set -euo pipefail
 
-        TARGET_USER_INPUT="${{ inputs.target_user }}"
-        if [ -z "${TARGET_USER_INPUT}" ]; then
-          echo "The target_user input must be provided." >&2
-          exit 1
-        fi
+        INPUTS=$(imir render normalize-profile \
+          --target-user "${{ inputs.target_user }}" \
+          ${{ inputs.branch_name && format('--branch-name "{0}"', inputs.branch_name) || '' }} \
+          ${{ inputs.target_path && format('--target-path "{0}"', inputs.target_path) || '' }} \
+          ${{ inputs.temp_artifact && format('--temp-artifact "{0}"', inputs.temp_artifact) || '' }} \
+          ${{ inputs.time_zone && format('--time-zone "{0}"', inputs.time_zone) || '' }} \
+          ${{ inputs.display_name && format('--display-name "{0}"', inputs.display_name) || '' }} \
+          ${{ inputs.include_private && format('--include-private "{0}"', inputs.include_private) || '' }})
 
-        BRANCH_NAME_INPUT="${{ inputs.branch_name }}"
-        if [ -n "${BRANCH_NAME_INPUT}" ]; then
-          BRANCH_NAME="${BRANCH_NAME_INPUT}"
-        else
-          BRANCH_NAME="ci/metrics-refresh-profile"
-        fi
-
-        TARGET_PATH_INPUT="${{ inputs.target_path }}"
-        if [ -n "${TARGET_PATH_INPUT}" ]; then
-          TARGET_PATH="${TARGET_PATH_INPUT}"
-        else
-          TARGET_PATH="metrics/profile.svg"
-        fi
-
-        TEMP_ARTIFACT_INPUT="${{ inputs.temp_artifact }}"
-        if [ -n "${TEMP_ARTIFACT_INPUT}" ]; then
-          TEMP_ARTIFACT="${TEMP_ARTIFACT_INPUT}"
-        else
-          TEMP_ARTIFACT=".metrics-tmp/profile.svg"
-        fi
-
-        TIME_ZONE_INPUT="${{ inputs.time_zone }}"
-        if [ -n "${TIME_ZONE_INPUT}" ]; then
-          TIME_ZONE="${TIME_ZONE_INPUT}"
-        else
-          TIME_ZONE="Asia/Ho_Chi_Minh"
-        fi
-
-        DISPLAY_NAME_INPUT="${{ inputs.display_name }}"
-        if [ -n "${DISPLAY_NAME_INPUT}" ]; then
-          DISPLAY_NAME="${DISPLAY_NAME_INPUT}"
-        else
-          DISPLAY_NAME="profile"
-        fi
-
-        INCLUDE_PRIVATE_INPUT="${{ inputs.include_private }}"
-        INCLUDE_PRIVATE_NORMALIZED="$(printf '%s' "${INCLUDE_PRIVATE_INPUT}" | tr '[:upper:]' '[:lower:]')"
-        case "${INCLUDE_PRIVATE_NORMALIZED}" in
-          ""|"false"|"0"|"no")
-            INCLUDE_PRIVATE="false"
-            REPOSITORIES_AFFILIATIONS="owner, organization_member"
-            PLUGIN_REPOSITORIES_AFFILIATIONS="owner, organization_member"
-            PLUGIN_ACTIVITY_VISIBILITY="public"
-            PLUGIN_CODE_VISIBILITY="public"
-            PLUGIN_ACHIEVEMENTS_SECRETS="no"
-            ;;
-          "true"|"1"|"yes")
-            INCLUDE_PRIVATE="true"
-            REPOSITORIES_AFFILIATIONS="owner, collaborator, organization_member"
-            PLUGIN_REPOSITORIES_AFFILIATIONS="owner, collaborator, organization_member"
-            PLUGIN_ACTIVITY_VISIBILITY="all"
-            PLUGIN_CODE_VISIBILITY="all"
-            PLUGIN_ACHIEVEMENTS_SECRETS="yes"
-            ;;
-          *)
-            echo "The include_private input must be a boolean value." >&2
-            exit 1
-            ;;
-        esac
-
-        echo "TARGET_USER=${TARGET_USER_INPUT}" >> "${GITHUB_ENV}"
-        echo "BRANCH_NAME=${BRANCH_NAME}" >> "${GITHUB_ENV}"
-        echo "TARGET_PATH=${TARGET_PATH}" >> "${GITHUB_ENV}"
-        echo "TEMP_ARTIFACT=${TEMP_ARTIFACT}" >> "${GITHUB_ENV}"
-        echo "TIME_ZONE=${TIME_ZONE}" >> "${GITHUB_ENV}"
-        echo "DISPLAY_NAME=${DISPLAY_NAME}" >> "${GITHUB_ENV}"
-        echo "INCLUDE_PRIVATE=${INCLUDE_PRIVATE}" >> "${GITHUB_ENV}"
-        echo "REPOSITORIES_AFFILIATIONS=${REPOSITORIES_AFFILIATIONS}" >> "${GITHUB_ENV}"
-        echo "PLUGIN_REPOSITORIES_AFFILIATIONS=${PLUGIN_REPOSITORIES_AFFILIATIONS}" >> "${GITHUB_ENV}"
-        echo "PLUGIN_ACTIVITY_VISIBILITY=${PLUGIN_ACTIVITY_VISIBILITY}" >> "${GITHUB_ENV}"
-        echo "PLUGIN_CODE_VISIBILITY=${PLUGIN_CODE_VISIBILITY}" >> "${GITHUB_ENV}"
-        echo "PLUGIN_ACHIEVEMENTS_SECRETS=${PLUGIN_ACHIEVEMENTS_SECRETS}" >> "${GITHUB_ENV}"
+        echo "TARGET_USER=$(echo "${INPUTS}" | jq -r '.target_user')" >> "${GITHUB_ENV}"
+        echo "BRANCH_NAME=$(echo "${INPUTS}" | jq -r '.branch_name')" >> "${GITHUB_ENV}"
+        echo "TARGET_PATH=$(echo "${INPUTS}" | jq -r '.target_path')" >> "${GITHUB_ENV}"
+        echo "TEMP_ARTIFACT=$(echo "${INPUTS}" | jq -r '.temp_artifact')" >> "${GITHUB_ENV}"
+        echo "TIME_ZONE=$(echo "${INPUTS}" | jq -r '.time_zone')" >> "${GITHUB_ENV}"
+        echo "DISPLAY_NAME=$(echo "${INPUTS}" | jq -r '.display_name')" >> "${GITHUB_ENV}"
+        echo "INCLUDE_PRIVATE=$(echo "${INPUTS}" | jq -r '.include_private')" >> "${GITHUB_ENV}"
+        echo "REPOSITORIES_AFFILIATIONS=$(echo "${INPUTS}" | jq -r '.repositories_affiliations')" >> "${GITHUB_ENV}"
+        echo "PLUGIN_REPOSITORIES_AFFILIATIONS=$(echo "${INPUTS}" | jq -r '.plugin_repositories_affiliations')" >> "${GITHUB_ENV}"
+        echo "PLUGIN_ACTIVITY_VISIBILITY=$(echo "${INPUTS}" | jq -r '.plugin_activity_visibility')" >> "${GITHUB_ENV}"
+        echo "PLUGIN_CODE_VISIBILITY=$(echo "${INPUTS}" | jq -r '.plugin_code_visibility')" >> "${GITHUB_ENV}"
+        echo "PLUGIN_ACHIEVEMENTS_SECRETS=$(echo "${INPUTS}" | jq -r '.plugin_achievements_secrets')" >> "${GITHUB_ENV}"
 
     - name: Checkout renderer
       uses: actions/checkout@v5
@@ -279,49 +222,21 @@ runs:
       run: |
         set -euo pipefail
 
-        if [ -z "${TEMP_ARTIFACT}" ]; then
-          echo "Temporary artifact path is empty." >&2
-          exit 1
-        fi
+        RESULT=$(imir artifact \
+          --temp-artifact "${TEMP_ARTIFACT}" \
+          --workspace "${GITHUB_WORKSPACE}")
 
-        CANDIDATES=(
-          "${GITHUB_WORKSPACE}/${TEMP_ARTIFACT}"
-          "/metrics_renders/${TEMP_ARTIFACT}"
-          "/metrics_renders/$(basename "${TEMP_ARTIFACT}")"
-        )
-
-        for CANDIDATE in "${CANDIDATES[@]}"; do
-          if [ -f "${CANDIDATE}" ]; then
-            echo "Located metrics artifact at ${CANDIDATE}"
-            echo "path=${CANDIDATE}" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-        }
-
-        echo "Unable to locate metrics artifact. Searched paths:" >&2
-        printf '  - %s\n' "${CANDIDATES[@]}" >&2
-
-        if [ -d "/metrics_renders" ]; then
-          echo "Discovered files under /metrics_renders:" >&2
-          find /metrics_renders -maxdepth 2 -type f -print >&2 || true
-        fi
-
-        exit 1
+        ARTIFACT_PATH=$(echo "${RESULT}" | jq -r '.path')
+        echo "path=${ARTIFACT_PATH}" >> "$GITHUB_OUTPUT"
 
     - name: Move artifact into repository workspace
       shell: bash
       run: |
         set -euo pipefail
 
-        SOURCE_PATH="${{ steps.artifact.outputs.path }}"
-        if [ -z "${SOURCE_PATH}" ]; then
-          echo "Artifact path output is empty." >&2
-          exit 1
-        fi
-
-        mkdir -p "$(dirname "${TARGET_PATH}")"
-        mv "${SOURCE_PATH}" "${TARGET_PATH}"
-        echo "Stored metrics at ${TARGET_PATH}"
+        imir file move \
+          --source "${{ steps.artifact.outputs.path }}" \
+          --destination "${TARGET_PATH}"
 
     - name: Commit metrics update
       id: update
@@ -329,118 +244,25 @@ runs:
       run: |
         set -euo pipefail
 
-        git config user.name  "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-        git config pull.rebase true
+        RESULT=$(imir git commit-push \
+          --branch "${BRANCH_NAME}" \
+          --path "${TARGET_PATH}" \
+          --message "chore(metrics): refresh ${DISPLAY_NAME}")
 
-        DEFAULT_REF="$(git symbolic-ref --quiet --short HEAD || true)"
-        if [ -z "${DEFAULT_REF}" ]; then
-          DEFAULT_REF="main"
-        fi
-
-        if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
-          git fetch --no-tags --prune --depth=1 origin \
-            "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
-          git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
-        else
-          git fetch --no-tags --prune --depth=1 origin \
-            "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}" || true
-          git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}" || git checkout -B "${BRANCH_NAME}" "${DEFAULT_REF}"
-        fi
-
-        UPSTREAM_BEFORE="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
-
-        git add "${TARGET_PATH}"
-
-        if git diff --cached --quiet; then
-          echo "No changes to commit."
-          echo "pushed=false" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-
-        git commit -m "chore(metrics): refresh ${DISPLAY_NAME}"
-
-        PUSHED=false
-        for ATTEMPT in 1 2 3; do
-          if git push origin "${BRANCH_NAME}"; then
-            echo "Push attempt ${ATTEMPT} succeeded with fast-forward update."
-            PUSHED=true
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
-            break
-          fi
-
-          echo "Fast-forward push attempt ${ATTEMPT} failed, verifying remote state before force push..." >&2
-
-          git fetch --no-tags --prune --depth=1 origin \
-            "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}" || true
-
-          REMOTE_AFTER="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
-
-          if [ -n "${UPSTREAM_BEFORE}" ] && [ "${REMOTE_AFTER}" != "${UPSTREAM_BEFORE}" ]; then
-            echo "Remote branch advanced to ${REMOTE_AFTER}; retrying without force push." >&2
-            continue
-          fi
-
-          if [ -z "${UPSTREAM_BEFORE}" ] && [ -n "${REMOTE_AFTER}" ]; then
-            echo "Remote branch ${BRANCH_NAME} appeared at ${REMOTE_AFTER}; retrying without force push." >&2
-            continue
-          fi
-
-          if [ -n "${UPSTREAM_BEFORE}" ]; then
-            FORCE_ARGS=("--force-with-lease=refs/heads/${BRANCH_NAME}:${UPSTREAM_BEFORE}")
-          else
-            FORCE_ARGS=("--force-with-lease")
-          fi
-
-          if git push "${FORCE_ARGS[@]}" origin "${BRANCH_NAME}"; then
-            echo "Push attempt ${ATTEMPT} succeeded with force-with-lease."
-            PUSHED=true
-            echo "pushed=true" >> "$GITHUB_OUTPUT"
-            break
-          fi
-
-          echo "Force push attempt ${ATTEMPT} failed, refreshing branch and retrying..." >&2
-        done
-
-        if [ "${PUSHED}" != true ]; then
-          echo "Unable to push metrics update after multiple attempts." >&2
-          exit 1
-        fi
-
-        DEFAULT_BASE="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##' || true)"
-        if [ -z "${DEFAULT_BASE}" ]; then DEFAULT_BASE="${DEFAULT_REF}"; fi
-        echo "default_base=${DEFAULT_BASE}" >> "$GITHUB_OUTPUT"
+        echo "pushed=$(echo "${RESULT}" | jq -r '.pushed')" >> "$GITHUB_OUTPUT"
+        echo "default_base=$(echo "${RESULT}" | jq -r '.default_base')" >> "$GITHUB_OUTPUT"
 
     - name: Open PR (idempotent)
       if: steps.update.outputs.pushed == 'true'
-      env:
-        GH_TOKEN: ${{ inputs.classic_token }}
       shell: bash
       run: |
         set -euo pipefail
-        REPO="${GITHUB_REPOSITORY}"
-        BASE="${{ steps.update.outputs.default_base }}"
-        HEAD="${BRANCH_NAME}"
 
-        EXISTING="$(gh pr list -R "${REPO}" --head "${HEAD}" --state open --json number --jq '.[0].number' || true)"
-        if [ -n "${EXISTING}" ]; then
-          echo "PR #${EXISTING} already open for ${REPO}:${HEAD} -> ${BASE}"
-          exit 0
-        fi
-
-        LABEL_ARGS=()
-        for LABEL in ci metrics; do
-          if gh label view "${LABEL}" -R "${REPO}" >/dev/null 2>&1 || \
-             gh label create "${LABEL}" -R "${REPO}" --description "Infrastructure automation" >/dev/null 2>&1; then
-            LABEL_ARGS+=("--label" "${LABEL}")
-          else
-            echo "Warning: unable to ensure label '${LABEL}' on ${REPO}, skipping" >&2
-          fi
-        done
-
-        gh pr create -R "${REPO}" \
-          --head "${HEAD}" \
-          --base "${BASE}" \
+        imir gh pr-create \
+          --repo "${GITHUB_REPOSITORY}" \
+          --head "${BRANCH_NAME}" \
+          --base "${{ steps.update.outputs.default_base }}" \
           --title "chore(metrics): refresh" \
-          --body  "Auto-generated metrics update" \
-          "${LABEL_ARGS[@]}"
+          --body "Auto-generated metrics update" \
+          --labels ci metrics \
+          --token "${{ inputs.classic_token }}"

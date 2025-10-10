@@ -34,17 +34,24 @@
 //! # }
 //! ```
 
+mod artifact;
 mod badge;
 mod config;
 pub mod contributors;
 mod discover;
 mod error;
+mod file;
+mod gh;
+mod git;
 mod normalizer;
 mod open_source;
+mod render;
 pub mod retry;
 mod slug;
+mod slugs;
 mod sync;
 
+pub use artifact::{ArtifactLocation, locate_artifact};
 pub use badge::{BadgeAssets, generate_badge_assets};
 pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
@@ -56,6 +63,9 @@ pub use discover::{
     extract_repo_from_readme,
 };
 pub use error::{Error, io_error};
+pub use file::{FileMoveResult, move_file};
+pub use gh::{PrCreateResult, gh_pr_create};
+pub use git::{GitPushResult, git_commit_push};
 pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,
     parse_targets,
@@ -63,5 +73,9 @@ pub use normalizer::{
 pub use open_source::{
     OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
 };
+pub use render::{
+    ProfileInputs, RepositoryInputs, normalize_profile_inputs, normalize_repository_inputs,
+};
 pub use slug::SlugStrategy;
+pub use slugs::{SlugDetectionResult, detect_impacted_slugs};
 pub use sync::sync_targets;
