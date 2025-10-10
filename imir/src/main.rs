@@ -11,7 +11,7 @@ use std::{
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
-    DiscoveryConfig, Error, TargetsDocument, discover_badge_users,
+    DiscoveryConfig, Error, TargetsDocument, detect_impacted_slugs, discover_badge_users,
     discover_stargazer_repositories, generate_badge_assets, load_targets,
     resolve_open_source_repositories, sync_targets,
 };
@@ -48,6 +48,8 @@ enum Command
     Sync(SyncArgs,),
     /// Show contributor activity for the last 30 days.
     Contributors(ContributorsArgs,),
+    /// Detect impacted slugs from git changes.
+    Slugs(SlugsArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -184,6 +186,30 @@ struct ContributorsArgs
     token: String,
 }
 
+#[derive(Debug, Args,)]
+struct SlugsArgs
+{
+    /// Base git reference for comparison.
+    #[arg(long = "base-ref", value_name = "REF", default_value = "")]
+    base_ref: String,
+
+    /// Head git reference for comparison.
+    #[arg(long = "head-ref", value_name = "REF", default_value = "HEAD")]
+    head_ref: String,
+
+    /// Files to check for changes.
+    #[arg(long = "files", value_name = "FILES", num_args = 1.., required = true)]
+    files: Vec<String,>,
+
+    /// Path to targets configuration.
+    #[arg(long = "config", value_name = "PATH")]
+    config: PathBuf,
+
+    /// Event name (schedule, push, pull_request).
+    #[arg(long = "event", value_name = "EVENT")]
+    event: Option<String,>,
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main()
@@ -218,6 +244,7 @@ async fn run() -> Result<(), Error,>
         Some(Command::Discover(args,),) => run_discover(args,).await,
         Some(Command::Sync(args,),) => run_sync(args,).await,
         Some(Command::Contributors(args,),) => run_contributors(args,).await,
+        Some(Command::Slugs(args,),) => run_slugs(args,),
         None => run_legacy_targets(&cli.legacy,),
     }
 }
@@ -456,6 +483,30 @@ async fn run_contributors(args: ContributorsArgs,) -> Result<(), Error,>
 
     let json = serde_json::to_string_pretty(&contributors,)
         .map_err(|e| Error::service(format!("failed to serialize contributors: {e}"),),)?;
+
+    println!("{json}");
+
+    Ok((),)
+}
+
+fn run_slugs(args: SlugsArgs,) -> Result<(), Error,>
+{
+    info!(
+        "Detecting impacted slugs: base={}, head={}, files={:?}",
+        args.base_ref, args.head_ref, args.files
+    );
+
+    let document = load_targets(&args.config,)?;
+    let all_slugs: Vec<String,> = document.targets.iter().map(|t| t.slug.clone(),).collect();
+
+    let files: Vec<&str,> = args.files.iter().map(|s| s.as_str(),).collect();
+
+    let base_ref = if args.event == Some("schedule".to_string(),) { "" } else { &args.base_ref };
+
+    let result = detect_impacted_slugs(base_ref, &args.head_ref, &files, &all_slugs,)?;
+
+    let json = serde_json::to_string(&result,)
+        .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;
 
     println!("{json}");
 

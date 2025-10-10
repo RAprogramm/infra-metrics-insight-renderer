@@ -43,6 +43,7 @@ mod normalizer;
 mod open_source;
 pub mod retry;
 mod slug;
+mod slugs;
 mod sync;
 
 pub use badge::{BadgeAssets, generate_badge_assets};
@@ -64,4 +65,5 @@ pub use open_source::{
     OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
 };
 pub use slug::SlugStrategy;
+pub use slugs::{SlugDetectionResult, detect_impacted_slugs};
 pub use sync::sync_targets;
