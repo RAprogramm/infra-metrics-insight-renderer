@@ -1,0 +1,86 @@
+name: Auto-release IMIR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - imir/**
+      - .github/workflows/auto-release-imir.yml
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'chore(imir): bump version')"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.CLASSIC }}
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(grep '^version = ' imir/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version
+        id: bump
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${CURRENT}"
+          NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Cargo.toml version
+        run: |
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          sed -i "0,/^version = .*/{s/^version = .*/version = \"${NEW_VERSION}\"/}" imir/Cargo.toml
+
+      - name: Update Cargo.lock
+        run: cargo update --manifest-path imir/Cargo.toml --package imir
+
+      - name: Build release binary
+        run: cargo build --release --locked --manifest-path imir/Cargo.toml
+
+      - name: Run tests
+        run: cargo test --all-features --manifest-path imir/Cargo.toml
+
+      - name: Package binary
+        run: |
+          set -euo pipefail
+          ARCHIVE="imir-x86_64-unknown-linux-gnu.tar.gz"
+          BIN="imir/target/release/imir"
+          chmod +x "${BIN}"
+          tar -C "$(dirname "${BIN}")" -czf "${ARCHIVE}" "$(basename "${BIN}")"
+          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
+        id: package
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add imir/Cargo.toml imir/Cargo.lock
+          git commit -m "chore(imir): bump version to ${{ steps.bump.outputs.new_version }}"
+          git push origin HEAD:main
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump.outputs.new_version }}
+          name: IMIR v${{ steps.bump.outputs.new_version }}
+          body: |
+            Auto-generated release for IMIR v${{ steps.bump.outputs.new_version }}
+
+            Binary built with release optimizations.
+          files: ${{ steps.package.outputs.archive }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.CLASSIC }}
