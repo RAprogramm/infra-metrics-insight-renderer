@@ -30,7 +30,7 @@ runs:
         if [ -n "${{ inputs.version }}" ]; then
           echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
         else
-          VERSION=$(gh release list --repo ${{ github.repository }} --limit 100 | grep '^v' | head -1 | awk '{print $1}')
+          VERSION=$(gh release view --repo ${{ github.repository }} --json tagName -q .tagName)
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
         fi
       env:
