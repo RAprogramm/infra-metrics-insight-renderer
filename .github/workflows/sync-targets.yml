@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   sync:
@@ -49,78 +48,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config pull.rebase true
-
-          BRANCH_NAME="ci/sync-targets"
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch || 'main' }}"
-
-          if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
-            git fetch --no-tags --prune --depth=1 origin \
-              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
-            git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
-          else
-            git fetch --no-tags --prune --depth=1 origin \
-              "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" || true
-            if git show-ref --quiet "refs/remotes/origin/${DEFAULT_BRANCH}"; then
-              git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_BRANCH}"
-            else
-              git checkout -B "${BRANCH_NAME}" "${DEFAULT_BRANCH}"
-            fi
-          fi
 
           git add targets/targets.yaml
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit after checkout"
-            exit 0
-          fi
-
           git commit -m "chore(targets): sync discovered repositories"
-
-          PUSHED=false
-          for ATTEMPT in 1 2 3; do
-            if git push origin "${BRANCH_NAME}"; then
-              PUSHED=true
-              break
-            fi
-            echo "Push attempt ${ATTEMPT} failed, retrying..." >&2
-            sleep 2
-          done
-
-          if [ "${PUSHED}" != true ]; then
-            echo "Failed to push after multiple attempts" >&2
-            exit 1
-          fi
-
-      - name: Create or update pull request
-        if: steps.changes.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.CLASSIC }}
-        run: |
-          set -euo pipefail
-
-          BRANCH_NAME="ci/sync-targets"
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch || 'main' }}"
-          REPO="${GITHUB_REPOSITORY}"
-
-          EXISTING="$(gh pr list -R "${REPO}" --head "${BRANCH_NAME}" --state open --json number --jq '.[0].number' || true)"
-
-          if [ -n "${EXISTING}" ]; then
-            echo "PR #${EXISTING} already exists for ${BRANCH_NAME}"
-            exit 0
-          fi
-
-          LABEL_ARGS=()
-          for LABEL in ci automation; do
-            if gh label view "${LABEL}" -R "${REPO}" >/dev/null 2>&1 || \
-               gh label create "${LABEL}" -R "${REPO}" --description "Automated infrastructure updates" >/dev/null 2>&1; then
-              LABEL_ARGS+=("--label" "${LABEL}")
-            fi
-          done
-
-          gh pr create -R "${REPO}" \
-            --head "${BRANCH_NAME}" \
-            --base "${DEFAULT_BRANCH}" \
-            --title "chore(targets): sync discovered repositories" \
-            --body "Automated sync of newly discovered repositories from stargazers and badge usage." \
-            "${LABEL_ARGS[@]}"
+          git push origin main

@@ -26,7 +26,6 @@ jobs:
       contents: write
     env:
       TARGETS_CONFIG: targets/targets.yaml
-      BADGE_BRANCH: ci/badge-sync
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -132,98 +131,19 @@ jobs:
       - name: Commit badge updates
         id: commit
         if: steps.slugs.outputs.has == 'true' && github.event_name != 'pull_request'
-        env:
-          BADGE_BRANCH: ${{ env.BADGE_BRANCH }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch || 'main' }}
         run: |
           set -euo pipefail
 
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config pull.rebase true
-
-          DEFAULT_REF="$(git symbolic-ref --quiet --short HEAD || true)"
-          if [ -z "${DEFAULT_REF}" ]; then
-            DEFAULT_REF="${DEFAULT_BRANCH}"
-          fi
-
-          BRANCH_NAME="${BADGE_BRANCH}"
-
-          if git ls-remote --exit-code --heads origin "${BRANCH_NAME}" >/dev/null 2>&1; then
-            git fetch --no-tags --prune --depth=1 origin \
-              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}"
-            git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
-          else
-            git fetch --no-tags --prune --depth=1 origin \
-              "+refs/heads/${DEFAULT_REF}:refs/remotes/origin/${DEFAULT_REF}" || true
-            if git show-ref --quiet "refs/remotes/origin/${DEFAULT_REF}"; then
-              git checkout -B "${BRANCH_NAME}" "origin/${DEFAULT_REF}"
-            else
-              git checkout -B "${BRANCH_NAME}" "${DEFAULT_REF}"
-            fi
-          fi
-
-          UPSTREAM_BEFORE="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
 
           git add metrics
 
           if git diff --cached --quiet; then
             echo "No badge changes to commit."
-            echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           git commit -m "chore(badges): refresh"
-
-          PUSHED=false
-          for ATTEMPT in 1 2 3; do
-            if git push origin "${BRANCH_NAME}"; then
-              PUSHED=true
-              echo "pushed=true" >> "$GITHUB_OUTPUT"
-              break
-            fi
-
-            echo "Push attempt ${ATTEMPT} failed, verifying remote state." >&2
-
-            git fetch --no-tags --prune --depth=1 origin \
-              "+refs/heads/${BRANCH_NAME}:refs/remotes/origin/${BRANCH_NAME}" || true
-
-            REMOTE_AFTER="$(git rev-parse --verify "origin/${BRANCH_NAME}" 2>/dev/null || true)"
-
-            if [ -n "${UPSTREAM_BEFORE}" ] && [ "${REMOTE_AFTER}" != "${UPSTREAM_BEFORE}" ]; then
-              echo "Remote branch advanced to ${REMOTE_AFTER}; retrying without force." >&2
-              continue
-            fi
-
-            if [ -z "${UPSTREAM_BEFORE}" ] && [ -n "${REMOTE_AFTER}" ]; then
-              echo "Remote branch materialized at ${REMOTE_AFTER}; retrying without force." >&2
-              continue
-            fi
-
-            if [ -n "${UPSTREAM_BEFORE}" ]; then
-              FORCE_ARGS=("--force-with-lease=refs/heads/${BRANCH_NAME}:${UPSTREAM_BEFORE}")
-            else
-              FORCE_ARGS=("--force-with-lease")
-            fi
-
-            if git push "${FORCE_ARGS[@]}" origin "${BRANCH_NAME}"; then
-              PUSHED=true
-              echo "pushed=true" >> "$GITHUB_OUTPUT"
-              break
-            fi
-
-            echo "Force push attempt ${ATTEMPT} failed; refreshing branch." >&2
-          done
-
-          if [ "${PUSHED}" != true ]; then
-            echo "Unable to push badge updates after multiple attempts." >&2
-            exit 1
-          fi
-
-          DEFAULT_BASE="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's#^origin/##' || true)"
-          if [ -z "${DEFAULT_BASE}" ]; then
-            DEFAULT_BASE="${DEFAULT_REF}"
-          fi
-
-          echo "default_base=${DEFAULT_BASE}" >> "$GITHUB_OUTPUT"
+          git push origin main
 
