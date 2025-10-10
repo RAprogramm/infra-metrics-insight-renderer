@@ -174,15 +174,9 @@ runs:
       run: |
         set -euo pipefail
 
-        SOURCE_PATH="${{ steps.artifact.outputs.path }}"
-        if [ -z "${SOURCE_PATH}" ]; then
-          echo "Artifact path output is empty." >&2
-          exit 1
-        fi
-
-        mkdir -p "$(dirname "${TARGET_PATH}")"
-        mv "${SOURCE_PATH}" "${TARGET_PATH}"
-        echo "Stored metrics at ${TARGET_PATH}"
+        imir file move \
+          --source "${{ steps.artifact.outputs.path }}" \
+          --destination "${TARGET_PATH}"
 
     - name: Commit metrics update
       id: update

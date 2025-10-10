@@ -40,6 +40,7 @@ mod config;
 pub mod contributors;
 mod discover;
 mod error;
+mod file;
 mod normalizer;
 mod open_source;
 pub mod retry;
@@ -59,6 +60,7 @@ pub use discover::{
     extract_repo_from_readme,
 };
 pub use error::{Error, io_error};
+pub use file::{FileMoveResult, move_file};
 pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,
     parse_targets,

@@ -13,7 +13,7 @@ use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
     DiscoveryConfig, Error, TargetsDocument, detect_impacted_slugs, discover_badge_users,
     discover_stargazer_repositories, generate_badge_assets, load_targets, locate_artifact,
-    resolve_open_source_repositories, sync_targets,
+    move_file, resolve_open_source_repositories, sync_targets,
 };
 use tracing::info;
 
@@ -52,6 +52,8 @@ enum Command
     Slugs(SlugsArgs,),
     /// Locate generated metrics artifacts.
     Artifact(ArtifactArgs,),
+    /// Move files with directory creation.
+    File(FileArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -224,6 +226,32 @@ struct ArtifactArgs
     workspace: String,
 }
 
+#[derive(Debug, Args,)]
+struct FileArgs
+{
+    #[command(subcommand)]
+    command: FileCommand,
+}
+
+#[derive(Debug, Subcommand,)]
+enum FileCommand
+{
+    /// Move a file from source to destination.
+    Move(FileMoveArgs,),
+}
+
+#[derive(Debug, Args,)]
+struct FileMoveArgs
+{
+    /// Source file path.
+    #[arg(long = "source", value_name = "PATH", required = true)]
+    source: String,
+
+    /// Destination file path.
+    #[arg(long = "destination", value_name = "PATH", required = true)]
+    destination: String,
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main()
@@ -260,6 +288,7 @@ async fn run() -> Result<(), Error,>
         Some(Command::Contributors(args,),) => run_contributors(args,).await,
         Some(Command::Slugs(args,),) => run_slugs(args,),
         Some(Command::Artifact(args,),) => run_artifact(args,),
+        Some(Command::File(args,),) => run_file(args,),
         None => run_legacy_targets(&cli.legacy,),
     }
 }
@@ -543,6 +572,27 @@ fn run_artifact(args: ArtifactArgs,) -> Result<(), Error,>
     println!("{json}");
 
     Ok((),)
+}
+
+fn run_file(args: FileArgs,) -> Result<(), Error,>
+{
+    match args.command {
+        FileCommand::Move(move_args,) => {
+            info!(
+                "Moving file: source={}, destination={}",
+                move_args.source, move_args.destination
+            );
+
+            let result = move_file(&move_args.source, &move_args.destination,)?;
+
+            let json = serde_json::to_string(&result,)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;
+
+            println!("{json}");
+
+            Ok((),)
+        },
+    }
 }
 
 #[cfg(test)]
