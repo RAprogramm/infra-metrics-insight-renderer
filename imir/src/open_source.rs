@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+//
+// SPDX-License-Identifier: MIT
+
 //! Helpers for resolving open-source repository inputs supplied to workflows.
 //!
 //! The functions in this module sanitize and validate user-supplied JSON

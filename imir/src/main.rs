@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+//
+// SPDX-License-Identifier: MIT
+
 //! Command-line interface for the IMIR binary.
 //!
 //! The CLI exposes subcommands for normalizing target configuration documents

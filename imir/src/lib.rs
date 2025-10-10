@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+//
+// SPDX-License-Identifier: MIT
+
 //! Utilities for generating rendering instructions for metrics dashboards.
 //!
 //! The library exposes helpers that load YAML configuration files describing

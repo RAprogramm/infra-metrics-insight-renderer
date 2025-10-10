@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 name: Render metrics for infra-metrics-insight-renderer repository
 
 on:

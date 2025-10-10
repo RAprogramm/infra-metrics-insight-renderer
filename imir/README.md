@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+
+SPDX-License-Identifier: MIT
+-->
+
 # imir
 
 **I**nfra **M**etrics **I**nsight **R**enderer - Generate rendering instructions for [lowlighter/metrics](https://github.com/lowlighter/metrics) targets.
