@@ -12,8 +12,8 @@ use std::{
 use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
     DiscoveryConfig, Error, TargetsDocument, detect_impacted_slugs, discover_badge_users,
-    discover_stargazer_repositories, generate_badge_assets, load_targets, locate_artifact,
-    move_file, resolve_open_source_repositories, sync_targets,
+    discover_stargazer_repositories, generate_badge_assets, git_commit_push, load_targets,
+    locate_artifact, move_file, resolve_open_source_repositories, sync_targets,
 };
 use tracing::info;
 
@@ -54,6 +54,8 @@ enum Command
     Artifact(ArtifactArgs,),
     /// Move files with directory creation.
     File(FileArgs,),
+    /// Git operations for commits and pushes.
+    Git(GitArgs,),
 }
 
 #[derive(Debug, Args,)]
@@ -252,6 +254,37 @@ struct FileMoveArgs
     destination: String,
 }
 
+#[derive(Debug, Args,)]
+struct GitArgs
+{
+    #[command(subcommand)]
+    command: GitCommand,
+}
+
+#[derive(Debug, Subcommand,)]
+enum GitCommand
+{
+    /// Commit and push changes to a branch.
+    #[command(name = "commit-push")]
+    CommitPush(GitCommitPushArgs,),
+}
+
+#[derive(Debug, Args,)]
+struct GitCommitPushArgs
+{
+    /// Target branch name.
+    #[arg(long = "branch", value_name = "BRANCH", required = true)]
+    branch: String,
+
+    /// File path to add and commit.
+    #[arg(long = "path", value_name = "PATH", required = true)]
+    path: String,
+
+    /// Commit message.
+    #[arg(long = "message", value_name = "MESSAGE", required = true)]
+    message: String,
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main()
@@ -289,6 +322,7 @@ async fn run() -> Result<(), Error,>
         Some(Command::Slugs(args,),) => run_slugs(args,),
         Some(Command::Artifact(args,),) => run_artifact(args,),
         Some(Command::File(args,),) => run_file(args,),
+        Some(Command::Git(args,),) => run_git(args,),
         None => run_legacy_targets(&cli.legacy,),
     }
 }
@@ -584,6 +618,27 @@ fn run_file(args: FileArgs,) -> Result<(), Error,>
             );
 
             let result = move_file(&move_args.source, &move_args.destination,)?;
+
+            let json = serde_json::to_string(&result,)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;
+
+            println!("{json}");
+
+            Ok((),)
+        },
+    }
+}
+
+fn run_git(args: GitArgs,) -> Result<(), Error,>
+{
+    match args.command {
+        GitCommand::CommitPush(push_args,) => {
+            info!(
+                "Committing and pushing: branch={}, path={}, message={}",
+                push_args.branch, push_args.path, push_args.message
+            );
+
+            let result = git_commit_push(&push_args.branch, &push_args.path, &push_args.message,)?;
 
             let json = serde_json::to_string(&result,)
                 .map_err(|e| Error::service(format!("failed to serialize result: {e}"),),)?;

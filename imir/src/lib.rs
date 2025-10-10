@@ -41,6 +41,7 @@ pub mod contributors;
 mod discover;
 mod error;
 mod file;
+mod git;
 mod normalizer;
 mod open_source;
 pub mod retry;
@@ -61,6 +62,7 @@ pub use discover::{
 };
 pub use error::{Error, io_error};
 pub use file::{FileMoveResult, move_file};
+pub use git::{GitPushResult, git_commit_push};
 pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,
     parse_targets,
