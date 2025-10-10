@@ -12,23 +12,22 @@ use tokio::time::sleep;
 use tracing::{debug, warn};
 
 /// Configuration for retry behavior with exponential backoff.
-#[derive(Debug, Clone,)]
-pub struct RetryConfig
-{
+#[derive(Debug, Clone)]
+pub struct RetryConfig {
     /// Maximum number of retry attempts (default: 3).
     pub max_attempts:     u32,
     /// Initial delay between retries in milliseconds (default: 1000).
     pub initial_delay_ms: u64,
     /// Multiplier for exponential backoff (default: 2.0).
-    pub backoff_factor:   f64,
+    pub backoff_factor:   f64
 }
 
-impl Default for RetryConfig
-{
-    fn default() -> Self
-    {
+impl Default for RetryConfig {
+    fn default() -> Self {
         Self {
-            max_attempts: 3, initial_delay_ms: 1000, backoff_factor: 2.0,
+            max_attempts:     3,
+            initial_delay_ms: 1000,
+            backoff_factor:   2.0
         }
     }
 }
@@ -55,39 +54,39 @@ impl Default for RetryConfig
 /// let config = RetryConfig::default();
 /// let result = retry_with_backoff(&config, "fetch data", || async {
 ///     // Some API call that might fail
-///     Ok::<_, AppError,>(42,)
-/// },)
+///     Ok::<_, AppError>(42)
+/// })
 /// .await?;
 /// # Ok(())
 /// # }
 /// ```
-pub async fn retry_with_backoff<F, Fut, T,>(
+pub async fn retry_with_backoff<F, Fut, T>(
     config: &RetryConfig,
     operation_name: &str,
-    mut f: F,
-) -> Result<T, AppError,>
+    mut f: F
+) -> Result<T, AppError>
 where
     F: FnMut() -> Fut,
-    Fut: std::future::Future<Output = Result<T, AppError,>,>,
+    Fut: std::future::Future<Output = Result<T, AppError>>
 {
     let mut attempt = 1;
     let mut delay_ms = config.initial_delay_ms;
 
     loop {
         match f().await {
-            Ok(result,) => {
+            Ok(result) => {
                 if attempt > 1 {
                     debug!("{} succeeded on attempt {}", operation_name, attempt);
                 }
-                return Ok(result,);
+                return Ok(result);
             }
-            Err(error,) => {
+            Err(error) => {
                 if attempt >= config.max_attempts {
                     warn!(
                         "{} failed after {} attempts: {}",
                         operation_name, config.max_attempts, error
                     );
-                    return Err(error,);
+                    return Err(error);
                 }
 
                 warn!(
@@ -95,7 +94,7 @@ where
                     operation_name, attempt, config.max_attempts, error, delay_ms
                 );
 
-                sleep(Duration::from_millis(delay_ms,),).await;
+                sleep(Duration::from_millis(delay_ms)).await;
                 delay_ms = (delay_ms as f64 * config.backoff_factor) as u64;
                 attempt += 1;
             }
@@ -104,15 +103,13 @@ where
 }
 
 #[cfg(test)]
-mod tests
-{
+mod tests {
     use std::sync::{Arc, Mutex};
 
     use super::*;
 
     #[test]
-    fn retry_config_default_values()
-    {
+    fn retry_config_default_values() {
         let config = RetryConfig::default();
         assert_eq!(config.max_attempts, 3);
         assert_eq!(config.initial_delay_ms, 1000);
@@ -120,35 +117,34 @@ mod tests
     }
 
     #[test]
-    fn retry_config_custom_values()
-    {
-        let config =
-            RetryConfig {
-                max_attempts: 5, initial_delay_ms: 500, backoff_factor: 1.5,
-            };
+    fn retry_config_custom_values() {
+        let config = RetryConfig {
+            max_attempts:     5,
+            initial_delay_ms: 500,
+            backoff_factor:   1.5
+        };
         assert_eq!(config.max_attempts, 5);
         assert_eq!(config.initial_delay_ms, 500);
         assert_eq!(config.backoff_factor, 1.5);
     }
 
     #[tokio::test]
-    async fn retry_succeeds_on_first_attempt()
-    {
+    async fn retry_succeeds_on_first_attempt() {
         let config = RetryConfig::default();
-        let result = retry_with_backoff(&config, "test", || async { Ok::<_, AppError,>(42,) },)
+        let result = retry_with_backoff(&config, "test", || async { Ok::<_, AppError>(42) })
             .await
-            .expect("should succeed",);
+            .expect("should succeed");
         assert_eq!(result, 42);
     }
 
     #[tokio::test]
-    async fn retry_succeeds_after_failures()
-    {
-        let config =
-            RetryConfig {
-                max_attempts: 3, initial_delay_ms: 10, backoff_factor: 2.0,
-            };
-        let counter = Arc::new(Mutex::new(0,),);
+    async fn retry_succeeds_after_failures() {
+        let config = RetryConfig {
+            max_attempts:     3,
+            initial_delay_ms: 10,
+            backoff_factor:   2.0
+        };
+        let counter = Arc::new(Mutex::new(0));
         let counter_clone = counter.clone();
 
         let result = retry_with_backoff(&config, "test", move || {
@@ -156,24 +152,28 @@ mod tests
             async move {
                 let mut count = counter.lock().unwrap();
                 *count += 1;
-                if *count < 3 { Err(AppError::service("temporary failure",),) } else { Ok(42,) }
+                if *count < 3 {
+                    Err(AppError::service("temporary failure"))
+                } else {
+                    Ok(42)
+                }
             }
-        },)
+        })
         .await
-        .expect("should succeed after retries",);
+        .expect("should succeed after retries");
 
         assert_eq!(result, 42);
         assert_eq!(*counter.lock().unwrap(), 3);
     }
 
     #[tokio::test]
-    async fn retry_fails_after_max_attempts()
-    {
-        let config =
-            RetryConfig {
-                max_attempts: 2, initial_delay_ms: 10, backoff_factor: 2.0,
-            };
-        let counter = Arc::new(Mutex::new(0,),);
+    async fn retry_fails_after_max_attempts() {
+        let config = RetryConfig {
+            max_attempts:     2,
+            initial_delay_ms: 10,
+            backoff_factor:   2.0
+        };
+        let counter = Arc::new(Mutex::new(0));
         let counter_clone = counter.clone();
 
         let result = retry_with_backoff(&config, "test", move || {
@@ -181,9 +181,9 @@ mod tests
             async move {
                 let mut count = counter.lock().unwrap();
                 *count += 1;
-                Err::<i32, _,>(AppError::service("persistent failure",),)
+                Err::<i32, _>(AppError::service("persistent failure"))
             }
-        },)
+        })
         .await;
 
         assert!(result.is_err(), "should fail after max attempts",);
@@ -191,12 +191,12 @@ mod tests
     }
 
     #[test]
-    fn retry_config_clone_creates_independent_copy()
-    {
-        let config1 =
-            RetryConfig {
-                max_attempts: 7, initial_delay_ms: 300, backoff_factor: 3.0,
-            };
+    fn retry_config_clone_creates_independent_copy() {
+        let config1 = RetryConfig {
+            max_attempts:     7,
+            initial_delay_ms: 300,
+            backoff_factor:   3.0
+        };
         let config2 = config1.clone();
         assert_eq!(config1.max_attempts, config2.max_attempts);
         assert_eq!(config1.initial_delay_ms, config2.initial_delay_ms);
@@ -204,8 +204,7 @@ mod tests
     }
 
     #[test]
-    fn retry_config_debug_format()
-    {
+    fn retry_config_debug_format() {
         let config = RetryConfig::default();
         let debug_str = format!("{:?}", config);
         assert!(debug_str.contains("RetryConfig"));
@@ -214,29 +213,30 @@ mod tests
     }
 
     #[tokio::test]
-    async fn retry_with_single_attempt_succeeds()
-    {
-        let config =
-            RetryConfig {
-                max_attempts: 1, initial_delay_ms: 100, backoff_factor: 2.0,
-            };
-        let result =
-            retry_with_backoff(&config, "single attempt", || async { Ok::<_, AppError,>(99,) },)
-                .await
-                .expect("should succeed",);
+    async fn retry_with_single_attempt_succeeds() {
+        let config = RetryConfig {
+            max_attempts:     1,
+            initial_delay_ms: 100,
+            backoff_factor:   2.0
+        };
+        let result = retry_with_backoff(&config, "single attempt", || async {
+            Ok::<_, AppError>(99)
+        })
+        .await
+        .expect("should succeed");
         assert_eq!(result, 99);
     }
 
     #[tokio::test]
-    async fn retry_with_single_attempt_fails()
-    {
-        let config =
-            RetryConfig {
-                max_attempts: 1, initial_delay_ms: 100, backoff_factor: 2.0,
-            };
+    async fn retry_with_single_attempt_fails() {
+        let config = RetryConfig {
+            max_attempts:     1,
+            initial_delay_ms: 100,
+            backoff_factor:   2.0
+        };
         let result = retry_with_backoff(&config, "single attempt", || async {
-            Err::<i32, _,>(AppError::service("immediate failure",),)
-        },)
+            Err::<i32, _>(AppError::service("immediate failure"))
+        })
         .await;
         assert!(result.is_err(), "should fail immediately",);
     }

@@ -10,17 +10,16 @@ use masterror::AppError;
 use serde::{Deserialize, Serialize};
 
 /// Result of PR creation operation.
-#[derive(Debug, Clone, Serialize, Deserialize,)]
-pub struct PrCreateResult
-{
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrCreateResult {
     /// Whether a new PR was created.
-    pub created:    bool,
+    pub created:   bool,
     /// PR number (new or existing).
-    pub pr_number:  Option<u64,>,
+    pub pr_number: Option<u64>,
     /// PR URL (if created).
-    pub pr_url:     Option<String,>,
+    pub pr_url:    Option<String>,
     /// Message describing the result.
-    pub message:    String,
+    pub message:   String
 }
 
 /// Creates a PR idempotently with label handling.
@@ -56,7 +55,7 @@ pub struct PrCreateResult
 ///     "chore(metrics): refresh",
 ///     "Auto-generated metrics update",
 ///     &["ci", "metrics"],
-///     "ghp_token",
+///     "ghp_token"
 /// )?;
 /// if result.created {
 ///     println!("Created PR: {:?}", result.pr_url);
@@ -71,36 +70,34 @@ pub fn gh_pr_create(
     title: &str,
     body: &str,
     labels: &[&str],
-    gh_token: &str,
-) -> Result<PrCreateResult, AppError,>
-{
-    let existing_pr = check_existing_pr(repo, head, gh_token,)?;
+    gh_token: &str
+) -> Result<PrCreateResult, AppError> {
+    let existing_pr = check_existing_pr(repo, head, gh_token)?;
 
-    if let Some(pr_number,) = existing_pr {
+    if let Some(pr_number) = existing_pr {
         return Ok(PrCreateResult {
             created:   false,
-            pr_number: Some(pr_number,),
+            pr_number: Some(pr_number),
             pr_url:    None,
-            message:   format!("PR #{pr_number} already open for {repo}:{head} -> {base}"),
-        },);
+            message:   format!("PR #{pr_number} already open for {repo}:{head} -> {base}")
+        });
     }
 
-    ensure_labels(repo, labels, gh_token,)?;
+    ensure_labels(repo, labels, gh_token)?;
 
-    let pr_url = create_pr(repo, head, base, title, body, labels, gh_token,)?;
+    let pr_url = create_pr(repo, head, base, title, body, labels, gh_token)?;
 
     Ok(PrCreateResult {
         created:   true,
         pr_number: None,
-        pr_url:    Some(pr_url.clone(),),
-        message:   format!("Created PR: {pr_url}"),
-    },)
+        pr_url:    Some(pr_url.clone()),
+        message:   format!("Created PR: {pr_url}")
+    })
 }
 
-fn check_existing_pr(repo: &str, head: &str, gh_token: &str,) -> Result<Option<u64,>, AppError,>
-{
-    let output = Command::new("gh",)
-        .env("GH_TOKEN", gh_token,)
+fn check_existing_pr(repo: &str, head: &str, gh_token: &str) -> Result<Option<u64>, AppError> {
+    let output = Command::new("gh")
+        .env("GH_TOKEN", gh_token)
         .args([
             "pr",
             "list",
@@ -113,39 +110,38 @@ fn check_existing_pr(repo: &str, head: &str, gh_token: &str,) -> Result<Option<u
             "--json",
             "number",
             "--jq",
-            ".[0].number",
-        ],)
+            ".[0].number"
+        ])
         .output()
-        .map_err(|e| AppError::service(format!("gh pr list failed: {e}"),),)?;
+        .map_err(|e| AppError::service(format!("gh pr list failed: {e}")))?;
 
     if !output.status.success() {
-        return Ok(None,);
+        return Ok(None);
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout,).trim().to_string();
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     if stdout.is_empty() || stdout == "null" {
-        return Ok(None,);
+        return Ok(None);
     }
 
     let pr_number = stdout
-        .parse::<u64,>()
-        .map_err(|e| AppError::validation(format!("invalid PR number: {e}"),),)?;
+        .parse::<u64>()
+        .map_err(|e| AppError::validation(format!("invalid PR number: {e}")))?;
 
-    Ok(Some(pr_number,),)
+    Ok(Some(pr_number))
 }
 
-fn ensure_labels(repo: &str, labels: &[&str], gh_token: &str,) -> Result<(), AppError,>
-{
+fn ensure_labels(repo: &str, labels: &[&str], gh_token: &str) -> Result<(), AppError> {
     for label in labels {
-        let view_output = Command::new("gh",)
-            .env("GH_TOKEN", gh_token,)
-            .args(["label", "view", label, "-R", repo],)
+        let view_output = Command::new("gh")
+            .env("GH_TOKEN", gh_token)
+            .args(["label", "view", label, "-R", repo])
             .output()
-            .map_err(|e| AppError::service(format!("gh label view failed: {e}"),),)?;
+            .map_err(|e| AppError::service(format!("gh label view failed: {e}")))?;
 
         if !view_output.status.success() {
-            let _ = Command::new("gh",)
-                .env("GH_TOKEN", gh_token,)
+            let _ = Command::new("gh")
+                .env("GH_TOKEN", gh_token)
                 .args([
                     "label",
                     "create",
@@ -153,13 +149,13 @@ fn ensure_labels(repo: &str, labels: &[&str], gh_token: &str,) -> Result<(), App
                     "-R",
                     repo,
                     "--description",
-                    "Infrastructure automation",
-                ],)
+                    "Infrastructure automation"
+                ])
                 .output();
         }
     }
 
-    Ok((),)
+    Ok(())
 }
 
 fn create_pr(
@@ -169,76 +165,62 @@ fn create_pr(
     title: &str,
     body: &str,
     labels: &[&str],
-    gh_token: &str,
-) -> Result<String, AppError,>
-{
+    gh_token: &str
+) -> Result<String, AppError> {
     let mut args = vec![
-        "pr",
-        "create",
-        "-R",
-        repo,
-        "--head",
-        head,
-        "--base",
-        base,
-        "--title",
-        title,
-        "--body",
+        "pr", "create", "-R", repo, "--head", head, "--base", base, "--title", title, "--body",
         body,
     ];
 
-    let label_args: Vec<String,> = labels
+    let label_args: Vec<String> = labels
         .iter()
-        .flat_map(|label| vec!["--label".to_string(), (*label).to_string(),],)
+        .flat_map(|label| vec!["--label".to_string(), (*label).to_string()])
         .collect();
 
-    let label_arg_refs: Vec<&str,> = label_args.iter().map(|s| s.as_str(),).collect();
-    args.extend(label_arg_refs,);
+    let label_arg_refs: Vec<&str> = label_args.iter().map(|s| s.as_str()).collect();
+    args.extend(label_arg_refs);
 
-    let output = Command::new("gh",)
-        .env("GH_TOKEN", gh_token,)
-        .args(&args,)
+    let output = Command::new("gh")
+        .env("GH_TOKEN", gh_token)
+        .args(&args)
         .output()
-        .map_err(|e| AppError::service(format!("gh pr create failed: {e}"),),)?;
+        .map_err(|e| AppError::service(format!("gh pr create failed: {e}")))?;
 
     if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr,);
-        return Err(AppError::service(format!("gh pr create failed: {stderr}"),),);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(AppError::service(format!("gh pr create failed: {stderr}")));
     }
 
-    let pr_url = String::from_utf8_lossy(&output.stdout,).trim().to_string();
+    let pr_url = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
-    Ok(pr_url,)
+    Ok(pr_url)
 }
 
 #[cfg(test)]
-mod tests
-{
+mod tests {
     use super::*;
 
     #[test]
-    fn pr_create_result_serialization()
-    {
+    fn pr_create_result_serialization() {
         let result = PrCreateResult {
             created:   true,
             pr_number: None,
-            pr_url:    Some("https://github.com/owner/repo/pull/123".to_string(),),
-            message:   "Created PR".to_string(),
+            pr_url:    Some("https://github.com/owner/repo/pull/123".to_string()),
+            message:   "Created PR".to_string()
         };
 
-        let json = serde_json::to_string(&result,).expect("serialization failed",);
+        let json = serde_json::to_string(&result).expect("serialization failed");
         assert!(json.contains("true",));
         assert!(json.contains("pull/123",));
     }
 
     #[test]
-    fn pr_create_result_clone()
-    {
+    fn pr_create_result_clone() {
         let result = PrCreateResult {
             created:   false,
-            pr_number: Some(42,),
+            pr_number: Some(42),
             pr_url:    None,
-            message:   "PR exists".to_string(),
+            message:   "PR exists".to_string()
         };
 
         let cloned = result.clone();

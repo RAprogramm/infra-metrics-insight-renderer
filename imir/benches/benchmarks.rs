@@ -5,8 +5,7 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use imir::parse_targets;
 
-fn benchmark_parse_targets(c: &mut Criterion,)
-{
+fn benchmark_parse_targets(c: &mut Criterion) {
     let yaml = r"
 targets:
   - owner: octocat
@@ -27,12 +26,11 @@ targets:
 ";
 
     c.bench_function("parse_targets_small", |b| {
-        b.iter(|| parse_targets(black_box(yaml,),).expect("parse failed",),)
-    },);
+        b.iter(|| parse_targets(black_box(yaml)).expect("parse failed"))
+    });
 }
 
-fn benchmark_target_normalization(c: &mut Criterion,)
-{
+fn benchmark_target_normalization(c: &mut Criterion) {
     let yaml = r"
 targets:
   - owner: user1
@@ -49,28 +47,26 @@ targets:
 
     c.bench_function("parse_targets_with_badges", |b| {
         b.iter(|| {
-            let doc = parse_targets(black_box(yaml,),).expect("parse failed",);
-            black_box(doc.targets.len(),)
-        },)
-    },);
+            let doc = parse_targets(black_box(yaml)).expect("parse failed");
+            black_box(doc.targets.len())
+        })
+    });
 }
 
-fn benchmark_large_config_parse(c: &mut Criterion,)
-{
-    let mut yaml = String::from("targets:\n",);
+fn benchmark_large_config_parse(c: &mut Criterion) {
+    let mut yaml = String::from("targets:\n");
     for i in 0..100 {
         yaml.push_str(&format!(
             "  - owner: user{i}\n    repository: repo{i}\n    type: open_source\n"
-        ),);
+        ));
     }
 
     c.bench_function("parse_100_targets", |b| {
-        b.iter(|| parse_targets(black_box(&yaml,),).expect("parse failed",),)
-    },);
+        b.iter(|| parse_targets(black_box(&yaml)).expect("parse failed"))
+    });
 }
 
-fn benchmark_yaml_parsing(c: &mut Criterion,)
-{
+fn benchmark_yaml_parsing(c: &mut Criterion) {
     let complex_yaml = r"
 targets:
   - owner: org1
@@ -89,8 +85,8 @@ targets:
 ";
 
     c.bench_function("parse_complex_target", |b| {
-        b.iter(|| parse_targets(black_box(complex_yaml,),).expect("parse failed",),)
-    },);
+        b.iter(|| parse_targets(black_box(complex_yaml)).expect("parse failed"))
+    });
 }
 
 criterion_group!(
