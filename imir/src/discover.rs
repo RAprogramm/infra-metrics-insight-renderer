@@ -185,11 +185,11 @@ pub async fn discover_stargazer_repositories(
     );
 
     let pb = ProgressBar::new_spinner();
-    pb.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.cyan} [{elapsed_precise}] {msg}")
-            .expect("valid template")
-    );
+    if let Ok(style) = ProgressStyle::default_spinner()
+        .template("{spinner:.cyan} [{elapsed_precise}] {msg}")
+    {
+        pb.set_style(style);
+    }
     pb.set_message("Fetching stargazers...");
 
     let mut discovered = Vec::with_capacity(500);

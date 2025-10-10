@@ -89,7 +89,12 @@ pub fn detect_impacted_slugs(
             ])
             .output();
 
-        if fetch_result.is_err() || !fetch_result.unwrap().status.success() {
+        let fetch_failed = match fetch_result {
+            Ok(output) => !output.status.success(),
+            Err(_) => true
+        };
+
+        if fetch_failed {
             return Ok(SlugDetectionResult {
                 slugs:   all_slugs.to_vec(),
                 has_any: !all_slugs.is_empty()
