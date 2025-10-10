@@ -144,13 +144,17 @@ fn checkout_or_create_branch(branch_name: &str, default_ref: &str) -> Result<(),
             ])
             .output();
 
-        if fetch_result.is_ok() && fetch_result.unwrap().status.success() {
-            run_git(&[
-                "checkout",
-                "-B",
-                branch_name,
-                &format!("origin/{default_ref}")
-            ])?;
+        if let Ok(output) = fetch_result {
+            if output.status.success() {
+                run_git(&[
+                    "checkout",
+                    "-B",
+                    branch_name,
+                    &format!("origin/{default_ref}")
+                ])?;
+            } else {
+                run_git(&["checkout", "-B", branch_name, default_ref])?;
+            }
         } else {
             run_git(&["checkout", "-B", branch_name, default_ref])?;
         }
