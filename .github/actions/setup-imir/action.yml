@@ -46,6 +46,7 @@ runs:
 
         echo "Downloading imir ${VERSION}..."
         curl -fsSL "${DOWNLOAD_URL}" -o "${ARCHIVE}"
+        rm -f imir
         tar -xzf "${ARCHIVE}"
         chmod +x imir
         mkdir -p "${HOME}/.local/bin"
