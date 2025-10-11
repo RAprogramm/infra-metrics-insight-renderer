@@ -55,10 +55,6 @@ runs:
       run: |
         set -euo pipefail
 
-        echo "DEBUG: HOME is ${HOME}"
-        echo "DEBUG: Checking if imir exists at ${HOME}/.local/bin/imir"
-        ls -la "${HOME}/.local/bin/imir" || echo "imir not found!"
-
         INPUTS=$("${HOME}/.local/bin/imir" render normalize-profile \
           --target-user "${{ inputs.target_user }}" \
           ${{ inputs.branch_name && format('--branch-name "{0}"', inputs.branch_name) || '' }} \
@@ -67,6 +63,10 @@ runs:
           ${{ inputs.time_zone && format('--time-zone "{0}"', inputs.time_zone) || '' }} \
           ${{ inputs.display_name && format('--display-name "{0}"', inputs.display_name) || '' }} \
           ${{ inputs.include_private && format('--include-private "{0}"', inputs.include_private) || '' }})
+
+        echo "DEBUG: INPUTS variable content:"
+        echo "${INPUTS}"
+        echo "DEBUG: End of INPUTS"
 
         echo "TARGET_USER=$(echo "${INPUTS}" | jq -r '.target_user')" >> "${GITHUB_ENV}"
         echo "BRANCH_NAME=$(echo "${INPUTS}" | jq -r '.branch_name')" >> "${GITHUB_ENV}"
