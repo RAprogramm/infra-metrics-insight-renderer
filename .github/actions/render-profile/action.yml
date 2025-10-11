@@ -64,10 +64,6 @@ runs:
           ${{ inputs.display_name && format('--display-name "{0}"', inputs.display_name) || '' }} \
           ${{ inputs.include_private && format('--include-private "{0}"', inputs.include_private) || '' }})
 
-        echo "DEBUG: INPUTS variable content:"
-        echo "${INPUTS}"
-        echo "DEBUG: End of INPUTS"
-
         echo "TARGET_USER=$(echo "${INPUTS}" | jq -r '.target_user')" >> "${GITHUB_ENV}"
         echo "BRANCH_NAME=$(echo "${INPUTS}" | jq -r '.branch_name')" >> "${GITHUB_ENV}"
         echo "TARGET_PATH=$(echo "${INPUTS}" | jq -r '.target_path')" >> "${GITHUB_ENV}"

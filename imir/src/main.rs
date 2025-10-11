@@ -394,6 +394,7 @@ async fn main() {
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
         )
         .with_target(false)
+        .with_writer(io::stderr)
         .init();
 
     if let Err(error) = run().await {
