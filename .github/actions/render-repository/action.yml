@@ -45,6 +45,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Setup IMIR CLI
+      uses: ./.github/actions/setup-imir
+      with:
+        token: ${{ inputs.classic_token }}
+
     - name: Configure execution context
       shell: bash
       run: |
