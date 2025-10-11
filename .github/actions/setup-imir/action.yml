@@ -40,22 +40,46 @@ runs:
       id: download
       shell: bash
       run: |
+        set -euo pipefail
+
         VERSION="${{ steps.version.outputs.version }}"
         ARCHIVE="imir-x86_64-unknown-linux-gnu.tar.gz"
         DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/${ARCHIVE}"
-
-        echo "Downloading imir ${VERSION}..."
-        curl -fsSL "${DOWNLOAD_URL}" -o "${ARCHIVE}"
-
         TEMP_DIR=$(mktemp -d)
-        tar -xzf "${ARCHIVE}" -C "${TEMP_DIR}"
-        chmod +x "${TEMP_DIR}/imir"
 
-        mkdir -p "${HOME}/.local/bin"
-        mv "${TEMP_DIR}/imir" "${HOME}/.local/bin/imir"
-        rm -rf "${TEMP_DIR}"
-        echo "${HOME}/.local/bin" >> $GITHUB_PATH
+        cleanup() {
+          rm -f "${ARCHIVE}"
+          rm -rf "${TEMP_DIR}"
+        }
+        trap cleanup EXIT
+
+        echo "Downloading imir ${VERSION} from ${DOWNLOAD_URL}..."
+        if ! curl -fsSL "${DOWNLOAD_URL}" -o "${ARCHIVE}"; then
+          echo "::error::Failed to download imir ${VERSION}"
+          exit 1
+        fi
+
+        echo "Extracting archive..."
+        if ! tar -xzf "${ARCHIVE}" -C "${TEMP_DIR}"; then
+          echo "::error::Failed to extract ${ARCHIVE}"
+          exit 1
+        fi
+
+        BINARY="${TEMP_DIR}/imir"
+        if [ ! -f "${BINARY}" ]; then
+          echo "::error::Binary not found in archive"
+          exit 1
+        fi
+
+        chmod +x "${BINARY}"
+
+        INSTALL_DIR="${HOME}/.local/bin"
+        mkdir -p "${INSTALL_DIR}"
+        mv "${BINARY}" "${INSTALL_DIR}/imir"
+
+        echo "${INSTALL_DIR}" >> $GITHUB_PATH
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Successfully installed imir ${VERSION}"
 
     - name: Verify installation
       shell: bash
