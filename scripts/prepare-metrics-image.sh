@@ -115,8 +115,8 @@ if [ ! -f "${DOCKERFILE_PATH}" ]; then
   exit 1
 fi
 
-if ! sed -i 's/apt-get install -y ruby-full git g++ cmake pkg-config libssl-dev/apt-get install -y ruby-full git g++ cmake pkg-config libssl-dev xz-utils/' "${DOCKERFILE_PATH}"; then
-  echo "Failed to patch Dockerfile with xz-utils dependency" >&2
+if ! sed -i 's/apt-get install -y ruby-full git g++ cmake pkg-config libssl-dev/apt-get install -y ruby-full git g++ cmake pkg-config libssl-dev xz-utils liblzma-dev/' "${DOCKERFILE_PATH}"; then
+  echo "Failed to patch Dockerfile with nokogiri dependencies" >&2
   exit 1
 fi
 
