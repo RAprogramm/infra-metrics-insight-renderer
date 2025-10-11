@@ -60,6 +60,7 @@ SPDX-License-Identifier: MIT
     </ul>
   </li>
   <li><a href="#imir-cli">IMIR CLI</a></li>
+  <li><a href="#storage-strategy">Storage strategy</a></li>
   <li><a href="#local-development-workflow">Local development workflow</a></li>
   <li><a href="#release-process">Release process</a></li>
 </ul>
@@ -305,6 +306,41 @@ SPDX-License-Identifier: MIT
   applies deterministic defaults for filenames, branch names, and time zones, and serializes the normalized targets in JSON form.
   Unit tests cover slug normalization, configuration validation, and duplicate detection to ensure predictable behaviour when new
   targets are added.
+</p>
+
+<p align="right"><em><a href="#top">Back to top</a></em></p>
+
+<h2 align="center" id="storage-strategy">Storage strategy</h2>
+
+<p>
+  <strong>Current approach:</strong> SVG artifacts are committed directly to the repository under <code>metrics/</code> and <code>badge.svg</code>.
+  GitHub Actions workflows render updated metrics on a schedule or when configuration changes, commit them to the main branch, and serve
+  them via <code>raw.githubusercontent.com</code>. This approach eliminates the need for separate hosting infrastructure and guarantees
+  that badges remain accessible as long as the repository is public.
+</p>
+
+<p>
+  <strong>Trade-offs:</strong>
+</p>
+<ul>
+  <li><strong>Simplicity</strong> &mdash; no external services, databases, or CDN configuration required. Repository links work immediately.</li>
+  <li><strong>Git history noise</strong> &mdash; automated commits for metrics refreshes accumulate in the commit log, though they are clearly
+    prefixed with <code>chore(metrics):</code> for easy filtering.</li>
+  <li><strong>Version control overhead</strong> &mdash; binary SVG diffs increase repository size over time, but the impact remains negligible
+    for typical badge refresh frequencies.</li>
+</ul>
+
+<p>
+  <strong>Future evolution:</strong> As the number of tracked repositories and refresh frequency grow, migrating to a dedicated database backend
+  (PostgreSQL, SQLite, or object storage) paired with a lightweight API server becomes viable. A database-backed approach would eliminate
+  commit noise, enable historical metric queries, support versioning, and decouple badge serving from git operations. The migration path is
+  straightforward: existing workflows already isolate rendering logic in the <code>imir</code> CLI, so switching the storage layer requires
+  only updating the commit step to an API call.
+</p>
+
+<p>
+  For now, the in-repository strategy prioritizes zero-friction setup and maintenance. When usage patterns justify the additional complexity,
+  database storage can be introduced incrementally without disrupting existing badge URLs or workflow triggers.
 </p>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
