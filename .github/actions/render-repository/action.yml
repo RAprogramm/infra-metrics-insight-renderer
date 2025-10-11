@@ -82,12 +82,6 @@ runs:
         set -euo pipefail
         mkdir -p "$(dirname "${TEMP_ARTIFACT}")"
 
-    - name: Prepare metrics docker image
-      shell: bash
-      run: |
-        set -euo pipefail
-        "${GITHUB_WORKSPACE}/scripts/prepare-metrics-image.sh" --token "${{ inputs.classic_token }}"
-
     - name: Metrics embed
       uses: lowlighter/metrics@latest
       with:
