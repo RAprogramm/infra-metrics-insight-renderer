@@ -55,7 +55,7 @@ runs:
       run: |
         set -euo pipefail
 
-        INPUTS=$(imir render normalize-repository \
+        INPUTS=$("${HOME}/.local/bin/imir" render normalize-repository \
           --target-repo "${{ inputs.target_repo }}" \
           --github-repo "${GITHUB_REPOSITORY}" \
           ${{ inputs.target_owner && format('--target-owner "{0}"', inputs.target_owner) || '' }} \
@@ -121,7 +121,7 @@ runs:
       run: |
         set -euo pipefail
 
-        RESULT=$(imir artifact \
+        RESULT=$("${HOME}/.local/bin/imir" artifact \
           --temp-artifact "${TEMP_ARTIFACT}" \
           --workspace "${GITHUB_WORKSPACE}")
 
@@ -133,7 +133,7 @@ runs:
       run: |
         set -euo pipefail
 
-        imir file move \
+        "${HOME}/.local/bin/imir" file move \
           --source "${{ steps.artifact.outputs.path }}" \
           --destination "${TARGET_PATH}"
 
@@ -143,7 +143,7 @@ runs:
       run: |
         set -euo pipefail
 
-        RESULT=$(imir git commit-push \
+        RESULT=$("${HOME}/.local/bin/imir" git commit-push \
           --branch "${BRANCH_NAME}" \
           --path "${TARGET_PATH}" \
           --message "chore(metrics): refresh ${TARGET_REPO}")
@@ -157,7 +157,7 @@ runs:
       run: |
         set -euo pipefail
 
-        imir gh pr-create \
+        "${HOME}/.local/bin/imir" gh pr-create \
           --repo "${GITHUB_REPOSITORY}" \
           --head "${BRANCH_NAME}" \
           --base "${{ steps.update.outputs.default_base }}" \

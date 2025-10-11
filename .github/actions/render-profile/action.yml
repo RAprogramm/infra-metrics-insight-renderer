@@ -45,12 +45,17 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Setup IMIR CLI
+      uses: ./.github/actions/setup-imir
+      with:
+        token: ${{ inputs.classic_token }}
+
     - name: Configure execution context
       shell: bash
       run: |
         set -euo pipefail
 
-        INPUTS=$(imir render normalize-profile \
+        INPUTS=$("${HOME}/.local/bin/imir" render normalize-profile \
           --target-user "${{ inputs.target_user }}" \
           ${{ inputs.branch_name && format('--branch-name "{0}"', inputs.branch_name) || '' }} \
           ${{ inputs.target_path && format('--target-path "{0}"', inputs.target_path) || '' }} \
@@ -226,7 +231,7 @@ runs:
       run: |
         set -euo pipefail
 
-        RESULT=$(imir artifact \
+        RESULT=$("${HOME}/.local/bin/imir" artifact \
           --temp-artifact "${TEMP_ARTIFACT}" \
           --workspace "${GITHUB_WORKSPACE}")
 
@@ -238,7 +243,7 @@ runs:
       run: |
         set -euo pipefail
 
-        imir file move \
+        "${HOME}/.local/bin/imir" file move \
           --source "${{ steps.artifact.outputs.path }}" \
           --destination "${TARGET_PATH}"
 
@@ -248,7 +253,7 @@ runs:
       run: |
         set -euo pipefail
 
-        RESULT=$(imir git commit-push \
+        RESULT=$("${HOME}/.local/bin/imir" git commit-push \
           --branch "${BRANCH_NAME}" \
           --path "${TARGET_PATH}" \
           --message "chore(metrics): refresh ${DISPLAY_NAME}")
@@ -262,7 +267,7 @@ runs:
       run: |
         set -euo pipefail
 
-        imir gh pr-create \
+        "${HOME}/.local/bin/imir" gh pr-create \
           --repo "${GITHUB_REPOSITORY}" \
           --head "${BRANCH_NAME}" \
           --base "${{ steps.update.outputs.default_base }}" \
