@@ -46,11 +46,14 @@ runs:
 
         echo "Downloading imir ${VERSION}..."
         curl -fsSL "${DOWNLOAD_URL}" -o "${ARCHIVE}"
-        rm -rf imir
-        tar -xzf "${ARCHIVE}"
-        chmod +x imir
+
+        TEMP_DIR=$(mktemp -d)
+        tar -xzf "${ARCHIVE}" -C "${TEMP_DIR}"
+        chmod +x "${TEMP_DIR}/imir"
+
         mkdir -p "${HOME}/.local/bin"
-        mv imir "${HOME}/.local/bin/imir"
+        mv "${TEMP_DIR}/imir" "${HOME}/.local/bin/imir"
+        rm -rf "${TEMP_DIR}"
         echo "${HOME}/.local/bin" >> $GITHUB_PATH
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
