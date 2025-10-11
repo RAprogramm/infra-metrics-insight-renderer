@@ -55,6 +55,10 @@ runs:
       run: |
         set -euo pipefail
 
+        echo "DEBUG: HOME is ${HOME}"
+        echo "DEBUG: Checking if imir exists at ${HOME}/.local/bin/imir"
+        ls -la "${HOME}/.local/bin/imir" || echo "imir not found!"
+
         INPUTS=$("${HOME}/.local/bin/imir" render normalize-profile \
           --target-user "${{ inputs.target_user }}" \
           ${{ inputs.branch_name && format('--branch-name "{0}"', inputs.branch_name) || '' }} \
