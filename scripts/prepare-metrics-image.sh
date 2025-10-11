@@ -67,11 +67,12 @@ if [ -z "${MAJOR}" ] || [ -z "${MINOR}" ]; then
   exit 1
 fi
 
+# Pull from ghcr.io uses major.minor tag
 PREBUILT_TAG="v${MAJOR}.${MINOR}"
 REMOTE_IMAGE="${GHCR_HOST}/${REPO_SLUG}:${PREBUILT_TAG}"
 
-# lowlighter/metrics action expects this exact tag format
-LOCAL_IMAGE="metrics:forked-${METRICS_VERSION}"
+# lowlighter/metrics action expects full version with patch
+LOCAL_IMAGE="metrics:forked-${MAJOR}.${MINOR}.${PATCH:-0}"
 
 echo "Preparing metrics docker image ${LOCAL_IMAGE} from ${REMOTE_IMAGE}"
 
