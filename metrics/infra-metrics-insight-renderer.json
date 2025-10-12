@@ -1,0 +1,17 @@
+{
+  "slug": "infra-metrics-insight-renderer",
+  "owner": "RAprogramm",
+  "repository": "infra-metrics-insight-renderer",
+  "kind": "open_source",
+  "display_name": "Infra Metrics Insight Renderer",
+  "target_path": "metrics/infra-metrics-insight-renderer.svg",
+  "svg_artifact": "metrics/infra-metrics-insight-renderer.svg",
+  "badge": {
+    "style": "classic",
+    "widget": {
+      "columns": 1,
+      "alignment": "start",
+      "border_radius": 4
+    }
+  }
+}
