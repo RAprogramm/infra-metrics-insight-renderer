@@ -99,7 +99,7 @@ runs:
         base_indepth: yes
         base_skip: yes
         config_display: columns
-        config_padding: 400, 0
+        config_padding: 120%, 0
         config_octicon: yes
         config_timezone: ${{ env.TIME_ZONE }}
         config_twemoji: yes
