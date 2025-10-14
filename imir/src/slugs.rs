@@ -131,7 +131,7 @@ pub fn detect_impacted_slugs(
     for cap in pattern.captures_iter(&diff_text) {
         if let Some(slug) = cap.get(1) {
             let slug_str = slug.as_str().to_string();
-            if !slugs.contains(&slug_str) {
+            if all_slugs.contains(&slug_str) && !slugs.contains(&slug_str) {
                 slugs.push(slug_str);
             }
         }
