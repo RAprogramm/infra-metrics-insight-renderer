@@ -228,10 +228,10 @@ SPDX-License-Identifier: MIT
   Add a placeholder where your metrics dashboard will appear:
 </p>
 
-<pre><code class="language-markdown">![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/YOUR-REPO-NAME.svg)</code></pre>
+<pre><code class="language-markdown">![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/&lt;repo-name&gt;.svg)</code></pre>
 
 <p>
-  Replace <code>YOUR-REPO-NAME</code> with your repository name (e.g., <code>masterror</code> for <code>RAprogramm/masterror</code>).
+  Replace <code>&lt;repo-name&gt;</code> with your repository name (e.g., <code>masterror</code> for <code>RAprogramm/masterror</code>).
 </p>
 
 <h4>Step 3: Star the repository</h4>
@@ -278,7 +278,7 @@ SPDX-License-Identifier: MIT
 </p>
 
 <pre><code class="language-markdown">[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
-![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/YOUR-REPO-NAME.svg)</code></pre>
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/&lt;repo-name&gt;.svg)</code></pre>
 
 <p>
   <strong>Example:</strong> <code>RAprogramm/masterror</code>, <code>RAprogramm/telegram-webapp-sdk</code>, <code>RAprogramm/infra-metrics-insight-renderer</code>
@@ -293,7 +293,7 @@ SPDX-License-Identifier: MIT
 </p>
 
 <pre><code class="language-markdown">[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-private.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
-![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/YOUR-REPO-NAME.svg)</code></pre>
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/&lt;repo-name&gt;.svg)</code></pre>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
