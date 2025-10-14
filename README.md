@@ -49,12 +49,11 @@ SPDX-License-Identifier: MIT
   <li><a href="#unified-target-configuration">Unified target configuration</a></li>
   <li><a href="#imir-badge-integration">IMIR integration</a>
     <ul>
-      <li><a href="#badge-catalogue">Metrics dashboard catalogue</a>
+      <li><a href="#badge-catalogue">Badge types and examples</a>
         <ul>
           <li><a href="#open-source-badges">🟦 Open-source repositories</a></li>
           <li><a href="#private-project-badges">⬛ Private repositories</a></li>
           <li><a href="#profile-badges">⬜ GitHub profiles</a></li>
-          <li><a href="#color-reference">Badge type reference</a></li>
         </ul>
       </li>
     </ul>
@@ -263,83 +262,53 @@ SPDX-License-Identifier: MIT
   metrics dashboard immediately.
 </p>
 
-<h3 align="center" id="badge-catalogue">Metrics dashboard catalogue</h3>
+<h3 align="center" id="badge-catalogue">Badge types and examples</h3>
 
 <p>
-  The published metrics dashboards are grouped by type. Each dashboard is automatically generated and updated based on the
-  IMIR badge color you added to your README. Reference these dashboards directly from the repository.
+  IMIR uses three badge types that determine which metrics to generate. Add the appropriate badge to your README and IMIR will
+  automatically create and update a metrics dashboard for your repository.
 </p>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 align="center" id="open-source-badges">🟦 Open-source repositories (blue badge)</h4>
+<h4 align="center" id="open-source-badges">🟦 Open-source repositories</h4>
 
 <p>
-  Projects using <code>imir-badge-simple-public.svg</code> badge generate comprehensive metrics including languages, traffic, and contributors.
+  Use the <strong>blue badge</strong> for public repositories. This generates comprehensive metrics including languages, traffic, and contributors.
 </p>
 
-<table>
-  <thead>
-    <tr><th>Repository</th><th>Metrics Dashboard</th></tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>RAprogramm/masterror</code></td>
-      <td><img alt="masterror metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/masterror.svg" /></td>
-    </tr>
-    <tr>
-      <td><code>RAprogramm/telegram-webapp-sdk</code></td>
-      <td><img alt="telegram-webapp-sdk metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg" /></td>
-    </tr>
-    <tr>
-      <td><code>RAprogramm/infra-metrics-insight-renderer</code></td>
-      <td><img alt="infra-metrics-insight-renderer metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/infra-metrics-insight-renderer.svg" /></td>
-    </tr>
-  </tbody>
-</table>
-
-<p align="right"><em><a href="#top">Back to top</a></em></p>
-
-<h4 align="center" id="private-project-badges">⬛ Private repositories (gray badge)</h4>
+<pre><code class="language-markdown">[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/YOUR-REPO-NAME.svg)</code></pre>
 
 <p>
-  Projects using <code>imir-badge-simple-private.svg</code> badge generate private repository metrics.
-  Private dashboards follow the same embedding rules. Dashboards from this section will appear once private projects are registered.
+  <strong>Example:</strong> <code>RAprogramm/masterror</code>, <code>RAprogramm/telegram-webapp-sdk</code>, <code>RAprogramm/infra-metrics-insight-renderer</code>
 </p>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 align="center" id="profile-badges">⬜ GitHub profiles (light badge)</h4>
+<h4 align="center" id="private-project-badges">⬛ Private repositories</h4>
 
 <p>
-  Profiles using <code>imir-badge-simple-profile.svg</code> badge generate comprehensive GitHub profile dashboards.
+  Use the <strong>gray badge</strong> for private repositories. This generates private repository metrics with restricted visibility.
 </p>
 
-<table>
-  <thead>
-    <tr><th>Account</th><th>Metrics Dashboard</th></tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>RAprogramm</code></td>
-      <td><img alt="RAprogramm profile metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/profile.svg" /></td>
-    </tr>
-  </tbody>
-</table>
+<pre><code class="language-markdown">[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-private.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/YOUR-REPO-NAME.svg)</code></pre>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 align="center" id="color-reference">Badge type reference</h4>
+<h4 align="center" id="profile-badges">⬜ GitHub profiles</h4>
 
 <p>
-  IMIR uses three badge types to determine which metrics to generate:
+  Use the <strong>light badge</strong> for GitHub profile READMEs. This generates comprehensive profile dashboards.
 </p>
 
-<ul>
-  <li><strong>🟦 Blue badge</strong> (<code>imir-badge-simple-public.svg</code>) – Open-source repositories with full public metrics</li>
-  <li><strong>⬛ Gray badge</strong> (<code>imir-badge-simple-private.svg</code>) – Private repositories with restricted visibility</li>
-  <li><strong>⬜ Light badge</strong> (<code>imir-badge-simple-profile.svg</code>) – GitHub profile dashboards</li>
-</ul>
+<pre><code class="language-markdown">[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-profile.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/profile.svg)</code></pre>
+
+<p>
+  <strong>Example:</strong> <code>RAprogramm</code> profile
+</p>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
