@@ -47,14 +47,14 @@ SPDX-License-Identifier: MIT
     </ul>
   </li>
   <li><a href="#unified-target-configuration">Unified target configuration</a></li>
-  <li><a href="#imir-badge-integration">IMIR badge integration</a>
+  <li><a href="#imir-badge-integration">IMIR integration</a>
     <ul>
-      <li><a href="#badge-catalogue">Badge catalogue</a>
+      <li><a href="#badge-catalogue">Metrics dashboard catalogue</a>
         <ul>
-          <li><a href="#open-source-badges">🟩 Open-source badges</a></li>
-          <li><a href="#private-project-badges">🟦 Private project badges</a></li>
-          <li><a href="#profile-badges">🟪 Profile badges</a></li>
-          <li><a href="#color-reference">Color reference</a></li>
+          <li><a href="#open-source-badges">🟦 Open-source repositories</a></li>
+          <li><a href="#private-project-badges">⬛ Private repositories</a></li>
+          <li><a href="#profile-badges">⬜ GitHub profiles</a></li>
+          <li><a href="#color-reference">Badge type reference</a></li>
         </ul>
       </li>
     </ul>
@@ -200,28 +200,55 @@ SPDX-License-Identifier: MIT
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h2 align="center" id="imir-badge-integration">IMIR badge integration</h2>
+<h2 align="center" id="imir-badge-integration">IMIR integration</h2>
 
 <h3 align="center">Quick start for users</h3>
 
 <p>
-  <strong>No configuration needed!</strong> Simply add the badge to your README and star ⭐ this repository:
+  <strong>Three simple steps to get automatic metrics!</strong>
+</p>
+
+<h4>Step 1: Choose your badge type</h4>
+
+<p>
+  Add the appropriate IMIR badge to your README based on your repository type:
+</p>
+
+<pre><code class="language-markdown">&lt;!-- For open-source (public) repositories --&gt;
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+
+&lt;!-- For private repositories --&gt;
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-private.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+
+&lt;!-- For GitHub profile READMEs --&gt;
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-profile.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)</code></pre>
+
+<h4>Step 2: Add metrics placeholder</h4>
+
+<p>
+  Add a placeholder where your metrics dashboard will appear:
 </p>
 
 <pre><code class="language-markdown">![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/YOUR-REPO-NAME.svg)</code></pre>
 
 <p>
   Replace <code>YOUR-REPO-NAME</code> with your repository name (e.g., <code>masterror</code> for <code>RAprogramm/masterror</code>).
-  The automated discovery system will detect your repository within 24 hours and start generating metrics automatically.
+</p>
+
+<h4>Step 3: Star the repository</h4>
+
+<p>
+  Star ⭐ the <code>infra-metrics-insight-renderer</code> repository. The automated discovery system will detect your repository
+  within 24 hours and start generating metrics automatically based on your badge color.
 </p>
 
 <h4>How it works</h4>
 
 <ol>
-  <li>Add the badge URL to your repository's README</li>
+  <li>Add the IMIR badge (Step 1) and metrics placeholder (Step 2) to your README</li>
   <li>Star ⭐ the <code>infra-metrics-insight-renderer</code> repository</li>
   <li>Wait for automatic discovery (runs daily at 02:00 UTC)</li>
-  <li>Your metrics badge will be generated and auto-updated</li>
+  <li>Your metrics dashboard will be generated and auto-updated based on the badge type you chose</li>
 </ol>
 
 <h3 align="center">Manual registration (optional)</h3>
@@ -233,23 +260,27 @@ SPDX-License-Identifier: MIT
 
 <p>
   After registration lands in <code>main</code>, trigger the on-demand workflow named <code>render-&lt;slug&gt;.yml</code> to produce the first
-  badge artifact immediately.
+  metrics dashboard immediately.
 </p>
 
-<h3 align="center" id="badge-catalogue">Badge catalogue</h3>
+<h3 align="center" id="badge-catalogue">Metrics dashboard catalogue</h3>
 
 <p>
-  The published badges are grouped by color so their category is obvious at a glance. Reuse the badges directly from the
-  repository to avoid stale snapshots.
+  The published metrics dashboards are grouped by type. Each dashboard is automatically generated and updated based on the
+  IMIR badge color you added to your README. Reference these dashboards directly from the repository.
 </p>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 align="center" id="open-source-badges">🟩 Open-source badges</h4>
+<h4 align="center" id="open-source-badges">🟦 Open-source repositories (blue badge)</h4>
+
+<p>
+  Projects using <code>imir-badge-simple-public.svg</code> badge generate comprehensive metrics including languages, traffic, and contributors.
+</p>
 
 <table>
   <thead>
-    <tr><th>Repository</th><th>Badge</th></tr>
+    <tr><th>Repository</th><th>Metrics Dashboard</th></tr>
   </thead>
   <tbody>
     <tr>
@@ -269,19 +300,24 @@ SPDX-License-Identifier: MIT
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 align="center" id="private-project-badges">🟦 Private project badges</h4>
+<h4 align="center" id="private-project-badges">⬛ Private repositories (gray badge)</h4>
 
 <p>
-  Private dashboards follow the same embedding rules. Publish badges from this section once private projects are registered.
+  Projects using <code>imir-badge-simple-private.svg</code> badge generate private repository metrics.
+  Private dashboards follow the same embedding rules. Dashboards from this section will appear once private projects are registered.
 </p>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 align="center" id="profile-badges">🟪 Profile badges</h4>
+<h4 align="center" id="profile-badges">⬜ GitHub profiles (light badge)</h4>
+
+<p>
+  Profiles using <code>imir-badge-simple-profile.svg</code> badge generate comprehensive GitHub profile dashboards.
+</p>
 
 <table>
   <thead>
-    <tr><th>Account</th><th>Badge</th></tr>
+    <tr><th>Account</th><th>Metrics Dashboard</th></tr>
   </thead>
   <tbody>
     <tr>
@@ -293,11 +329,16 @@ SPDX-License-Identifier: MIT
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>
 
-<h4 align="center" id="color-reference">Color reference</h4>
+<h4 align="center" id="color-reference">Badge type reference</h4>
+
+<p>
+  IMIR uses three badge types to determine which metrics to generate:
+</p>
+
 <ul>
-  <li>🟩 Green badges indicate open-source repositories.</li>
-  <li>🟦 Blue badges denote private repositories.</li>
-  <li>🟪 Purple badges represent GitHub profile dashboards.</li>
+  <li><strong>🟦 Blue badge</strong> (<code>imir-badge-simple-public.svg</code>) – Open-source repositories with full public metrics</li>
+  <li><strong>⬛ Gray badge</strong> (<code>imir-badge-simple-private.svg</code>) – Private repositories with restricted visibility</li>
+  <li><strong>⬜ Light badge</strong> (<code>imir-badge-simple-profile.svg</code>) – GitHub profile dashboards</li>
 </ul>
 
 <p align="right"><em><a href="#top">Back to top</a></em></p>

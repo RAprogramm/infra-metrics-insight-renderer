@@ -15,7 +15,10 @@ use tracing::{debug, info};
 
 use crate::retry::{RetryConfig, retry_with_backoff};
 
-const BADGE_SVG_FILENAME: &str = "badge.svg";
+const BADGE_PUBLIC: &str = "imir-badge-simple-public.svg";
+const BADGE_PRIVATE: &str = "imir-badge-simple-private.svg";
+const BADGE_PROFILE: &str = "imir-badge-simple-profile.svg";
+const LEGACY_BADGE: &str = "badge.svg";
 const IMIR_REPO_OWNER: &str = "RAprogramm";
 const IMIR_REPO_NAME: &str = "infra-metrics-insight-renderer";
 
@@ -322,7 +325,11 @@ pub async fn discover_stargazer_repositories(
 /// Extracts repository owner and name from README content.
 ///
 /// Searches for IMIR badge and metrics link pattern, extracting the repository
-/// name from the metrics SVG path.
+/// name from the metrics SVG path. Supports all badge types:
+/// - `imir-badge-simple-public.svg` (open-source repositories)
+/// - `imir-badge-simple-private.svg` (private repositories)
+/// - `imir-badge-simple-profile.svg` (GitHub profiles)
+/// - `badge.svg` (legacy support)
 ///
 /// # Arguments
 ///
@@ -338,14 +345,19 @@ pub async fn discover_stargazer_repositories(
 /// use imir::extract_repo_from_readme;
 ///
 /// let readme = r#"
-/// [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
+/// [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)]
 /// ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/my-repo.svg)
 /// "#;
 /// let repo = extract_repo_from_readme(readme);
 /// assert_eq!(repo, Some("my-repo".to_string()));
 /// ```
 pub fn extract_repo_from_readme(readme_content: &str) -> Option<String> {
-    if !readme_content.contains(BADGE_SVG_FILENAME) {
+    let has_badge = readme_content.contains(BADGE_PUBLIC)
+        || readme_content.contains(BADGE_PRIVATE)
+        || readme_content.contains(BADGE_PROFILE)
+        || readme_content.contains(LEGACY_BADGE);
+
+    if !has_badge {
         return None;
     }
 
@@ -477,6 +489,36 @@ More content.
 "#;
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("dot-slash".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_detects_public_badge() {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)]
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/public-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme);
+        assert_eq!(result, Some("public-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_detects_private_badge() {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-private.svg)]
+![Metrics](./metrics/private-repo.svg)
+"#;
+        let result = extract_repo_from_readme(readme);
+        assert_eq!(result, Some("private-repo".to_string()));
+    }
+
+    #[test]
+    fn extract_repo_from_readme_detects_profile_badge() {
+        let readme = r#"
+[![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-profile.svg)]
+![Metrics](metrics/profile-metrics.svg)
+"#;
+        let result = extract_repo_from_readme(readme);
+        assert_eq!(result, Some("profile-metrics".to_string()));
     }
 
     #[test]
