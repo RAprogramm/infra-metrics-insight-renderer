@@ -12,7 +12,7 @@ author: RAprogramm Infrastructure Automation
 
 inputs:
   classic_token:
-    description: Personal access token used for rendering and publishing metrics.
+    description: Personal access token used for rendering metrics.
     required: true
   target_user:
     description: GitHub user or organization whose profile should be rendered.

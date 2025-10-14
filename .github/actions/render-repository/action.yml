@@ -12,7 +12,7 @@ author: RAprogramm Infrastructure Automation
 
 inputs:
   classic_token:
-    description: Personal access token used for pushing commits.
+    description: Personal access token used for rendering metrics.
     required: true
   target_owner:
     description: Account that owns the repository to render metrics for.
