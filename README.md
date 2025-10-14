@@ -19,8 +19,8 @@ SPDX-License-Identifier: MIT
 </p>
 
 <p align="center">
-  <a href="./imir.png">
-    <img src="./imir.png" alt="IMIR" />
+  <a href="./assets/imir.png">
+    <img src="./assets/imir.png" alt="IMIR" />
   </a>
 </p>
 
@@ -317,7 +317,7 @@ SPDX-License-Identifier: MIT
 <h2 align="center" id="storage-strategy">Storage strategy</h2>
 
 <p>
-  <strong>Current approach:</strong> SVG artifacts are committed directly to the repository under <code>metrics/</code> and <code>badge.svg</code>.
+  <strong>Current approach:</strong> SVG artifacts are committed directly to the repository under <code>metrics/</code>.
   GitHub Actions workflows render updated metrics on a schedule or when configuration changes, commit them to the main branch, and serve
   them via <code>raw.githubusercontent.com</code>. This approach eliminates the need for separate hosting infrastructure and guarantees
   that badges remain accessible as long as the repository is public.
