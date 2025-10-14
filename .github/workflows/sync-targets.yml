@@ -36,10 +36,17 @@ jobs:
             --token "${GITHUB_TOKEN}" \
             --source all
 
+      - name: Update README with badge tables
+        run: |
+          set -euo pipefail
+          imir readme \
+            --readme README.md \
+            --config targets/targets.yaml
+
       - name: Check for changes
         id: changes
         run: |
-          if git diff --quiet targets/targets.yaml; then
+          if git diff --quiet targets/targets.yaml README.md; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -53,6 +60,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add targets/targets.yaml
-          git commit -m "chore(targets): sync discovered repositories"
+          git add targets/targets.yaml README.md
+          git commit -m "chore: sync discovered repositories and update README"
           git push origin HEAD:main

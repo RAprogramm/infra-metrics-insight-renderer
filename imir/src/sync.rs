@@ -45,8 +45,8 @@ pub fn sync_targets(
     discovered: &[DiscoveredRepository]
 ) -> Result<usize, AppError> {
     let pb = ProgressBar::new_spinner();
-    if let Ok(style) = ProgressStyle::default_spinner()
-        .template("{spinner:.yellow} [{elapsed_precise}] {msg}")
+    if let Ok(style) =
+        ProgressStyle::default_spinner().template("{spinner:.yellow} [{elapsed_precise}] {msg}")
     {
         pb.set_style(style);
     }

@@ -77,9 +77,8 @@ pub fn move_file(source: &str, destination: &str) -> Result<FileMoveResult, AppE
         AppError::service(format!("failed to copy {} to {}: {e}", source, destination))
     })?;
 
-    std::fs::remove_file(source_path).map_err(|e| {
-        AppError::service(format!("failed to remove source file {}: {e}", source))
-    })?;
+    std::fs::remove_file(source_path)
+        .map_err(|e| AppError::service(format!("failed to remove source file {}: {e}", source)))?;
 
     Ok(FileMoveResult {
         destination: dest_path.to_path_buf(),

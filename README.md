@@ -260,6 +260,10 @@ SPDX-License-Identifier: MIT
       <td><code>RAprogramm/telegram-webapp-sdk</code></td>
       <td><img alt="telegram-webapp-sdk metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg" /></td>
     </tr>
+    <tr>
+      <td><code>RAprogramm/infra-metrics-insight-renderer</code></td>
+      <td><img alt="infra-metrics-insight-renderer metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/infra-metrics-insight-renderer.svg" /></td>
+    </tr>
   </tbody>
 </table>
 

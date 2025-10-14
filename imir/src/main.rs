@@ -49,6 +49,8 @@ enum Command {
     Discover(DiscoverArgs),
     /// Synchronize discovered repositories with targets.yaml.
     Sync(SyncArgs),
+    /// Update README.md with badge tables from targets.
+    Readme(ReadmeArgs),
     /// Show contributor activity for the last 30 days.
     Contributors(ContributorsArgs),
     /// Detect impacted slugs from git changes.
@@ -172,6 +174,17 @@ struct SyncArgs {
     /// Maximum number of pages to fetch from GitHub API.
     #[arg(long = "max-pages", value_name = "COUNT", default_value = "10")]
     max_pages: u32
+}
+
+#[derive(Debug, Args)]
+struct ReadmeArgs {
+    /// Path to the README.md file to update.
+    #[arg(long = "readme", value_name = "PATH", default_value = "README.md")]
+    readme: PathBuf,
+
+    /// Path to the YAML configuration file describing metrics targets.
+    #[arg(long = "config", value_name = "PATH")]
+    config: PathBuf
 }
 
 #[derive(Debug, Args)]
@@ -417,6 +430,7 @@ async fn run() -> Result<(), Error> {
         Some(Command::Badge(args)) => run_badge(args),
         Some(Command::Discover(args)) => run_discover(args).await,
         Some(Command::Sync(args)) => run_sync(args).await,
+        Some(Command::Readme(args)) => run_readme(args),
         Some(Command::Contributors(args)) => run_contributors(args).await,
         Some(Command::Slugs(args)) => run_slugs(args),
         Some(Command::Artifact(args)) => run_artifact(args),
@@ -657,6 +671,19 @@ async fn run_sync(args: SyncArgs) -> Result<(), Error> {
         args.config.display()
     );
 
+    Ok(())
+}
+
+fn run_readme(args: ReadmeArgs) -> Result<(), Error> {
+    use imir::update_readme;
+
+    info!("Loading targets from {}", args.config.display());
+    let document = load_targets(&args.config)?;
+
+    info!("Updating README at {}", args.readme.display());
+    update_readme(&args.readme, &document).map_err(|e| Error::service(e.to_string()))?;
+
+    println!("README updated successfully at {}", args.readme.display());
     Ok(())
 }
 

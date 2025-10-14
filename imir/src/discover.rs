@@ -185,8 +185,8 @@ pub async fn discover_stargazer_repositories(
     );
 
     let pb = ProgressBar::new_spinner();
-    if let Ok(style) = ProgressStyle::default_spinner()
-        .template("{spinner:.cyan} [{elapsed_precise}] {msg}")
+    if let Ok(style) =
+        ProgressStyle::default_spinner().template("{spinner:.cyan} [{elapsed_precise}] {msg}")
     {
         pb.set_style(style);
     }
