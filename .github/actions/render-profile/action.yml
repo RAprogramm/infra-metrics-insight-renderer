@@ -5,8 +5,8 @@
 name: Render profile metrics
 
 description: >-
-  Render metrics for a GitHub profile using lowlighter/metrics and publish the
-  refreshed artifact via pull request.
+  Render metrics for a GitHub profile using lowlighter/metrics and commit
+  directly to main branch.
 
 author: RAprogramm Infrastructure Automation
 
@@ -17,10 +17,6 @@ inputs:
   target_user:
     description: GitHub user or organization whose profile should be rendered.
     required: true
-  branch_name:
-    description: Branch used for commits with refreshed metrics.
-    required: false
-    default: ''
   target_path:
     description: Destination path for the generated metrics artifact.
     required: false
@@ -57,7 +53,6 @@ runs:
 
         INPUTS=$("${HOME}/.local/bin/imir" render normalize-profile \
           --target-user "${{ inputs.target_user }}" \
-          ${{ inputs.branch_name && format('--branch-name "{0}"', inputs.branch_name) || '' }} \
           ${{ inputs.target_path && format('--target-path "{0}"', inputs.target_path) || '' }} \
           ${{ inputs.temp_artifact && format('--temp-artifact "{0}"', inputs.temp_artifact) || '' }} \
           ${{ inputs.time_zone && format('--time-zone "{0}"', inputs.time_zone) || '' }} \
@@ -65,7 +60,6 @@ runs:
           ${{ inputs.include_private && format('--include-private "{0}"', inputs.include_private) || '' }})
 
         echo "TARGET_USER=$(echo "${INPUTS}" | jq -r '.target_user')" >> "${GITHUB_ENV}"
-        echo "BRANCH_NAME=$(echo "${INPUTS}" | jq -r '.branch_name')" >> "${GITHUB_ENV}"
         echo "TARGET_PATH=$(echo "${INPUTS}" | jq -r '.target_path')" >> "${GITHUB_ENV}"
         echo "TEMP_ARTIFACT=$(echo "${INPUTS}" | jq -r '.temp_artifact')" >> "${GITHUB_ENV}"
         echo "TIME_ZONE=$(echo "${INPUTS}" | jq -r '.time_zone')" >> "${GITHUB_ENV}"
@@ -248,30 +242,11 @@ runs:
           --destination "${TARGET_PATH}"
 
     - name: Commit metrics update
-      id: update
       shell: bash
       run: |
         set -euo pipefail
 
-        RESULT=$("${HOME}/.local/bin/imir" git commit-push \
-          --branch "${BRANCH_NAME}" \
+        "${HOME}/.local/bin/imir" git commit-push \
+          --branch "main" \
           --path "${TARGET_PATH}" \
-          --message "chore(metrics): refresh ${DISPLAY_NAME}")
-
-        echo "pushed=$(echo "${RESULT}" | jq -r '.pushed')" >> "$GITHUB_OUTPUT"
-        echo "default_base=$(echo "${RESULT}" | jq -r '.default_base')" >> "$GITHUB_OUTPUT"
-
-    - name: Open PR (idempotent)
-      if: steps.update.outputs.pushed == 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        "${HOME}/.local/bin/imir" gh pr-create \
-          --repo "${GITHUB_REPOSITORY}" \
-          --head "${BRANCH_NAME}" \
-          --base "${{ steps.update.outputs.default_base }}" \
-          --title "chore(metrics): refresh" \
-          --body "Auto-generated metrics update" \
-          --labels ci metrics \
-          --token "${{ inputs.classic_token }}"
+          --message "chore(metrics): update ${DISPLAY_NAME} [Skip GitHub Action]"

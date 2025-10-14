@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   prepare:
@@ -43,7 +42,6 @@ jobs:
         target: ${{ fromJson(needs.prepare.outputs.matrix).targets }}
     permissions:
       contents: write
-      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -54,7 +52,6 @@ jobs:
         with:
           classic_token: ${{ secrets.CLASSIC }}
           target_user: ${{ matrix.target.owner }}
-          branch_name: ${{ matrix.target.branch_name }}
           target_path: ${{ matrix.target.target_path }}
           temp_artifact: ${{ matrix.target.temp_artifact }}
           time_zone: ${{ matrix.target.time_zone }}
@@ -67,7 +64,6 @@ jobs:
           classic_token: ${{ secrets.CLASSIC }}
           target_owner: ${{ matrix.target.owner }}
           target_repo: ${{ matrix.target.repository }}
-          branch_name: ${{ matrix.target.branch_name }}
           contributors_branch: ${{ matrix.target.contributors_branch }}
           target_path: ${{ matrix.target.target_path }}
           temp_artifact: ${{ matrix.target.temp_artifact }}

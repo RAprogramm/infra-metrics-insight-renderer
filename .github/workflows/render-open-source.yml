@@ -61,7 +61,6 @@ jobs:
         target: ${{ fromJSON(needs.prepare.outputs.targets) }}
     permissions:
       contents: write
-      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -72,7 +71,6 @@ jobs:
           classic_token: ${{ secrets.CLASSIC }}
           target_owner: RAprogramm
           target_repo: ${{ matrix.target.repository }}
-          branch_name: ${{ format('ci/metrics-refresh-{0}', matrix.target.repository) }}
           contributors_branch: ${{ matrix.target.contributors_branch }}
           target_path: ${{ format('metrics/{0}.svg', matrix.target.repository) }}
           temp_artifact: ${{ format('.metrics-tmp/{0}.svg', matrix.target.repository) }}

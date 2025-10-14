@@ -5,14 +5,14 @@
 name: Render repository metrics
 
 description: >-
-  Render metrics for a repository using lowlighter/metrics and open or update a PR
-  with the refreshed artifact.
+  Render metrics for a repository using lowlighter/metrics and commit
+  directly to main branch.
 
 author: RAprogramm Infrastructure Automation
 
 inputs:
   classic_token:
-    description: Personal access token used for pushing commits and opening PRs.
+    description: Personal access token used for pushing commits.
     required: true
   target_owner:
     description: Account that owns the repository to render metrics for.
@@ -21,10 +21,6 @@ inputs:
   target_repo:
     description: Repository name to render metrics for.
     required: true
-  branch_name:
-    description: Branch name used for commits with refreshed metrics.
-    required: false
-    default: ''
   contributors_branch:
     description: Branch analyzed by the contributors plugin.
     required: false
@@ -61,7 +57,6 @@ runs:
           ${{ inputs.target_owner && format('--target-owner "{0}"', inputs.target_owner) || '' }} \
           ${{ inputs.target_path && format('--target-path "{0}"', inputs.target_path) || '' }} \
           ${{ inputs.temp_artifact && format('--temp-artifact "{0}"', inputs.temp_artifact) || '' }} \
-          ${{ inputs.branch_name && format('--branch-name "{0}"', inputs.branch_name) || '' }} \
           ${{ inputs.contributors_branch && format('--contributors-branch "{0}"', inputs.contributors_branch) || '' }} \
           ${{ inputs.time_zone && format('--time-zone "{0}"', inputs.time_zone) || '' }})
 
@@ -69,7 +64,6 @@ runs:
         echo "TARGET_REPO=$(echo "${INPUTS}" | jq -r '.target_repo')" >> "${GITHUB_ENV}"
         echo "TARGET_PATH=$(echo "${INPUTS}" | jq -r '.target_path')" >> "${GITHUB_ENV}"
         echo "TEMP_ARTIFACT=$(echo "${INPUTS}" | jq -r '.temp_artifact')" >> "${GITHUB_ENV}"
-        echo "BRANCH_NAME=$(echo "${INPUTS}" | jq -r '.branch_name')" >> "${GITHUB_ENV}"
         echo "CONTRIBUTORS_BRANCH=$(echo "${INPUTS}" | jq -r '.contributors_branch')" >> "${GITHUB_ENV}"
         echo "TIME_ZONE=$(echo "${INPUTS}" | jq -r '.time_zone')" >> "${GITHUB_ENV}"
 
@@ -138,30 +132,11 @@ runs:
           --destination "${TARGET_PATH}"
 
     - name: Commit metrics update
-      id: update
       shell: bash
       run: |
         set -euo pipefail
 
-        RESULT=$("${HOME}/.local/bin/imir" git commit-push \
-          --branch "${BRANCH_NAME}" \
+        "${HOME}/.local/bin/imir" git commit-push \
+          --branch "main" \
           --path "${TARGET_PATH}" \
-          --message "chore(metrics): refresh ${TARGET_REPO}")
-
-        echo "pushed=$(echo "${RESULT}" | jq -r '.pushed')" >> "$GITHUB_OUTPUT"
-        echo "default_base=$(echo "${RESULT}" | jq -r '.default_base')" >> "$GITHUB_OUTPUT"
-
-    - name: Open PR (idempotent)
-      if: steps.update.outputs.pushed == 'true'
-      shell: bash
-      run: |
-        set -euo pipefail
-
-        "${HOME}/.local/bin/imir" gh pr-create \
-          --repo "${GITHUB_REPOSITORY}" \
-          --head "${BRANCH_NAME}" \
-          --base "${{ steps.update.outputs.default_base }}" \
-          --title "chore(metrics): refresh" \
-          --body "Auto-generated metrics update" \
-          --labels ci metrics \
-          --token "${{ inputs.classic_token }}"
+          --message "chore(metrics): update ${TARGET_REPO} [Skip GitHub Action]"
