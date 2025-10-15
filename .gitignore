@@ -5,6 +5,8 @@
 # Temporary files produced during metrics rendering
 *.tmp.svg
 .metrics-tmp/
+metrics/*.json
+metrics/*.json.license
 
 # Generated badge placeholders (smoke tests only)
 assets/badges/generated/
