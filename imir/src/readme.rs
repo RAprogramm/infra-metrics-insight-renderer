@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-/// Updates README.md with automatically generated badge tables.
+/// Updates README.md with automatically generated user tables.
 ///
-/// Scans targets.yaml and generates HTML tables for each category:
-/// - Open-source repositories (🟩)
-/// - Private projects (🟦)
-/// - Profile badges (🟪)
+/// Scans targets.yaml and generates HTML tables inside <details> sections:
+/// - Profile badges
+/// - Open-source repositories
+/// - Private repositories
 use std::{fs, path::Path};
 
 use masterror::AppError;
@@ -14,14 +14,11 @@ use tracing::{debug, info};
 
 use crate::{RenderTarget, TargetKind, TargetsDocument};
 
-const OPEN_SOURCE_START_MARKER: &str =
-    "<h4 align=\"center\" id=\"open-source-badges\">🟩 Open-source badges</h4>";
-const PRIVATE_START_MARKER: &str =
-    "<h4 align=\"center\" id=\"private-project-badges\">🟦 Private project badges</h4>";
-const PROFILE_START_MARKER: &str =
-    "<h4 align=\"center\" id=\"profile-badges\">🟪 Profile badges</h4>";
-const SECTION_END_MARKER: &str =
-    "<p align=\"right\"><em><a href=\"#top\">Back to top</a></em></p>";
+const OPEN_SOURCE_START_MARKER: &str = "<summary>Open-source repositories</summary>";
+const PRIVATE_START_MARKER: &str = "<summary>Private repositories</summary>";
+const PROFILE_START_MARKER: &str = "<summary>Profile badges</summary>";
+const UPDATE_MARKER: &str = "<!-- IMIR will update this table automatically -->";
+const DETAILS_END_MARKER: &str = "</details>";
 
 /// Updates README.md badge tables based on targets configuration.
 ///
@@ -121,22 +118,28 @@ fn replace_section(
     start_marker: &str,
     new_content: &str
 ) -> Result<String, AppError> {
-    let start_idx = content
+    let summary_idx = content
         .find(start_marker)
-        .ok_or_else(|| AppError::validation(format!("start marker not found: {start_marker}")))?;
+        .ok_or_else(|| AppError::validation(format!("summary marker not found: {start_marker}")))?;
 
-    let search_from = start_idx + start_marker.len();
-    let end_idx = content[search_from..]
-        .find(SECTION_END_MARKER)
-        .ok_or_else(|| AppError::validation("section end marker not found".to_string()))?
+    let search_from = summary_idx + start_marker.len();
+    let update_marker_idx = content[search_from..]
+        .find(UPDATE_MARKER)
+        .ok_or_else(|| AppError::validation("update marker not found".to_string()))?
         + search_from;
 
+    let search_from_end = update_marker_idx + UPDATE_MARKER.len();
+    let details_end_idx = content[search_from_end..]
+        .find(DETAILS_END_MARKER)
+        .ok_or_else(|| AppError::validation("details end marker not found".to_string()))?
+        + search_from_end;
+
     let mut result = String::with_capacity(content.len());
-    result.push_str(&content[..start_idx + start_marker.len()]);
+    result.push_str(&content[..update_marker_idx + UPDATE_MARKER.len()]);
     result.push_str("\n\n");
     result.push_str(new_content);
     result.push_str("\n\n");
-    result.push_str(&content[end_idx..]);
+    result.push_str(&content[details_end_idx..]);
 
     Ok(result)
 }
@@ -322,34 +325,45 @@ mod tests {
         let initial_content = format!(
             r#"# Test README
 
+<details>
+{}
+
 {}
 
 Old content here
 
 {}
+</details>
 
-## Next section
+<details>
+{}
 
 {}
 
 Old private content
 
 {}
+</details>
 
-## Another section
+<details>
+{}
 
 {}
 
 Old profile content
 
 {}
+</details>
 "#,
             OPEN_SOURCE_START_MARKER,
-            SECTION_END_MARKER,
+            UPDATE_MARKER,
+            DETAILS_END_MARKER,
             PRIVATE_START_MARKER,
-            SECTION_END_MARKER,
+            UPDATE_MARKER,
+            DETAILS_END_MARKER,
             PROFILE_START_MARKER,
-            SECTION_END_MARKER
+            UPDATE_MARKER,
+            DETAILS_END_MARKER
         );
 
         fs::write(&readme_path, initial_content).expect("failed to write README");
