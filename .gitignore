@@ -6,6 +6,9 @@
 *.tmp.svg
 .metrics-tmp/
 
+# Generated badge placeholders (smoke tests only)
+assets/badges/generated/
+
 # Rust build artifacts
 target/
 **/target/
