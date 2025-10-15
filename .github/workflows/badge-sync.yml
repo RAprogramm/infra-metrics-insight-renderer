@@ -79,13 +79,15 @@ jobs:
         run: |
           set -euo pipefail
 
+          mkdir -p assets/badges/generated
+
           printf '%s' "${SLUGS_JSON}" | jq -r '.[]' | while read -r SLUG; do
             if [ -z "${SLUG}" ]; then
               continue
             fi
 
             echo "Rendering badge for ${SLUG}" >&2
-            imir badge generate --config "${TARGETS_CONFIG}" --target "${SLUG}" --output metrics
+            imir badge generate --config "${TARGETS_CONFIG}" --target "${SLUG}" --output assets/badges/generated
           done
 
       - name: Commit badge updates
@@ -97,7 +99,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add metrics
+          git add assets/badges/generated
 
           if git diff --cached --quiet; then
             echo "No badge changes to commit."
