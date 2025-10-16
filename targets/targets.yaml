@@ -1,26 +1,61 @@
-# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
-#
-# SPDX-License-Identifier: MIT
-
-# List of metrics targets rendered by automation. Add new entries with the owner,
-# optional repository, and a type of `profile`, `open_source`, or
-# `private_project`.
 targets:
-  - owner: RAprogramm
-    type: profile
-    slug: profile
-    # branch: ci/metrics-refresh-profile
-  - owner: RAprogramm
-    repository: masterror
-    type: open_source
-    contributors_branch: main
-  - owner: RAprogramm
-    repository: telegram-webapp-sdk
-    type: open_source
-    contributors_branch: main
-  - owner: RAprogramm
-    repository: infra-metrics-insight-renderer
-    type: open_source
-    slug: infra-metrics-insight-renderer
-    display_name: Infra Metrics Insight Renderer
-    contributors_branch: main
+- owner: RAprogramm
+  repository: null
+  type: profile
+  slug: profile
+  branch_name: null
+  contributors_branch: null
+  target_path: null
+  temp_artifact: null
+  time_zone: null
+  display_name: null
+  include_private: null
+  badge: null
+- owner: RAprogramm
+  repository: RAprogramm
+  type: open_source
+  slug: null
+  branch_name: null
+  contributors_branch: null
+  target_path: null
+  temp_artifact: null
+  time_zone: null
+  display_name: null
+  include_private: null
+  badge: null
+- owner: RAprogramm
+  repository: infra-metrics-insight-renderer
+  type: open_source
+  slug: infra-metrics-insight-renderer
+  branch_name: null
+  contributors_branch: main
+  target_path: null
+  temp_artifact: null
+  time_zone: null
+  display_name: Infra Metrics Insight Renderer
+  include_private: null
+  badge: null
+- owner: RAprogramm
+  repository: masterror
+  type: open_source
+  slug: null
+  branch_name: null
+  contributors_branch: main
+  target_path: null
+  temp_artifact: null
+  time_zone: null
+  display_name: null
+  include_private: null
+  badge: null
+- owner: RAprogramm
+  repository: telegram-webapp-sdk
+  type: open_source
+  slug: null
+  branch_name: null
+  contributors_branch: main
+  target_path: null
+  temp_artifact: null
+  time_zone: null
+  display_name: null
+  include_private: null
+  badge: null

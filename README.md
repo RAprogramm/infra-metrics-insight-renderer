@@ -95,16 +95,20 @@ IMIR automatically discovers and tracks users who add badges to their repositori
   </thead>
   <tbody>
     <tr>
+      <td><code>RAprogramm/RAprogramm</code></td>
+      <td><img alt="RAprogramm metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/raprogramm.svg" /></td>
+    </tr>
+    <tr>
+      <td><code>RAprogramm/infra-metrics-insight-renderer</code></td>
+      <td><img alt="infra-metrics-insight-renderer metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/infra-metrics-insight-renderer.svg" /></td>
+    </tr>
+    <tr>
       <td><code>RAprogramm/masterror</code></td>
       <td><img alt="masterror metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/masterror.svg" /></td>
     </tr>
     <tr>
       <td><code>RAprogramm/telegram-webapp-sdk</code></td>
       <td><img alt="telegram-webapp-sdk metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg" /></td>
-    </tr>
-    <tr>
-      <td><code>RAprogramm/infra-metrics-insight-renderer</code></td>
-      <td><img alt="infra-metrics-insight-renderer metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/infra-metrics-insight-renderer.svg" /></td>
     </tr>
   </tbody>
 </table>
