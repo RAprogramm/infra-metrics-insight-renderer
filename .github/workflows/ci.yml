@@ -49,25 +49,25 @@ jobs:
         run: cargo +nightly fmt --check --manifest-path imir/Cargo.toml
 
       - name: "[2/9] Clippy"
-        run: cargo clippy --all-targets --all-features --manifest-path imir/Cargo.toml -- -D warnings
+        run: cargo +stable clippy --all-targets --all-features --manifest-path imir/Cargo.toml -- -D warnings
 
       - name: "[3/9] Tests"
-        run: cargo test --all-features --manifest-path imir/Cargo.toml
+        run: cargo +stable test --all-features --manifest-path imir/Cargo.toml
 
       - name: "[4/9] Coverage"
-        run: cargo tarpaulin --all-features --out Xml --manifest-path imir/Cargo.toml
+        run: cargo +stable tarpaulin --all-features --out Xml --manifest-path imir/Cargo.toml
 
       - name: "[5/9] Benchmarks"
-        run: cargo bench --no-fail-fast --manifest-path imir/Cargo.toml
+        run: cargo +stable bench --no-fail-fast --manifest-path imir/Cargo.toml
 
       - name: "[6/9] Build"
-        run: cargo build --release --all-features --manifest-path imir/Cargo.toml
+        run: cargo +stable build --release --all-features --manifest-path imir/Cargo.toml
 
       - name: "[7/9] Audit"
-        run: cargo audit --file imir/Cargo.lock
+        run: cargo +stable audit --file imir/Cargo.lock
 
       - name: "[8/9] Docs"
-        run: cargo doc --no-deps --all-features --manifest-path imir/Cargo.toml
+        run: cargo +stable doc --no-deps --all-features --manifest-path imir/Cargo.toml
 
       - name: "[9/9] License compliance"
         run: reuse lint
