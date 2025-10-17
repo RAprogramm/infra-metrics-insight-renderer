@@ -1048,9 +1048,9 @@ checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 
 [[package]]
 name = "masterror"
-version = "0.24.12"
+version = "0.24.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "493edc7ee9f72e3e916245137e932956cf93a74000826edf40d5a7e52047676d"
+checksum = "8d52fc243a3eac202b1cda38b908dc4cafafb9e779b1e76d781fe9b51635d1f8"
 dependencies = [
  "http",
  "itoa",
