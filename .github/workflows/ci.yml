@@ -8,6 +8,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,6 +27,7 @@ jobs:
   check:
     name: Quick Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: "!contains(github.event.head_commit.message, 'chore(imir): bump version')"
     steps:
       - uses: actions/checkout@v5
@@ -65,6 +67,7 @@ jobs:
   validate:
     name: ${{ matrix.job }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: check
     strategy:
       fail-fast: false
@@ -114,6 +117,7 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: check
     steps:
       - uses: actions/checkout@v5
@@ -139,16 +143,36 @@ jobs:
           cargo llvm-cov nextest --all-features --manifest-path imir/Cargo.toml --lcov --output-path lcov.info
           cargo llvm-cov report --manifest-path imir/Cargo.toml --html
 
+          # Extract coverage percentage for summary
+          COVERAGE=$(cargo llvm-cov report --manifest-path imir/Cargo.toml | grep TOTAL | awk '{print $NF}')
+          echo "COVERAGE_PCT=${COVERAGE}" >> $GITHUB_ENV
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: lcov.info
           fail_ci_if_error: false
 
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/llvm-cov/html/
+          retention-days: 30
+
+      - name: Add coverage summary
+        run: |
+          echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Total Coverage:** ${COVERAGE_PCT}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Full HTML report available in artifacts." >> $GITHUB_STEP_SUMMARY
+
   # Benchmarks (optional, runs separately)
   bench:
     name: Benchmarks
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: check
     steps:
       - uses: actions/checkout@v5

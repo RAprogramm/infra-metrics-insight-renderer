@@ -12,6 +12,21 @@ SPDX-License-Identifier: MIT
 <hr />
 
 <p align="center">
+  <a href="https://github.com/RAprogramm/infra-metrics-insight-renderer/actions/workflows/ci.yml">
+    <img src="https://github.com/RAprogramm/infra-metrics-insight-renderer/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
+  </a>
+  <a href="https://codecov.io/gh/RAprogramm/infra-metrics-insight-renderer">
+    <img src="https://codecov.io/gh/RAprogramm/infra-metrics-insight-renderer/branch/main/graph/badge.svg" alt="Coverage" />
+  </a>
+  <a href="https://crates.io/crates/imir">
+    <img src="https://img.shields.io/crates/v/imir.svg" alt="Crate Version" />
+  </a>
+  <a href="https://docs.rs/imir">
+    <img src="https://docs.rs/imir/badge.svg" alt="Documentation" />
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
+  </a>
   <a href="https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer/view?branch=main">
     <img src="https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer?branch=main" alt="Hits-of-Code" />
   </a>
@@ -191,19 +206,35 @@ See [imir/README.md](imir/README.md) for complete CLI documentation.
 
 ### Local Validation
 
+Run individual CI checks locally before pushing:
+
 ```bash
-# Run full CI validation pipeline
-./scripts/ci-check.sh
+# Format check
+cargo +nightly fmt --check --manifest-path imir/Cargo.toml
+
+# Linting
+cargo clippy --all-targets --all-features --manifest-path imir/Cargo.toml
+
+# Tests
+cargo nextest run --all-features --manifest-path imir/Cargo.toml
+
+# Documentation
+cargo doc --no-deps --all-features --manifest-path imir/Cargo.toml
+
+# Security audit
+cargo audit --file imir/Cargo.lock
+
+# License compliance
+reuse lint
+
+# Benchmarks
+cargo bench --no-fail-fast --manifest-path imir/Cargo.toml
+
+# Coverage
+cargo llvm-cov nextest --all-features --manifest-path imir/Cargo.toml --html
 ```
 
-Includes:
-- Formatting (`cargo +nightly fmt`)
-- Linting (`cargo clippy --all-targets --all-features -- -D warnings`)
-- Tests (`cargo test --all-features`)
-- Documentation (`cargo doc --no-deps --all-features`)
-- Security audit (`cargo audit`)
-- Dependency checks (`cargo deny check`)
-- License compliance (`reuse lint`)
+All checks run automatically in CI via GitHub Actions with matrix parallelization.
 
 ### Project Structure
 
@@ -222,11 +253,10 @@ metrics-renderer/
 │   └── Cargo.toml
 ├── targets/
 │   └── targets.yaml        # Metrics targets configuration
-├── .github/workflows/       # Automated rendering workflows
+├── .github/workflows/       # CI/CD and automation workflows
 ├── assets/badges/          # Static badge SVG files
 ├── metrics/                # Generated metrics dashboards
-├── WORKFLOW.md             # Discovery flow documentation
-└── scripts/ci-check.sh     # Local CI validation script
+└── WORKFLOW.md             # Discovery flow documentation
 ```
 
 ## Storage Strategy
@@ -242,13 +272,14 @@ metrics-renderer/
 
 ## Release Process
 
-1. Run `./scripts/ci-check.sh` locally
-2. Create annotated tag: `git tag -a v0.1.0`
-3. Push tag: `git push origin v0.1.0`
-4. Draft GitHub release (triggers `.github/workflows/release.yml`)
-5. Workflow builds and uploads `imir-x86_64-unknown-linux-gnu.tar.gz` binary
-6. Update downstream workflows to download new release
+1. Ensure all CI checks pass on main branch
+2. Bump version in `imir/Cargo.toml`
+3. Create annotated tag: `git tag -a v0.1.0 -m "Release v0.1.0"`
+4. Push tag: `git push origin v0.1.0`
+5. Create GitHub release (triggers automated build workflow)
+6. Workflow builds and uploads `imir-x86_64-unknown-linux-gnu.tar.gz` binary
+7. Binary is automatically downloaded by downstream workflows
 
 ## License
 
-MIT OR Apache-2.0
+MIT
