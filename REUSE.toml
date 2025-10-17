@@ -1,0 +1,10 @@
+version = 1
+SPDX-PackageName = "infra-metrics-insight-renderer"
+SPDX-PackageSupplier = "RAprogramm <andrey.rozanov.vl@gmail.com>"
+SPDX-PackageDownloadLocation = "https://github.com/RAprogramm/infra-metrics-insight-renderer"
+
+[[annotations]]
+path = ".metrics-tmp/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2025 RAprogramm <andrey.rozanov.vl@gmail.com>"
+SPDX-License-Identifier = "CC0-1.0"
