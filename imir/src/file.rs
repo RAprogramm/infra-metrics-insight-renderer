@@ -72,7 +72,6 @@ pub fn move_file(source: &str, destination: &str) -> Result<FileMoveResult, AppE
         })?;
     }
 
-    // Use copy+remove instead of rename to support cross-filesystem moves
     std::fs::copy(source_path, dest_path).map_err(|e| {
         AppError::service(format!("failed to copy {} to {}: {e}", source, destination))
     })?;
