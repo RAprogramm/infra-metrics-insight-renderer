@@ -107,7 +107,14 @@ jobs:
 
       - name: Run tests
         if: matrix.job == 'Test'
-        run: cargo nextest run --all-features --manifest-path imir/Cargo.toml
+        run: cargo nextest run --all-features --manifest-path imir/Cargo.toml --profile ci
+
+      - name: Upload test results to Codecov
+        if: matrix.job == 'Test' && !cancelled()
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: imir/target/nextest/ci/junit.xml
 
       - name: Build docs
         if: matrix.job == 'Docs'
