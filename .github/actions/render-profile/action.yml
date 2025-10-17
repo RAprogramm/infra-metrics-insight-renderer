@@ -242,6 +242,14 @@ runs:
           --source "${{ steps.artifact.outputs.path }}" \
           --destination "${TARGET_PATH}"
 
+    - name: Optimize SVG for GitHub display
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        "${HOME}/.local/bin/imir" svg optimize \
+          --path "${TARGET_PATH}"
+
     - name: Commit metrics update
       shell: bash
       run: |

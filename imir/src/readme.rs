@@ -118,9 +118,9 @@ fn replace_section(
     start_marker: &str,
     new_content: &str
 ) -> Result<String, AppError> {
-    let summary_idx = content
-        .find(start_marker)
-        .ok_or_else(|| AppError::validation(format!("summary marker not found: {start_marker}")))?;
+    let summary_idx = content.find(start_marker).ok_or_else(|| {
+        AppError::validation(format!("summary marker not found: {start_marker}"))
+    })?;
 
     let search_from = summary_idx + start_marker.len();
     let update_marker_idx = content[search_from..]

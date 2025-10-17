@@ -54,6 +54,7 @@ mod render;
 pub mod retry;
 mod slug;
 mod slugs;
+mod svg;
 mod sync;
 
 pub use artifact::{ArtifactLocation, locate_artifact};
@@ -84,4 +85,5 @@ pub use render::{
 };
 pub use slug::SlugStrategy;
 pub use slugs::{SlugDetectionResult, detect_impacted_slugs};
+pub use svg::{SvgOptimizeResult, optimize_svg};
 pub use sync::sync_targets;

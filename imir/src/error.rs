@@ -58,6 +58,20 @@ pub enum Error {
     Service {
         /// Human readable message describing the service error.
         message: String
+    },
+    /// Wraps I/O errors that occur while processing SVG files.
+    #[error("failed to process SVG at {path:?}: {source}")]
+    SvgIo {
+        /// Location of the SVG file being processed.
+        path:   PathBuf,
+        /// Underlying I/O error reported by the operating system.
+        source: std::io::Error
+    },
+    /// Wraps parsing errors when analyzing SVG structure.
+    #[error("failed to parse SVG: {message}")]
+    SvgParse {
+        /// Human readable message describing the parse failure.
+        message: String
     }
 }
 
@@ -145,6 +159,19 @@ pub fn io_error(path: &Path, source: std::io::Error) -> Error {
 /// * `source` - I/O error reported by the operating system.
 pub fn badge_io_error(path: &Path, source: std::io::Error) -> Error {
     Error::BadgeIo {
+        path: path.to_path_buf(),
+        source
+    }
+}
+
+/// Creates an [`Error::SvgIo`] variant capturing the failing path and source.
+///
+/// # Parameters
+///
+/// * `path` - Location of the SVG file that triggered the error.
+/// * `source` - I/O error reported by the operating system.
+pub fn svg_io_error(path: &Path, source: std::io::Error) -> Error {
+    Error::SvgIo {
         path: path.to_path_buf(),
         source
     }

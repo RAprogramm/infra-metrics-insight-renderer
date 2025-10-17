@@ -18,7 +18,7 @@ use imir::{
     DiscoveryConfig, Error, TargetsDocument, detect_impacted_slugs, discover_badge_users,
     discover_stargazer_repositories, generate_badge_assets, gh_pr_create, git_commit_push,
     load_targets, locate_artifact, move_file, normalize_profile_inputs,
-    normalize_repository_inputs, resolve_open_source_repositories, sync_targets
+    normalize_repository_inputs, optimize_svg, resolve_open_source_repositories, sync_targets
 };
 use tracing::info;
 
@@ -64,7 +64,9 @@ enum Command {
     /// GitHub CLI operations for PRs.
     Gh(GhArgs),
     /// Render action input normalization.
-    Render(RenderArgs)
+    Render(RenderArgs),
+    /// SVG optimization and post-processing.
+    Svg(SvgArgs)
 }
 
 #[derive(Debug, Args)]
@@ -398,6 +400,25 @@ struct NormalizeRepositoryArgs {
     time_zone: Option<String>
 }
 
+#[derive(Debug, Args)]
+struct SvgArgs {
+    #[command(subcommand)]
+    command: SvgCommand
+}
+
+#[derive(Debug, Subcommand)]
+enum SvgCommand {
+    /// Optimize SVG for GitHub display.
+    Optimize(SvgOptimizeArgs)
+}
+
+#[derive(Debug, Args)]
+struct SvgOptimizeArgs {
+    /// Path to the SVG file to optimize.
+    #[arg(long = "path", value_name = "PATH", required = true)]
+    path: PathBuf
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main() {
@@ -438,6 +459,7 @@ async fn run() -> Result<(), Error> {
         Some(Command::Git(args)) => run_git(args),
         Some(Command::Gh(args)) => run_gh(args),
         Some(Command::Render(args)) => run_render(args),
+        Some(Command::Svg(args)) => run_svg(args),
         None => run_legacy_targets(&cli.legacy)
     }
 }
@@ -867,6 +889,23 @@ fn run_render(args: RenderArgs) -> Result<(), Error> {
                 repo_args.contributors_branch.as_deref(),
                 repo_args.time_zone.as_deref()
             )?;
+
+            let json = serde_json::to_string(&result)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?;
+
+            println!("{json}");
+
+            Ok(())
+        }
+    }
+}
+
+fn run_svg(args: SvgArgs) -> Result<(), Error> {
+    match args.command {
+        SvgCommand::Optimize(optimize_args) => {
+            info!("Optimizing SVG: path={}", optimize_args.path.display());
+
+            let result = optimize_svg(&optimize_args.path)?;
 
             let json = serde_json::to_string(&result)
                 .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?;
