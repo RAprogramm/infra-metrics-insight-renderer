@@ -67,6 +67,26 @@ jobs:
       - name: License compliance
         run: reuse lint
 
+      - name: Validate codecov.yml
+        run: |
+          set -euo pipefail
+          if [ ! -f .github/codecov.yml ]; then
+            echo "codecov.yml not found, skipping validation"
+            exit 0
+          fi
+
+          echo "Validating codecov.yml..."
+          RESPONSE=$(cat .github/codecov.yml | curl -s --data-binary @- https://codecov.io/validate)
+
+          if echo "$RESPONSE" | grep -q "^Valid!"; then
+            echo "codecov.yml is valid"
+            exit 0
+          else
+            echo "Error: codecov.yml validation failed"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
   # Parallel validation jobs using matrix strategy
   validate:
     name: ${{ matrix.job }}
