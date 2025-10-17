@@ -49,7 +49,7 @@ jobs:
       - name: Install tools
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-audit
+          tool: cargo-audit,cargo-deny
 
       - name: Install reuse
         run: pip install reuse
@@ -59,6 +59,9 @@ jobs:
 
       - name: Security audit
         run: cargo audit --file imir/Cargo.lock
+
+      - name: Supply chain security
+        run: cargo deny check --manifest-path imir/Cargo.toml
 
       - name: License compliance
         run: reuse lint
@@ -162,11 +165,14 @@ jobs:
 
       - name: Add coverage summary
         run: |
-          echo "### Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "## :shield: Coverage Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Total Coverage:** ${COVERAGE_PCT}" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total Coverage** | \`${COVERAGE_PCT}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | \`95%+\` |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Full HTML report available in artifacts." >> $GITHUB_STEP_SUMMARY
+          echo "> :information_source: Full HTML report available in workflow artifacts (30 day retention)" >> $GITHUB_STEP_SUMMARY
 
   # Benchmarks (optional, runs separately)
   bench:
@@ -187,4 +193,13 @@ jobs:
           shared-key: "ci-cache"
 
       - name: Run benchmarks
-        run: cargo bench --no-fail-fast --manifest-path imir/Cargo.toml
+        run: |
+          cargo bench --no-fail-fast --manifest-path imir/Cargo.toml 2>&1 | tee bench_output.txt
+
+      - name: Add benchmark summary
+        run: |
+          echo "## :rocket: Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          grep -E "test.*bench:" bench_output.txt | head -10 >> $GITHUB_STEP_SUMMARY || echo "No benchmark results found" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
