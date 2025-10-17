@@ -121,8 +121,16 @@ fn optimize_svg_content(content: &str) -> Result<(String, bool), Error> {
     }
 
     let fixed_width = "880";
-    let fixed_height = height.unwrap_or("2048");
-    let viewbox_value = format!("0 0 {fixed_width} {fixed_height}");
+    let actual_height = height
+        .and_then(|h| {
+            if h.ends_with('%') || h.contains("auto") {
+                None
+            } else {
+                Some(h)
+            }
+        })
+        .unwrap_or("2048");
+    let viewbox_value = format!("0 0 {fixed_width} {actual_height}");
 
     let mut new_attrs = attrs.to_owned();
 
@@ -325,5 +333,49 @@ mod tests {
         assert!(optimized.contains("/* styles */"));
         assert!(optimized.contains("<rect width=\"100\" height=\"100\"/>"));
         assert!(optimized.contains("<text>Hello World</text>"));
+    }
+
+    #[test]
+    fn optimize_svg_uses_actual_height_for_large_svg() {
+        let svg_content = r#"<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="4096">
+  <rect width="100" height="100"/>
+</svg>"#;
+
+        let (optimized, modified) =
+            optimize_svg_content(svg_content).expect("optimization failed");
+
+        assert!(modified);
+        assert!(optimized.contains(r#"width="880""#));
+        assert!(optimized.contains(r#"viewBox="0 0 880 4096""#));
+        assert!(optimized.contains(r#"height="4096""#));
+    }
+
+    #[test]
+    fn optimize_svg_handles_percentage_height() {
+        let svg_content = r#"<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+  <rect width="100" height="100"/>
+</svg>"#;
+
+        let (optimized, modified) =
+            optimize_svg_content(svg_content).expect("optimization failed");
+
+        assert!(modified);
+        assert!(optimized.contains(r#"width="880""#));
+        assert!(optimized.contains(r#"viewBox="0 0 880 2048""#));
+    }
+
+    #[test]
+    fn optimize_svg_handles_small_height() {
+        let svg_content = r#"<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="500">
+  <rect width="100" height="100"/>
+</svg>"#;
+
+        let (optimized, modified) =
+            optimize_svg_content(svg_content).expect("optimization failed");
+
+        assert!(modified);
+        assert!(optimized.contains(r#"width="880""#));
+        assert!(optimized.contains(r#"viewBox="0 0 880 500""#));
+        assert!(optimized.contains(r#"height="500""#));
     }
 }
