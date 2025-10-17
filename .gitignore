@@ -8,9 +8,6 @@
 metrics/*.json
 metrics/*.json.license
 
-# Generated badge placeholders (smoke tests only)
-assets/badges/generated/
-
 # Rust build artifacts
 target/
 **/target/
