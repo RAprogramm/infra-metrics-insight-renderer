@@ -61,7 +61,8 @@ jobs:
         run: cargo audit --file imir/Cargo.lock
 
       - name: Supply chain security
-        run: cargo deny check --manifest-path imir/Cargo.toml
+        working-directory: imir
+        run: cargo deny check
 
       - name: License compliance
         run: reuse lint
