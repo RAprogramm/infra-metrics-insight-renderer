@@ -23,11 +23,11 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
-  # Fast blocking checks that must pass before running expensive jobs
-  check:
-    name: Quick Checks
+  # Base job: code formatting check (fastest, runs first)
+  format:
+    name: Format
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     if: "!contains(github.event.head_commit.message, 'chore(imir): bump version')"
     steps:
       - uses: actions/checkout@v5
@@ -36,6 +36,18 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
+
+      - name: Check formatting
+        run: cargo +nightly fmt --check --manifest-path imir/Cargo.toml
+
+  # Security checks (audit + supply chain)
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: format
+    steps:
+      - uses: actions/checkout@v5
 
       - name: Setup stable toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -46,16 +58,10 @@ jobs:
           workspaces: "imir -> target"
           shared-key: "ci-cache"
 
-      - name: Install tools
+      - name: Install security tools
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit,cargo-deny
-
-      - name: Install reuse
-        run: pip install reuse
-
-      - name: Check formatting
-        run: cargo +nightly fmt --check --manifest-path imir/Cargo.toml
 
       - name: Security audit
         run: cargo audit --file imir/Cargo.lock
@@ -64,8 +70,29 @@ jobs:
         working-directory: imir
         run: cargo deny check
 
-      - name: License compliance
+  # License compliance check
+  license:
+    name: License
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: format
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install reuse
+        run: pip install reuse
+
+      - name: Check license compliance
         run: reuse lint
+
+  # Codecov configuration validation
+  validate-codecov:
+    name: Codecov Config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: format
+    steps:
+      - uses: actions/checkout@v5
 
       - name: Validate codecov.yml
         run: |
@@ -92,7 +119,7 @@ jobs:
     name: ${{ matrix.job }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: check
+    needs: [format, security, license, validate-codecov]
     strategy:
       fail-fast: false
       matrix:
@@ -148,7 +175,7 @@ jobs:
     name: Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: check
+    needs: [format, security, license, validate-codecov]
     steps:
       - uses: actions/checkout@v5
 
@@ -207,7 +234,7 @@ jobs:
     name: Benchmarks
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: check
+    needs: [format, security, license, validate-codecov]
     steps:
       - uses: actions/checkout@v5
 
