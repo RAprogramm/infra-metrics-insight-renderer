@@ -1,0 +1,17 @@
+{
+  "slug": "raprogramm",
+  "owner": "RAprogramm",
+  "repository": "RAprogramm",
+  "kind": "open_source",
+  "display_name": "RAprogramm",
+  "target_path": "metrics/raprogramm.svg",
+  "svg_artifact": "assets/badges/generated/raprogramm.svg",
+  "badge": {
+    "style": "classic",
+    "widget": {
+      "columns": 1,
+      "alignment": "start",
+      "border_radius": 4
+    }
+  }
+}
