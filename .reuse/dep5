@@ -1,8 +1,0 @@
-Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: infra-metrics-insight-renderer
-Upstream-Contact: RAprogramm <andrey.rozanov.vl@gmail.com>
-Source: https://github.com/RAprogramm/infra-metrics-insight-renderer
-
-Files: assets/badges/generated/*.json assets/badges/generated/*.svg metrics/*.svg
-Copyright: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
-License: CC0-1.0
