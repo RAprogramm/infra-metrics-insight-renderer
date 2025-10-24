@@ -115,8 +115,6 @@ runs:
         plugin_activity_load: 300
         plugin_activity_timestamps: yes
         plugin_activity_visibility: ${{ env.PLUGIN_ACTIVITY_VISIBILITY }}
-        plugin_calendar: yes
-        plugin_calendar_limit: 1
         plugin_code: yes
         plugin_code_days: 3
         plugin_code_lines: 12
@@ -130,8 +128,7 @@ runs:
         plugin_followup_sections: "repositories, user"
         plugin_gists: yes
         plugin_habits: yes
-        plugin_habits_charts: yes
-        plugin_habits_charts_type: classic
+        plugin_habits_charts: no
         plugin_habits_days: 14
         plugin_habits_facts: yes
         plugin_habits_from: 200
@@ -153,7 +150,7 @@ runs:
         plugin_languages_recent_days: 14
         plugin_languages_recent_load: 300
         plugin_languages_sections: "most-used, recently-used"
-        plugin_languages_threshold: "100%"
+        plugin_languages_threshold: "0%"
         plugin_lines: yes
         plugin_lines_history_limit: 1
         plugin_lines_repositories_limit: 4
@@ -206,18 +203,10 @@ runs:
         plugin_stargazers_charts: yes
         plugin_stargazers_charts_type: classic
         plugin_stargazers_days: 14
-        plugin_stargazers_worldmap: yes
         plugin_stars: yes
-        plugin_stars_limit: 4
+        plugin_stars_limit: 8
         plugin_support: yes
         plugin_traffic: yes
-        plugin_wakatime: yes
-        plugin_wakatime_days: 7
-        plugin_wakatime_limit: 5
-        plugin_wakatime_repositories_visibility: all
-        plugin_wakatime_sections: "time, projects, projects-graphs, languages, languages-graphs, editors, os"
-        plugin_wakatime_url: https://wakatime.com
-        plugin_wakatime_user: "@RA"
         repositories_forks: yes
 
     - name: Locate generated artifact
