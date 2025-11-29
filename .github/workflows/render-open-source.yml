@@ -35,7 +35,7 @@ jobs:
       targets: ${{ steps.resolve.outputs.targets }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup IMIR
         uses: ./.github/actions/setup-imir
@@ -63,7 +63,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Render metrics for ${{ matrix.target.repository }}
         uses: ./.github/actions/render-repository

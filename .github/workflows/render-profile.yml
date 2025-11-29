@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Render profile metrics
         uses: ./.github/actions/render-profile
@@ -33,7 +33,7 @@ jobs:
           include_private: true
 
       - name: Upload metrics artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: metrics-profile
           path: metrics/profile.svg
@@ -47,10 +47,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download metrics artifact
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: metrics-profile
           path: .
