@@ -14,7 +14,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_yaml = "0.9"
-masterror = "0.25"
+masterror = "0.26"
 octocrab = "0.48"
 tokio = { version = "1.48", features = ["rt-multi-thread", "macros", "time"] }
 tracing = "0.1"
