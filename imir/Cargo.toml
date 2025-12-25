@@ -4,7 +4,7 @@
 
 [package]
 name = "imir"
-version = "0.1.22"
+version = "0.1.23"
 edition = "2024"
 description = "Generate rendering instructions for lowlighter/metrics targets"
 license = "MIT"
