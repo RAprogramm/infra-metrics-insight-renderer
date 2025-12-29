@@ -1216,14 +1216,14 @@ checksum = "34080505efa8e45a4b816c349525ebe327ceaa8559756f0356cba97ef3bf7432"
 
 [[package]]
 name = "masterror"
-version = "0.26.0"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77607e589f49d58c617de7eceea88aa82c1eb4c7f2de71930dbfb228b72bd73a"
+checksum = "25adc3a02884d80c5d30b8575bc1329b125d2c9afa36b36eae2968efa27b2186"
 dependencies = [
  "http",
  "itoa",
  "masterror-derive",
- "masterror-template",
+ "masterror-template 0.4.0",
  "ryu",
  "serde",
  "sha2",
@@ -1237,7 +1237,7 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c67cb4a9c7ac7a6473b96e7ed3b72f755809334e1c5c44cf80211358d382d68"
 dependencies = [
- "masterror-template",
+ "masterror-template 0.3.8",
  "proc-macro2",
  "quote",
  "syn",
@@ -1248,6 +1248,12 @@ name = "masterror-template"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76cbb19c37caa0e505f0fb43a68184a4d22dc6e81daea40dd00fc24a356ffa9a"
+
+[[package]]
+name = "masterror-template"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6381dc08131b148a78a64be1ad56fa4c5d57ba0c0b262a298f63bdd8b444eee"
 
 [[package]]
 name = "matchers"
@@ -1348,9 +1354,9 @@ dependencies = [
 
 [[package]]
 name = "octocrab"
-version = "0.49.2"
+version = "0.49.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a05f533ce747c92b413d143ae258c3bd11a56ffdf7f2cee1896539c89c59acc"
+checksum = "add74bcdaf5b0a0c3edb0f8c0a952d7a52d9e9a76ac9c690a3e477c4e8c343b9"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -2000,15 +2006,15 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.145"
+version = "1.0.148"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "402a6f66d8c709116cf22f558eab210f5a50187f702eb4d7e5ef38d9a7f1c79c"
+checksum = "3084b546a1dd6289475996f182a22aba973866ea8e8b02c51d9f46b1336a22da"
 dependencies = [
  "itoa",
  "memchr",
- "ryu",
  "serde",
  "serde_core",
+ "zmij",
 ]
 
 [[package]]
@@ -3101,3 +3107,9 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "zmij"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0f4a4e8e9dc5c62d159f04fcdbe07f4c3fb710415aab4754bf11505501e3251d"
