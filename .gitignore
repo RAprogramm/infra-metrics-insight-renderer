@@ -1,6 +1,12 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 # Temporary files produced during metrics rendering
 *.tmp.svg
 .metrics-tmp/
+metrics/*.json
+metrics/*.json.license
 
 # Rust build artifacts
 target/

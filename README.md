@@ -1,4 +1,9 @@
-<a id="top"></a>
+<!--
+SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+
+SPDX-License-Identifier: MIT
+-->
+
 <h1 align="center">IMIR</h1>
 <div align="right">
   <blockquote><em>Infra Metrics Insight Renderer</em></blockquote>
@@ -7,224 +12,180 @@
 <hr />
 
 <p align="center">
+  <a href="https://github.com/RAprogramm/infra-metrics-insight-renderer/actions/workflows/ci.yml">
+    <img src="https://github.com/RAprogramm/infra-metrics-insight-renderer/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
+  </a>
+  <a href="https://codecov.io/gh/RAprogramm/infra-metrics-insight-renderer">
+    <img src="https://codecov.io/gh/RAprogramm/infra-metrics-insight-renderer/branch/main/graph/badge.svg" alt="Coverage" />
+  </a>
+  <a href="https://crates.io/crates/imir">
+    <img src="https://img.shields.io/crates/v/imir.svg" alt="Crate Version" />
+  </a>
+  <a href="https://docs.rs/imir">
+    <img src="https://docs.rs/imir/badge.svg" alt="Documentation" />
+  </a>
+  <a href="./LICENSE">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
+  </a>
   <a href="https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer/view?branch=main">
     <img src="https://hitsofcode.com/github/RAprogramm/infra-metrics-insight-renderer?branch=main" alt="Hits-of-Code" />
   </a>
 </p>
 
 <p align="center">
-  <a href="./imir.png">
-    <img src="./imir.png" alt="IMIR" />
+  <a href="./assets/imir.png">
+    <img src="./assets/imir.png" alt="IMIR" />
   </a>
 </p>
 
-<p>
-  This repository hosts reusable GitHub Actions workflows for rendering
-  <a href="https://github.com/lowlighter/metrics">lowlighter/metrics</a>
-  dashboards used across RAprogramm projects.
-</p>
+## What is IMIR?
+
+IMIR is a Rust CLI tool for automated GitHub metrics generation and repository discovery. It provides commands for:
+
+- **GitHub CLI operations**: Create PRs, manage issues via `gh` integration
+- **Git automation**: Commit, push, branch management
+- **Metrics generation**: Render repository and profile dashboards using [lowlighter/metrics](https://github.com/lowlighter/metrics)
+- **Discovery**: Automatically detect repositories using IMIR badges
+- **Badge generation**: Create lightweight SVG badges for discovered targets
+- **README updates**: Maintain user tables with `imir readme` command
+
+## Quick Start
+
+### For Users
+
+Add IMIR badge to your repository README:
+
+> [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+>
+> ```markdown
+> <!-- For public repositories -->
+> [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+> ```
+
+> [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-private.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+> 
+> 
+> ```markdown
+> <!-- For private repositories -->
+> [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-private.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+> ```
+
+> [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-profile.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+> 
+> 
+> ```markdown
+> <!-- For GitHub profiles -->
+> [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-profile.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
+> ```
+
+Add metrics placeholder:
+
+```markdown
+![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/<repo-name>.svg)
+```
+
+Star this repository and wait for automatic discovery (runs daily at 02:00 UTC).
+
+See [WORKFLOW.md](WORKFLOW.md) for detailed discovery and metrics generation flow.
+
+## Registered Users
+
+IMIR automatically discovers and tracks users who add badges to their repositories.
+
+<details>
+<summary>Profile badges</summary>
+
+<!-- IMIR will update this table automatically -->
+
+<table>
+  <thead>
+    <tr><th>Account</th><th>Badge</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>RAprogramm</code></td>
+      <td><img alt="RAprogramm profile metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/profile.svg" /></td>
+    </tr>
+  </tbody>
+</table>
+
+</details>
+
+<details>
+<summary>Open-source repositories</summary>
+
+<!-- IMIR will update this table automatically -->
+
+<table>
+  <thead>
+    <tr><th>Repository</th><th>Badge</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>RAprogramm/RAprogramm</code></td>
+      <td><img alt="RAprogramm metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/raprogramm.svg" /></td>
+    </tr>
+    <tr>
+      <td><code>RAprogramm/infra-metrics-insight-renderer</code></td>
+      <td><img alt="infra-metrics-insight-renderer metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/infra-metrics-insight-renderer.svg" /></td>
+    </tr>
+    <tr>
+      <td><code>RAprogramm/masterror</code></td>
+      <td><img alt="masterror metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/masterror.svg" /></td>
+    </tr>
+    <tr>
+      <td><code>RAprogramm/telegram-webapp-sdk</code></td>
+      <td><img alt="telegram-webapp-sdk metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg" /></td>
+    </tr>
+  </tbody>
+</table>
+
+</details>
+
+<details>
+<summary>Private repositories</summary>
+
+<!-- IMIR will update this table automatically -->
 
 <p>
-  <strong>IMIR exists to take the friction out of README polish.</strong>
-  Point your repository at the provided workflows, merge the generated
-  <code>metrics/&lt;slug&gt;.svg</code> badge, and drop a one-line embed into
-  your README: GitHub instantly shows a fully styled metrics card and IMIR keeps
-  it refreshed automatically. No custom infrastructure, no hand-crafted SVGs,
-  just copy the badge URL and ship.
+  Private dashboards follow the same embedding rules. Publish badges from this section once private projects are registered.
 </p>
 
-<h2>Table of contents</h2>
-<ul>
-  <li><a href="#repository-metrics-workflow">Repository metrics workflow</a>
-    <ul>
-      <li><a href="#open-source-repositories-bundle">Open-source repositories bundle</a></li>
-    </ul>
-  </li>
-  <li><a href="#unified-target-configuration">Unified target configuration</a></li>
-  <li><a href="#imir-badge-integration">IMIR badge integration</a>
-    <ul>
-      <li><a href="#badge-catalogue">Badge catalogue</a>
-        <ul>
-          <li><a href="#open-source-badges">🟩 Open-source badges</a></li>
-          <li><a href="#private-project-badges">🟦 Private project badges</a></li>
-          <li><a href="#profile-badges">🟪 Profile badges</a></li>
-          <li><a href="#color-reference">Color reference</a></li>
-        </ul>
-      </li>
-    </ul>
-  </li>
-  <li><a href="#imir-cli">IMIR CLI</a></li>
-  <li><a href="#local-development-workflow">Local development workflow</a></li>
-  <li><a href="#release-process">Release process</a></li>
-</ul>
+</details>
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+## CLI Usage
 
-<h2 align="center" id="repository-metrics-workflow">Repository metrics workflow</h2>
+### Configuration Management
 
-<p>
-  Use <code>.github/workflows/render-repository.yml</code> to refresh repository dashboards based on the "repository" template. Supply the
-  repository handle and optional overrides for the owner, target branch name, artifact filename, or destination path.
+```bash
+# Load and normalize targets from YAML
+imir --config targets/targets.yaml --pretty
 
-  Repository cards now highlight two extra sections powered by <code>plugin_languages</code> and <code>plugin_traffic</code>:
-  <ul>
-    <li><strong>Most used languages</strong> &mdash; a GitHub-colored bar that focuses on the <code>most-used</code> segment so language mixes differ across repositories at a glance.</li>
-    <li><strong>Traffic insights</strong> &mdash; a condensed view of recent views and clones to expose repository momentum directly on the badge.</li>
-  </ul>
-</p>
+# Validate open-source repository inputs
+imir open-source --input '[{"repository": "masterror"}]'
+```
 
-<pre><code class="language-yaml">jobs:
-  example:
-    uses: RAprogramm/infra-metrics-insight-renderer/.github/workflows/render-repository.yml@main
-    with:
-      target_repo: my-repository
-      # branch_name: ci/metrics-refresh-my-repository
-      # contributors_branch: main
-      # target_owner: RAprogramm
-      # target_path: metrics/my-repository.svg
-      # temp_artifact: .metrics-tmp/my-repository.svg
-    secrets:
-      CLASSIC: ${{ secrets.METRICS_TOKEN }}</code></pre>
+### Discovery Operations
 
-<p>
-  The workflow automatically renders the repository metrics card, commits the refreshed SVG to the configured path, and opens an
-  idempotent pull request when changes are detected.
-</p>
+```bash
+# Discover repositories using IMIR badges
+imir discover --token $GITHUB_TOKEN --source all --format json
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+# Sync discovered repositories to targets.yaml
+imir sync --config targets/targets.yaml --token $GITHUB_TOKEN --source all
+```
 
-<h3 align="center" id="open-source-repositories-bundle">Open-source repositories bundle</h3>
+### Badge Generation
 
-<p>
-  Workflows targeting public repositories that live under the <code>RAprogramm</code> organization can reuse
-  <code>.github/workflows/render-open-source.yml</code>. The workflow accepts a JSON array with repository names and renders the standard repository dashboard for each entry. The list is validated through the <code>imir open-source</code> subcommand, ensuring the matrix only includes non-empty repository names.
-</p>
+```bash
+# Generate badge assets for specific target
+imir badge generate --config targets/targets.yaml --target profile --output metrics
 
-<pre><code class="language-yaml">jobs:
-  open_source:
-    uses: RAprogramm/infra-metrics-insight-renderer/.github/workflows/render-open-source.yml@main
-    with:
-      repositories: '[{"repository": "masterror"}, {"repository": "telegram-webapp-sdk"}]'
-    secrets:
-      CLASSIC: ${{ secrets.METRICS_TOKEN }}</code></pre>
+# Generate all badge assets in parallel
+imir badge generate-all --config targets/targets.yaml --output metrics
+```
 
-<p>
-  Providing a custom list of repositories allows a single job to refresh multiple metrics cards without duplicating boilerplate workflow definitions.
-</p>
-
-<p align="right"><em><a href="#top">Back to top</a></em></p>
-
-<h2 align="center" id="unified-target-configuration">Unified target configuration</h2>
-
-<p>
-  The <a href="targets/targets.yaml"><code>targets/targets.yaml</code></a> file defines every metrics target that should be refreshed on the regular
-  schedule. Each entry requires the GitHub account (<code>owner</code>), an optional <code>repository</code>, and the <code>type</code> of metrics card to render:
-</p>
-
-<h3 align="center" id="badge-sync-workflow">Badge synchronization workflow</h3>
-
-<p>
-  Lightweight badge placeholders stay in sync through
-  <a href=".github/workflows/badge-sync.yml"><code>.github/workflows/badge-sync.yml</code></a>.
-  The workflow regenerates affected badges whenever README updates reference a new slug, on-demand through the
-  <code>workflow_dispatch</code> entrypoint, and nightly at 04:00 UTC via the scheduled trigger. Each run calls
-  <code>imir badge generate --target &lt;slug&gt;</code> for every impacted entry and stores the resulting SVG and JSON manifest under
-  <code>metrics/</code>.
-</p>
-
-<p>
-  Scheduled and main-branch invocations push badge refreshes to the dedicated <code>ci/badge-sync</code> branch. The automation
-  opens or updates a pull request labeled <code>ci</code> and <code>badges</code>, so the repository always exposes the latest placeholders
-  without manual intervention. Pull request runs execute in validation mode without committing, ensuring contributors receive
-  immediate feedback if README changes reference unknown slugs.
-</p>
-
-<p>
-  The continuous integration pipeline now includes a smoke test that invokes <code>imir badge generate</code> against the
-  <code>profile</code> target. The test fails fast if CLI changes break badge generation, preventing regressions from entering the
-  workflow.
-</p>
-
-<ul>
-  <li><code>profile</code> – render a classic GitHub profile card.</li>
-  <li><code>open_source</code> – render the repository template for public projects.</li>
-  <li><code>private_project</code> – render the repository template for private projects.</li>
-</ul>
-
-<p>
-  When the scheduled <a href=".github/workflows/render-all.yml"><code>render-all.yml</code></a> workflow runs it executes the
-  <code>imir</code> CLI to transform the YAML into a matrix consumed by the rendering jobs. New targets can be tested locally
-  with:
-</p>
-
-<pre><code class="language-bash">cargo run --manifest-path imir/Cargo.toml -- --config targets/targets.yaml --pretty</code></pre>
-
-<p>
-  Use the open-source helper to normalize ad-hoc repository lists for the bundled workflow:
-</p>
-
-<pre><code class="language-bash">cargo run --manifest-path imir/Cargo.toml -- open-source --input '[{"repository": "masterror"}, {"repository": "telegram-webapp-sdk"}]'</code></pre>
-
-<p>
-  The command outputs repository descriptors containing the slugged name and the contributors branch analyzed by the renderer.
-  The same CLI is invoked during CI, so validation errors must be resolved locally before a workflow run succeeds.
-</p>
-
-<p>Optional per-target overrides include:</p>
-<ul>
-  <li><code>branch_name</code> (or the alias <code>branch</code>) – select the Git branch used for the metrics refresh pull request.</li>
-  <li><code>target_path</code> – change where the rendered SVG is stored.</li>
-  <li><code>temp_artifact</code> – adjust the temporary filename produced by the renderer before moving it into place.</li>
-  <li><code>contributors_branch</code> – specify the repository branch analyzed by the contributors plugin.</li>
-  <li><code>time_zone</code> – customize the time zone passed to the renderer.</li>
-  <li><code>slug</code> – override the derived slug used for filenames and workflow dispatch names.</li>
-  <li><code>include_private</code> – set to <code>true</code> to include private repositories and secret achievements for the target. Profile cards owned by <code>RAprogramm</code> enable this flag by default so the dashboard reflects private activity without additional configuration.</li>
-</ul>
-
-<p>
-  Contributor branch overrides are especially helpful for repositories that use a non-<code>main</code> default branch: the
-  generated metrics now highlight contributors for the correct branch without manual workflow edits.
-</p>
-
-<p>
-  Unset overrides fall back to deterministic defaults chosen by the orchestrator, so adding a new target only requires the owner,
-  repository (when applicable), and target type.
-</p>
-
-<p align="right"><em><a href="#top">Back to top</a></em></p>
-
-<h2 align="center" id="imir-badge-integration">IMIR badge integration</h2>
-
-<p>
-  Register a repository or profile by adding a new entry to
-  <a href="targets/targets.yaml"><code>targets/targets.yaml</code></a>. The orchestrator normalizes the identifier into a slug that becomes the SVG filename and forms the basis for badge embeds. Scheduled renders run on the cadence defined in the repository workflows, so dashboards refresh automatically once the target is listed.
-</p>
-
-<p>
-  After the initial registration lands in <code>main</code>, trigger the on-demand workflow named <code>render-&lt;slug&gt;.yml</code> to produce the first
-  badge artifact. This pre-populates the SVG before linking to it in documentation.
-</p>
-
-<p>Embed the rendered badge in Markdown using the slugged artifact path:</p>
-
-<pre><code class="language-markdown">![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/&lt;slug&gt;.svg)</code></pre>
-
-<p>
-  Replace <code>&lt;slug&gt;</code> with the normalized identifier emitted for the target (for example, <code>owner-repository</code> for repository cards or
-  <code>owner</code> for profile cards). Once the slug exists under <code>metrics/</code>, the badge can be referenced from any README or documentation
-  page.
-</p>
-
-<h3 align="center" id="badge-catalogue">Badge catalogue</h3>
-
-<p>
-  The published badges are grouped by color so their category is obvious at a glance. Reuse the badges directly from the
-  repository to avoid stale snapshots.
-</p>
-
-<p align="right"><em><a href="#top">Back to top</a></em></p>
-
-<h4 align="center" id="open-source-badges">🟩 Open-source badges</h4>
+### README Updates
 
 <table>
   <thead>
@@ -246,86 +207,106 @@
   </tbody>
 </table>
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+### Git and GitHub Operations
 
-<h4 align="center" id="private-project-badges">🟦 Private project badges</h4>
+```bash
+# Commit and push changes
+imir git commit-push --branch ci/update --path metrics/profile.svg --message "Update metrics"
 
-<p>
-  Private dashboards follow the same embedding rules. Publish badges from this section once private projects are registered.
-</p>
+# Create or update pull request
+imir gh pr-create --repo owner/repo --head feature --base main --title "Title" --body "Body" --labels ci --token $GITHUB_TOKEN
+```
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+### Render Input Normalization
 
-<h4 align="center" id="profile-badges">🟪 Profile badges</h4>
+```bash
+# Normalize profile render inputs
+imir render normalize-profile --target-user RAprogramm --display-name "Profile"
 
-<table>
-  <thead>
-    <tr><th>Account</th><th>Badge</th></tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>RAprogramm</code></td>
-      <td><img alt="RAprogramm profile metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/profile.svg" /></td>
-    </tr>
-  </tbody>
-</table>
+# Normalize repository render inputs
+imir render normalize-repository --target-repo masterror --target-owner RAprogramm --github-repo owner/repo
+```
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+See [imir/README.md](imir/README.md) for complete CLI documentation.
 
-<h4 align="center" id="color-reference">Color reference</h4>
-<ul>
-  <li>🟩 Green badges indicate open-source repositories.</li>
-  <li>🟦 Blue badges denote private repositories.</li>
-  <li>🟪 Purple badges represent GitHub profile dashboards.</li>
-</ul>
+## Development
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+### Local Validation
 
-<h2 align="center" id="imir-cli">IMIR CLI</h2>
+Run individual CI checks locally before pushing:
 
-<p>
-  The <code>imir</code> crate lives in
-  <a href="imir"><code>imir</code></a>. It validates the target configuration,
-  applies deterministic defaults for filenames, branch names, and time zones, and serializes the normalized targets in JSON form.
-  Unit tests cover slug normalization, configuration validation, and duplicate detection to ensure predictable behaviour when new
-  targets are added.
-</p>
+```bash
+# Format check
+cargo +nightly fmt --check --manifest-path imir/Cargo.toml
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+# Linting
+cargo clippy --all-targets --all-features --manifest-path imir/Cargo.toml
 
-<h2 align="center" id="local-development-workflow">Local development workflow</h2>
+# Tests
+cargo nextest run --all-features --manifest-path imir/Cargo.toml
 
-<p>
-  Use <a href="scripts/ci-check.sh"><code>scripts/ci-check.sh</code></a> to run the full validation pipeline locally. The helper script formats the code
-  with the nightly toolchain, executes Clippy, builds all targets, runs tests, generates documentation, and invokes <a href="https://crates.io/crates/cargo-audit">cargo audit</a>
-  and <a href="https://crates.io/crates/cargo-deny">cargo deny</a> to ensure dependency health. Install
-  <a href="https://crates.io/crates/cargo-audit">cargo-audit</a> and <a href="https://crates.io/crates/cargo-deny">cargo-deny</a> beforehand to enable the security checks.
-</p>
+# Documentation
+cargo doc --no-deps --all-features --manifest-path imir/Cargo.toml
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+# Security audit
+cargo audit --file imir/Cargo.lock
 
-<h2 align="center" id="release-process">Release process</h2>
+# License compliance
+reuse lint
 
-<p>
-  Tagged releases publish pre-built <code>imir</code> binaries so GitHub Actions workflows can download a pinned CLI without
-  rebuilding the crate on every run. Follow this checklist to cut a new release:
-</p>
+# Benchmarks
+cargo bench --no-fail-fast --manifest-path imir/Cargo.toml
 
-<ol>
-  <li>Run <a href="scripts/ci-check.sh"><code>scripts/ci-check.sh</code></a> locally to ensure formatting, linting, tests,
-    documentation, <code>cargo audit</code>, and <code>cargo deny</code> all pass before tagging.</li>
-  <li>Create an annotated tag (for example, <code>git tag -a v0.1.0</code>) and push it to GitHub.</li>
-  <li>Draft a release in the GitHub UI, associate it with the tag, and publish it. Publishing triggers
-    <code>.github/workflows/release.yml</code>.</li>
-  <li>The workflow builds the CLI for Linux (<code>x86_64-unknown-linux-gnu</code>), packages the binary as
-    <code>imir-x86_64-unknown-linux-gnu.tar.gz</code>, and uploads it to the release assets.</li>
-  <li>Update downstream workflows to download the archive that matches their runner architecture and unpack the <code>imir</code>
-    executable into their workspace.</li>
-</ol>
+# Coverage
+cargo llvm-cov nextest --all-features --manifest-path imir/Cargo.toml --html
+```
 
-<p>
-  Each archive contains only the compiled binary. The release workflow runs on every published release, ensuring updated
-  binaries are available immediately after a tag is promoted.
-</p>
+All checks run automatically in CI via GitHub Actions with matrix parallelization.
 
-<p align="right"><em><a href="#top">Back to top</a></em></p>
+### Project Structure
+
+```
+metrics-renderer/
+├── imir/                    # Rust CLI crate
+│   ├── src/
+│   │   ├── main.rs         # CLI entry point
+│   │   ├── config.rs       # YAML configuration parsing
+│   │   ├── normalizer.rs   # Target normalization logic
+│   │   ├── discover.rs     # Repository discovery
+│   │   ├── badge.rs        # Badge SVG generation
+│   │   ├── readme.rs       # README table updates
+│   │   ├── gh.rs           # GitHub CLI operations
+│   │   └── git.rs          # Git operations
+│   └── Cargo.toml
+├── targets/
+│   └── targets.yaml        # Metrics targets configuration
+├── .github/workflows/       # CI/CD and automation workflows
+├── assets/badges/          # Static badge SVG files
+├── metrics/                # Generated metrics dashboards
+└── WORKFLOW.md             # Discovery flow documentation
+```
+
+## Storage Strategy
+
+**Current**: SVG artifacts committed directly to `metrics/` directory. GitHub Actions render updated metrics on schedule, commit to main branch, and serve via `raw.githubusercontent.com`.
+
+**Trade-offs**:
+- ✅ Zero infrastructure, immediate availability
+- ⚠️ Git history noise (mitigated with `chore(metrics):` prefix)
+- ⚠️ Repository size growth (negligible for typical refresh rates)
+
+**Future**: Migrate to database backend (PostgreSQL/SQLite) for historical queries and reduced git noise. Migration path straightforward since rendering logic isolated in CLI.
+
+## Release Process
+
+1. Ensure all CI checks pass on main branch
+2. Bump version in `imir/Cargo.toml`
+3. Create annotated tag: `git tag -a v0.1.0 -m "Release v0.1.0"`
+4. Push tag: `git push origin v0.1.0`
+5. Create GitHub release (triggers automated build workflow)
+6. Workflow builds and uploads `imir-x86_64-unknown-linux-gnu.tar.gz` binary
+7. Binary is automatically downloaded by downstream workflows
+
+## License
+
+MIT

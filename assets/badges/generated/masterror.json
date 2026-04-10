@@ -1,0 +1,17 @@
+{
+  "slug": "masterror",
+  "owner": "RAprogramm",
+  "repository": "masterror",
+  "kind": "open_source",
+  "display_name": "masterror",
+  "target_path": "metrics/masterror.svg",
+  "svg_artifact": "assets/badges/generated/masterror.svg",
+  "badge": {
+    "style": "classic",
+    "widget": {
+      "columns": 1,
+      "alignment": "start",
+      "border_radius": 4
+    }
+  }
+}

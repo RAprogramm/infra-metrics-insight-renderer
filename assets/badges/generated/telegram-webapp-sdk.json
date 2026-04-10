@@ -1,0 +1,17 @@
+{
+  "slug": "telegram-webapp-sdk",
+  "owner": "RAprogramm",
+  "repository": "telegram-webapp-sdk",
+  "kind": "open_source",
+  "display_name": "telegram-webapp-sdk",
+  "target_path": "metrics/telegram-webapp-sdk.svg",
+  "svg_artifact": "assets/badges/generated/telegram-webapp-sdk.svg",
+  "badge": {
+    "style": "classic",
+    "widget": {
+      "columns": 1,
+      "alignment": "start",
+      "border_radius": 4
+    }
+  }
+}

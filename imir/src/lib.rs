@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+//
+// SPDX-License-Identifier: MIT
+
 //! Utilities for generating rendering instructions for metrics dashboards.
 //!
 //! The library exposes helpers that load YAML configuration files describing
@@ -15,7 +19,7 @@
 //! use imir::{BadgeStyle, Error, parse_targets};
 //!
 //! # fn main() -> Result<(), Error> {
-//! let yaml = r#"
+//! let yaml = r"
 //! targets:
 //!   - owner: octocat
 //!     repo: metrics
@@ -25,33 +29,61 @@
 //!       widget:
 //!         columns: 2
 //!         alignment: center
-//! "#;
+//! ";
 //!
-//! let document = parse_targets(yaml,)?;
+//! let document = parse_targets(yaml)?;
 //! assert_eq!(document.targets[0].badge.style, BadgeStyle::Flat);
 //! assert_eq!(document.targets[0].badge.widget.columns, 2);
 //! # Ok(())
 //! # }
 //! ```
 
+mod artifact;
 mod badge;
 mod config;
+pub mod contributors;
+mod discover;
 mod error;
+mod file;
+mod gh;
+mod git;
 mod normalizer;
 mod open_source;
+mod readme;
+mod render;
+pub mod retry;
 mod slug;
+mod slugs;
+mod svg;
+mod sync;
 
+pub use artifact::{ArtifactLocation, locate_artifact};
 pub use badge::{BadgeAssets, generate_badge_assets};
 pub use config::{
     BadgeOptions, BadgeStyle, BadgeWidgetAlignment, BadgeWidgetOptions, TargetConfig, TargetEntry,
-    TargetKind,
+    TargetKind
+};
+pub use contributors::{ContributorActivity, fetch_contributor_activity};
+pub use discover::{
+    DiscoveredRepository, DiscoveryConfig, discover_badge_users, discover_stargazer_repositories,
+    extract_repo_from_readme
 };
 pub use error::{Error, io_error};
+pub use file::{FileMoveResult, move_file};
+pub use gh::{PrCreateResult, gh_pr_create};
+pub use git::{GitPushResult, git_commit_push};
 pub use normalizer::{
     BadgeDescriptor, BadgeWidgetDescriptor, RenderTarget, TargetsDocument, load_targets,
-    parse_targets,
+    parse_targets
 };
 pub use open_source::{
-    OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets,
+    OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets
+};
+pub use readme::update_readme;
+pub use render::{
+    ProfileInputs, RepositoryInputs, normalize_profile_inputs, normalize_repository_inputs
 };
 pub use slug::SlugStrategy;
+pub use slugs::{SlugDetectionResult, detect_impacted_slugs};
+pub use svg::{SvgOptimizeResult, optimize_svg};
+pub use sync::sync_targets;

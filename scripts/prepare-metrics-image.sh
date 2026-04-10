@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
+
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 set -euo pipefail
 
 show_usage() {
   cat <<'USAGE'
 Usage: prepare-metrics-image.sh [--token TOKEN]
 
-Ensure a usable lowlighter/metrics docker image is available locally.
-The script attempts to pull the latest released image from GHCR and
-re-tags it so GitHub actions can reuse it without rebuilding. When the
-pull fails, it clones the matching release and builds a patched image
-that installs the additional xz-utils dependency required by Nokogiri.
+Pull and tag lowlighter/metrics prebuilt image for GitHub Actions use.
+The script pulls the latest released image from ghcr.io and re-tags it
+with the exact name expected by the lowlighter/metrics action.
 USAGE
 }
 
@@ -58,61 +61,43 @@ if [ -z "${RELEASE_TAG}" ] || [ "${RELEASE_TAG}" = "null" ]; then
 fi
 
 METRICS_VERSION="${RELEASE_TAG#v}"
-IFS='.' read -r MAJOR MINOR _ <<<"${METRICS_VERSION}"
+IFS='.' read -r MAJOR MINOR PATCH <<<"${METRICS_VERSION}"
 if [ -z "${MAJOR}" ] || [ -z "${MINOR}" ]; then
   echo "Unexpected metrics version format: ${METRICS_VERSION}" >&2
   exit 1
 fi
+
+# Pull from ghcr.io uses major.minor tag
 PREBUILT_TAG="v${MAJOR}.${MINOR}"
-LOCAL_IMAGE="metrics:${METRICS_VERSION}"
 REMOTE_IMAGE="${GHCR_HOST}/${REPO_SLUG}:${PREBUILT_TAG}"
 
-echo "Preparing metrics docker image ${LOCAL_IMAGE} (prebuilt tag ${PREBUILT_TAG})"
+# lowlighter/metrics action expects full version with patch
+LOCAL_IMAGE="metrics:forked-${MAJOR}.${MINOR}.${PATCH:-0}"
 
+echo "Preparing metrics docker image ${LOCAL_IMAGE} from ${REMOTE_IMAGE}"
+
+# Remove existing image to prevent stale data
 if docker image inspect "${LOCAL_IMAGE}" >/dev/null 2>&1; then
-  echo "Image ${LOCAL_IMAGE} already present locally"
-  exit 0
+  echo "Removing cached image ${LOCAL_IMAGE}"
+  docker rmi "${LOCAL_IMAGE}" >/dev/null 2>&1 || true
 fi
 
+# Authenticate to ghcr.io if token provided
 if [ -n "${TOKEN}" ]; then
-  if ! printf '%s' "${TOKEN}" | docker login "${GHCR_HOST}" -u "${GITHUB_ACTOR:-github-actions[bot]}" --password-stdin >/dev/null 2>&1; then
-    echo "Warning: unable to authenticate to ${GHCR_HOST}; attempting anonymous pull" >&2
+  if printf '%s' "${TOKEN}" | docker login "${GHCR_HOST}" -u "${GITHUB_ACTOR:-github-actions[bot]}" --password-stdin >/dev/null 2>&1; then
+    echo "Authenticated to ${GHCR_HOST}"
   else
-    echo "Authenticated to ${GHCR_HOST} for metrics image pull"
+    echo "Warning: unable to authenticate to ${GHCR_HOST}; attempting anonymous pull" >&2
   fi
 fi
 
-echo "Attempting to pull prebuilt image ${REMOTE_IMAGE}" >&2
-if docker pull "${REMOTE_IMAGE}" >/dev/null 2>&1; then
-  echo "Pulled ${REMOTE_IMAGE}; tagging as ${LOCAL_IMAGE}" >&2
-  docker tag "${REMOTE_IMAGE}" "${LOCAL_IMAGE}"
+echo "Pulling prebuilt image ${REMOTE_IMAGE}"
+if ! docker pull "${REMOTE_IMAGE}" >/dev/null 2>&1; then
+  echo "Failed to pull ${REMOTE_IMAGE}. The action will build from source." >&2
   exit 0
 fi
 
-echo "Falling back to building metrics image ${LOCAL_IMAGE} locally" >&2
+echo "Tagging ${REMOTE_IMAGE} as ${LOCAL_IMAGE}"
+docker tag "${REMOTE_IMAGE}" "${LOCAL_IMAGE}"
 
-if ! command -v git >/dev/null 2>&1; then
-  echo "git is required to clone ${REPO_SLUG}" >&2
-  exit 1
-fi
-
-TEMP_DIR="$(mktemp -d)"
-cleanup() {
-  rm -rf "${TEMP_DIR}"
-}
-trap cleanup EXIT
-
-git clone --depth 1 --branch "${RELEASE_TAG}" "https://github.com/${REPO_SLUG}.git" "${TEMP_DIR}" >/dev/null 2>&1
-
-DOCKERFILE_PATH="${TEMP_DIR}/Dockerfile"
-if [ ! -f "${DOCKERFILE_PATH}" ]; then
-  echo "Dockerfile not found in cloned repository" >&2
-  exit 1
-fi
-
-if ! sed -i 's/apt-get install -y ruby-full git g++ cmake pkg-config libssl-dev/apt-get install -y ruby-full git g++ cmake pkg-config libssl-dev xz-utils/' "${DOCKERFILE_PATH}"; then
-  echo "Failed to patch Dockerfile with xz-utils dependency" >&2
-  exit 1
-fi
-
-docker build -t "${LOCAL_IMAGE}" "${TEMP_DIR}"
+echo "Successfully prepared ${LOCAL_IMAGE}"

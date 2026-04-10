@@ -1,42 +1,260 @@
-name: Continuous Integration
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
+name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  RUSTFLAGS: -D warnings
 
 jobs:
-  validate:
+  # Base job: code formatting check (fastest, runs first)
+  format:
+    name: Format
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: "!contains(github.event.head_commit.message, 'chore(imir): bump version')"
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
-      - name: Set up stable toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
-
-      - name: Install nightly toolchain for rustfmt
+      - name: Setup nightly toolchain
         uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
-          override: false
 
-      - name: Install cargo utilities
+      - name: Check formatting
+        run: cargo +nightly fmt --check --manifest-path imir/Cargo.toml
+
+  # Security checks (audit + supply chain)
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: format
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "imir -> target"
+          shared-key: "ci-cache"
+
+      - name: Install security tools
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-audit,cargo-deny
 
-      - name: Cache build artifacts
+      - name: Security audit
+        run: cargo audit --file imir/Cargo.lock
+
+      - name: Supply chain security
+        working-directory: imir
+        run: cargo deny check
+
+  # License compliance check
+  license:
+    name: License
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: format
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install reuse
+        run: pip install reuse
+
+      - name: Check license compliance
+        run: reuse lint
+
+  # Codecov configuration validation
+  validate-codecov:
+    name: Codecov Config
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: format
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate codecov.yml
+        run: |
+          set -euo pipefail
+          if [ ! -f .github/codecov.yml ]; then
+            echo "codecov.yml not found, skipping validation"
+            exit 0
+          fi
+
+          echo "Validating codecov.yml..."
+          RESPONSE=$(cat .github/codecov.yml | curl -s --data-binary @- https://codecov.io/validate)
+
+          if echo "$RESPONSE" | grep -q "^Valid!"; then
+            echo "codecov.yml is valid"
+            exit 0
+          else
+            echo "Error: codecov.yml validation failed"
+            echo "$RESPONSE"
+            exit 1
+          fi
+
+  # Parallel validation jobs using matrix strategy
+  validate:
+    name: ${{ matrix.job }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [format, security, license, validate-codecov]
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          - Clippy
+          - Test
+          - Docs
+          - Build
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: "imir -> target"
+          shared-key: "ci-cache"
 
-      - name: Run CI validation script
-        run: ./scripts/ci-check.sh
+      - name: Install nextest
+        if: matrix.job == 'Test'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Run Clippy
+        if: matrix.job == 'Clippy'
+        run: cargo clippy --all-targets --all-features --manifest-path imir/Cargo.toml
+
+      - name: Run tests
+        if: matrix.job == 'Test'
+        run: cargo nextest run --all-features --manifest-path imir/Cargo.toml --profile ci
+
+      - name: Upload test results to Codecov
+        if: matrix.job == 'Test' && !cancelled()
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Build docs
+        if: matrix.job == 'Docs'
+        run: cargo doc --no-deps --all-features --manifest-path imir/Cargo.toml
+
+      - name: Build release
+        if: matrix.job == 'Build'
+        run: cargo build --release --all-features --manifest-path imir/Cargo.toml
+
+  # Coverage job (expensive, runs separately)
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [format, security, license, validate-codecov]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "imir -> target"
+          shared-key: "ci-cache"
+
+      - name: Install tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov,cargo-nextest
+
+      - name: Generate coverage
+        run: |
+          cargo llvm-cov nextest --all-features --manifest-path imir/Cargo.toml --lcov --output-path lcov.info
+          cargo llvm-cov report --manifest-path imir/Cargo.toml --html
+
+          # Extract coverage percentage for summary
+          COVERAGE=$(cargo llvm-cov report --manifest-path imir/Cargo.toml | grep TOTAL | awk '{print $NF}')
+          echo "COVERAGE_PCT=${COVERAGE}" >> $GITHUB_ENV
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: false
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-report
+          path: imir/target/llvm-cov/html/
+          retention-days: 30
+
+      - name: Add coverage summary
+        run: |
+          echo "## :shield: Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Total Coverage** | \`${COVERAGE_PCT}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Target** | \`95%+\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> :information_source: Full HTML report available in workflow artifacts (30 day retention)" >> $GITHUB_STEP_SUMMARY
+
+  # Benchmarks (optional, runs separately)
+  bench:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [format, security, license, validate-codecov]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "imir -> target"
+          shared-key: "ci-cache"
+
+      - name: Run benchmarks
+        run: |
+          cargo bench --no-fail-fast --manifest-path imir/Cargo.toml 2>&1 | tee bench_output.txt
+
+      - name: Add benchmark summary
+        run: |
+          echo "## :rocket: Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          grep -E "test.*bench:" bench_output.txt | head -10 >> $GITHUB_STEP_SUMMARY || echo "No benchmark results found" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

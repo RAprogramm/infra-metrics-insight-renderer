@@ -1,0 +1,16 @@
+{
+  "slug": "profile",
+  "owner": "RAprogramm",
+  "kind": "profile",
+  "display_name": "profile",
+  "target_path": "metrics/profile.svg",
+  "svg_artifact": "assets/badges/generated/profile.svg",
+  "badge": {
+    "style": "classic",
+    "widget": {
+      "columns": 1,
+      "alignment": "start",
+      "border_radius": 4
+    }
+  }
+}

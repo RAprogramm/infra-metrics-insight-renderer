@@ -1,41 +1,77 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 name: Render metrics for RAprogramm profile
 
 on:
   workflow_dispatch:
-    inputs:
-      branch_name:
-        description: "Branch name used for the metrics refresh PR."
-        required: false
-        default: "ci/metrics-refresh-profile"
   workflow_call:
-    inputs:
-      branch_name:
-        description: "Branch name used for the metrics refresh PR."
-        required: false
-        default: "ci/metrics-refresh-profile"
-        type: string
     secrets:
       CLASSIC:
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   render:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Render profile metrics
         uses: ./.github/actions/render-profile
         with:
           classic_token: ${{ secrets.CLASSIC }}
           target_user: RAprogramm
-          branch_name: ${{ inputs.branch_name }}
           target_path: metrics/profile.svg
           temp_artifact: .metrics-tmp/profile.svg
           time_zone: Asia/Ho_Chi_Minh
           display_name: profile
+          include_private: true
+
+      - name: Upload metrics artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: metrics-profile
+          path: metrics/profile.svg
+          retention-days: 1
+
+  commit:
+    needs: render
+    if: always() && needs.render.result != 'cancelled' && needs.render.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download metrics artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: metrics-profile
+          path: .
+
+      - name: Commit and push metrics
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase true
+
+          git add metrics/profile.svg
+
+          if git diff --cached --quiet; then
+            echo "No metrics changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore(metrics): update profile [Skip GitHub Action]"
+
+          for i in {1..3}; do
+            git pull origin main --rebase && git push origin HEAD:main && break || sleep 5
+          done

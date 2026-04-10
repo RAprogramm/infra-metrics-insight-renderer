@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
+[profile.ci]
+# CI profile with JUnit XML output for test analytics
+junit.path = "junit.xml"

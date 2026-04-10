@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 name: Render metrics for open-source repositories
 
 on:
@@ -31,15 +35,12 @@ jobs:
       targets: ${{ steps.resolve.outputs.targets }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
-      - name: Set up Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache imir build
-        uses: Swatinem/rust-cache@v2
+      - name: Setup IMIR
+        uses: ./.github/actions/setup-imir
         with:
-          workspaces: "imir -> target"
+          token: ${{ secrets.CLASSIC }}
 
       - id: resolve
         name: Resolve repository list
@@ -48,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           RAW="${RAW_INPUT:-}"
-          TARGETS=$(cargo run --manifest-path imir/Cargo.toml --quiet --locked -- open-source --input "${RAW}")
+          TARGETS=$(imir open-source --input "${RAW}")
           printf 'targets=%s\n' "${TARGETS}" >> "${GITHUB_OUTPUT}"
 
   render:
@@ -60,10 +61,9 @@ jobs:
         target: ${{ fromJSON(needs.prepare.outputs.targets) }}
     permissions:
       contents: write
-      pull-requests: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Render metrics for ${{ matrix.target.repository }}
         uses: ./.github/actions/render-repository
@@ -71,7 +71,6 @@ jobs:
           classic_token: ${{ secrets.CLASSIC }}
           target_owner: RAprogramm
           target_repo: ${{ matrix.target.repository }}
-          branch_name: ${{ format('ci/metrics-refresh-{0}', matrix.target.repository) }}
           contributors_branch: ${{ matrix.target.contributors_branch }}
           target_path: ${{ format('metrics/{0}.svg', matrix.target.repository) }}
           temp_artifact: ${{ format('.metrics-tmp/{0}.svg', matrix.target.repository) }}

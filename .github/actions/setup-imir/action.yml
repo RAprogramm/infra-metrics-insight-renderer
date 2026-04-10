@@ -1,0 +1,87 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
+name: Setup IMIR
+description: Download and setup pre-built imir binary from releases
+
+inputs:
+  version:
+    description: 'Version to download (e.g., v0.4.0). If not specified, downloads latest release'
+    required: false
+    default: ''
+  token:
+    description: 'GitHub token for API access'
+    required: false
+    default: ''
+
+outputs:
+  version:
+    description: 'Downloaded imir version'
+    value: ${{ steps.download.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Determine version to download
+      id: version
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.version }}" ]; then
+          echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          VERSION=$(gh release view --repo ${{ github.repository }} --json tagName -q .tagName)
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        fi
+      env:
+        GH_TOKEN: ${{ inputs.token || github.token }}
+
+    - name: Download imir binary
+      id: download
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        VERSION="${{ steps.version.outputs.version }}"
+        ARCHIVE="imir-x86_64-unknown-linux-gnu.tar.gz"
+        DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${VERSION}/${ARCHIVE}"
+        TEMP_DIR=$(mktemp -d)
+
+        cleanup() {
+          rm -f "${ARCHIVE}"
+          rm -rf "${TEMP_DIR}"
+        }
+        trap cleanup EXIT
+
+        echo "Downloading imir ${VERSION} from ${DOWNLOAD_URL}..."
+        if ! curl -fsSL "${DOWNLOAD_URL}" -o "${ARCHIVE}"; then
+          echo "::error::Failed to download imir ${VERSION}"
+          exit 1
+        fi
+
+        echo "Extracting archive..."
+        if ! tar -xzf "${ARCHIVE}" -C "${TEMP_DIR}"; then
+          echo "::error::Failed to extract ${ARCHIVE}"
+          exit 1
+        fi
+
+        BINARY="${TEMP_DIR}/imir"
+        if [ ! -f "${BINARY}" ]; then
+          echo "::error::Binary not found in archive"
+          exit 1
+        fi
+
+        chmod +x "${BINARY}"
+
+        INSTALL_DIR="${HOME}/.local/bin"
+        mkdir -p "${INSTALL_DIR}"
+        mv "${BINARY}" "${INSTALL_DIR}/imir"
+
+        echo "${INSTALL_DIR}" >> $GITHUB_PATH
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "Successfully installed imir ${VERSION}"
+
+    - name: Verify installation
+      shell: bash
+      run: |
+        imir --version

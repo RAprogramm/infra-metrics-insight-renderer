@@ -1,11 +1,12 @@
+# SPDX-FileCopyrightText: 2025 RAprogramm <andrey.rozanov.vl@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+
 name: Render repository metrics
 
 on:
   workflow_dispatch:
     inputs:
-      branch_name:
-        description: "Branch name used for the metrics refresh PR."
-        required: false
       target_owner:
         description: "GitHub account owning the repository."
         required: false
@@ -24,10 +25,6 @@ on:
         required: false
   workflow_call:
     inputs:
-      branch_name:
-        description: "Branch name used for the metrics refresh PR."
-        required: false
-        type: string
       contributors_branch:
         description: "Repository branch analyzed by contributors plugin."
         required: false
@@ -53,16 +50,15 @@ on:
       CLASSIC:
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   render:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Render metrics
         uses: ./.github/actions/render-repository
@@ -70,7 +66,51 @@ jobs:
           classic_token: ${{ secrets.CLASSIC }}
           target_owner: ${{ inputs.target_owner || github.repository_owner }}
           target_repo: ${{ inputs.target_repo }}
-          branch_name: ${{ inputs.branch_name || format('ci/metrics-refresh-{0}', inputs.target_repo) }}
           contributors_branch: ${{ inputs.contributors_branch }}
           target_path: ${{ inputs.target_path || format('metrics/{0}.svg', inputs.target_repo) }}
           temp_artifact: ${{ inputs.temp_artifact || format('.metrics-tmp/{0}.svg', inputs.target_repo) }}
+
+      - name: Upload metrics artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: metrics-${{ inputs.target_repo }}
+          path: ${{ inputs.target_path || format('metrics/{0}.svg', inputs.target_repo) }}
+          retention-days: 1
+
+  commit:
+    needs: render
+    if: always() && needs.render.result != 'cancelled' && needs.render.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Download metrics artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: metrics-${{ inputs.target_repo }}
+          path: .
+
+      - name: Commit and push metrics
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config pull.rebase true
+
+          TARGET_PATH="${{ inputs.target_path || format('metrics/{0}.svg', inputs.target_repo) }}"
+          git add "${TARGET_PATH}"
+
+          if git diff --cached --quiet; then
+            echo "No metrics changes to commit."
+            exit 0
+          fi
+
+          git commit -m "chore(metrics): update ${{ inputs.target_repo }} [Skip GitHub Action]"
+
+          for i in {1..3}; do
+            git pull origin main --rebase && git push origin HEAD:main && break || sleep 5
+          done
