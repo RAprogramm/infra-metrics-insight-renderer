@@ -187,10 +187,25 @@ imir badge generate-all --config targets/targets.yaml --output metrics
 
 ### README Updates
 
-```bash
-# Update README.md with current user tables
-imir readme --readme README.md --config targets/targets.yaml
-```
+<table>
+  <thead>
+    <tr><th>Repository</th><th>Badge</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>RAprogramm/masterror</code></td>
+      <td><img alt="masterror metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/masterror.svg" /></td>
+    </tr>
+    <tr>
+      <td><code>RAprogramm/telegram-webapp-sdk</code></td>
+      <td><img alt="telegram-webapp-sdk metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/telegram-webapp-sdk.svg" /></td>
+    </tr>
+    <tr>
+      <td><code>RAprogramm/infra-metrics-insight-renderer</code></td>
+      <td><img alt="infra-metrics-insight-renderer metrics" src="https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/infra-metrics-insight-renderer.svg" /></td>
+    </tr>
+  </tbody>
+</table>
 
 ### Git and GitHub Operations
 
