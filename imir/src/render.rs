@@ -183,23 +183,17 @@ pub fn normalize_repository_inputs(
             .to_string()
     };
 
-    let path = if let Some(p) = target_path.filter(|s| !s.is_empty()) {
-        p.to_string()
-    } else {
-        format!("metrics/{target_repo}.svg")
-    };
+    let path = target_path
+        .filter(|s| !s.is_empty())
+        .map_or_else(|| format!("metrics/{target_repo}.svg"), str::to_string);
 
-    let artifact = if let Some(a) = temp_artifact.filter(|s| !s.is_empty()) {
-        a.to_string()
-    } else {
-        format!(".metrics-tmp/{target_repo}.svg")
-    };
+    let artifact = temp_artifact
+        .filter(|s| !s.is_empty())
+        .map_or_else(|| format!(".metrics-tmp/{target_repo}.svg"), str::to_string);
 
-    let branch = if let Some(b) = branch_name.filter(|s| !s.is_empty()) {
-        b.to_string()
-    } else {
-        format!("ci/metrics-refresh-{target_repo}")
-    };
+    let branch = branch_name
+        .filter(|s| !s.is_empty())
+        .map_or_else(|| format!("ci/metrics-refresh-{target_repo}"), str::to_string);
 
     let contrib_branch = contributors_branch
         .filter(|s| !s.is_empty())

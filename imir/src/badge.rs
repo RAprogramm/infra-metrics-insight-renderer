@@ -152,16 +152,16 @@ fn build_svg_content(target: &RenderTarget) -> String {
 }
 
 fn badge_label(target: &RenderTarget) -> Cow<'_, str> {
-    match target.repository.as_deref() {
-        Some(repository) => {
+    target.repository.as_deref().map_or_else(
+        || Cow::Borrowed(target.owner.as_str()),
+        |repository| {
             let mut owned = String::with_capacity(target.owner.len() + repository.len() + 1);
             owned.push_str(target.owner.as_str());
             owned.push('/');
             owned.push_str(repository);
             Cow::Owned(owned)
         }
-        None => Cow::Borrowed(target.owner.as_str())
-    }
+    )
 }
 
 fn escape_xml(value: &str) -> Cow<'_, str> {

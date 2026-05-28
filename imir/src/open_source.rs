@@ -57,23 +57,24 @@ pub struct OpenSourceRepository {
 pub fn resolve_open_source_targets(
     raw_input: Option<&str>
 ) -> Result<Vec<OpenSourceRepository>, Error> {
-    match raw_input.and_then(|value| {
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            None
-        } else {
-            Some(trimmed)
-        }
-    }) {
-        Some(value) => parse_user_supplied_repositories(value),
-        None => Ok(default_repositories())
-    }
+    raw_input
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map_or_else(
+            || Ok(default_repositories()),
+            parse_user_supplied_repositories
+        )
 }
 
 /// Resolves repository names without contributor metadata for compatibility.
 ///
 /// This helper preserves the previous behaviour for callers that only require
 /// repository names.
+///
+/// # Errors
+///
+/// Forwards any validation error returned by [`resolve_open_source_targets`]
+/// when `raw_input` cannot be parsed.
 pub fn resolve_open_source_repositories(raw_input: Option<&str>) -> Result<Vec<String>, Error> {
     let targets = resolve_open_source_targets(raw_input)?;
     Ok(targets

@@ -134,16 +134,11 @@ async fn check_repo_has_badge(
     )
     .await;
 
-    match readme_result {
-        Ok(content) => {
-            if let Some(decoded) = content.decoded_content() {
-                Ok(extract_repo_from_readme(&decoded))
-            } else {
-                Ok(None)
-            }
-        }
-        Err(_) => Ok(None)
-    }
+    Ok(readme_result.ok().and_then(|content| {
+        content
+            .decoded_content()
+            .and_then(|decoded| extract_repo_from_readme(&decoded))
+    }))
 }
 
 /// Discovers repositories from users who starred the IMIR repository.
