@@ -2,7 +2,9 @@
 //
 // SPDX-License-Identifier: MIT
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use std::{fmt::Write as _, hint::black_box};
+
+use criterion::{Criterion, criterion_group, criterion_main};
 use imir::parse_targets;
 
 fn benchmark_parse_targets(c: &mut Criterion) {
@@ -56,9 +58,10 @@ targets:
 fn benchmark_large_config_parse(c: &mut Criterion) {
     let mut yaml = String::from("targets:\n");
     for i in 0..100 {
-        yaml.push_str(&format!(
-            "  - owner: user{i}\n    repository: repo{i}\n    type: open_source\n"
-        ));
+        let _ = writeln!(
+            yaml,
+            "  - owner: user{i}\n    repository: repo{i}\n    type: open_source"
+        );
     }
 
     c.bench_function("parse_100_targets", |b| {
