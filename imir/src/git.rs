@@ -114,8 +114,7 @@ fn checkout_or_create_branch(branch_name: &str, default_ref: &str) -> Result<(),
     let remote_exists = Command::new("git")
         .args(["ls-remote", "--exit-code", "--heads", "origin", branch_name])
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+        .is_ok_and(|o| o.status.success());
 
     if remote_exists {
         run_git(&[

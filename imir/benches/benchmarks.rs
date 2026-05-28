@@ -26,7 +26,7 @@ targets:
 ";
 
     c.bench_function("parse_targets_small", |b| {
-        b.iter(|| parse_targets(black_box(yaml)).expect("parse failed"))
+        b.iter(|| parse_targets(black_box(yaml)).expect("parse failed"));
     });
 }
 
@@ -49,7 +49,7 @@ targets:
         b.iter(|| {
             let doc = parse_targets(black_box(yaml)).expect("parse failed");
             black_box(doc.targets.len())
-        })
+        });
     });
 }
 
@@ -62,7 +62,7 @@ fn benchmark_large_config_parse(c: &mut Criterion) {
     }
 
     c.bench_function("parse_100_targets", |b| {
-        b.iter(|| parse_targets(black_box(&yaml)).expect("parse failed"))
+        b.iter(|| parse_targets(black_box(&yaml)).expect("parse failed"));
     });
 }
 
@@ -85,7 +85,7 @@ targets:
 ";
 
     c.bench_function("parse_complex_target", |b| {
-        b.iter(|| parse_targets(black_box(complex_yaml)).expect("parse failed"))
+        b.iter(|| parse_targets(black_box(complex_yaml)).expect("parse failed"));
     });
 }
 

@@ -222,7 +222,7 @@ struct SlugsArgs {
     #[arg(long = "config", value_name = "PATH")]
     config: PathBuf,
 
-    /// Event name (schedule, push, pull_request).
+    /// Event name (schedule, push, `pull_request`).
     #[arg(long = "event", value_name = "EVENT")]
     event: Option<String>
 }
@@ -567,7 +567,7 @@ fn run_badge_generate_all(args: BadgeGenerateAllArgs) -> Result<(), Error> {
     let mut failed_targets = Vec::new();
     for result in results {
         if let Err(e) = result {
-            eprintln!("Failed to generate badge: {}", e);
+            eprintln!("Failed to generate badge: {e}");
             error_count += 1;
             failed_targets.push(e.to_string());
         }
@@ -575,8 +575,7 @@ fn run_badge_generate_all(args: BadgeGenerateAllArgs) -> Result<(), Error> {
 
     if error_count > 0 {
         return Err(Error::validation(format!(
-            "{} badge(s) failed to generate",
-            error_count
+            "{error_count} badge(s) failed to generate"
         )));
     }
 
@@ -744,7 +743,7 @@ fn run_slugs(args: SlugsArgs) -> Result<(), Error> {
     let document = load_targets(&args.config)?;
     let all_slugs: Vec<String> = document.targets.iter().map(|t| t.slug.clone()).collect();
 
-    let files: Vec<&str> = args.files.iter().map(|s| s.as_str()).collect();
+    let files: Vec<&str> = args.files.iter().map(std::string::String::as_str).collect();
 
     let base_ref = if args.event == Some("schedule".to_string()) {
         ""
@@ -826,7 +825,7 @@ fn run_gh(args: GhArgs) -> Result<(), Error> {
                 pr_args.repo, pr_args.head, pr_args.base
             );
 
-            let label_refs: Vec<&str> = pr_args.labels.iter().map(|s| s.as_str()).collect();
+            let label_refs: Vec<&str> = pr_args.labels.iter().map(std::string::String::as_str).collect();
 
             let result = gh_pr_create(
                 &pr_args.repo,
@@ -1131,7 +1130,7 @@ targets:
         };
 
         let result = super::run_targets(args);
-        assert!(result.is_err(), "should fail for missing file",);
+        assert!(result.is_err(), "should fail for missing file");
     }
 
     #[test]
@@ -1154,7 +1153,7 @@ targets:
         };
 
         let result = super::run_targets(args);
-        assert!(result.is_err(), "should fail for invalid YAML",);
+        assert!(result.is_err(), "should fail for invalid YAML");
     }
 
     #[test]

@@ -97,7 +97,9 @@ pub fn update_readme(readme_path: &Path, document: &TargetsDocument) -> Result<(
         &generate_profile_table(&profiles)
     )?;
 
-    if updated != content {
+    if updated == content {
+        info!("No changes to README");
+    } else {
         info!("Writing updated README to {}", readme_path.display());
         fs::write(readme_path, updated).map_err(|e| {
             AppError::service(format!(
@@ -106,8 +108,6 @@ pub fn update_readme(readme_path: &Path, document: &TargetsDocument) -> Result<(
             ))
         })?;
         info!("README updated successfully");
-    } else {
-        info!("No changes to README");
     }
 
     Ok(())
@@ -259,8 +259,8 @@ mod tests {
             repository: repo.map(String::from),
             kind,
             branch_name: "main".to_owned(),
-            target_path: format!("metrics/{}.svg", slug),
-            temp_artifact: format!(".metrics-tmp/{}.svg", slug),
+            target_path: format!("metrics/{slug}.svg"),
+            temp_artifact: format!(".metrics-tmp/{slug}.svg"),
             time_zone: "UTC".to_owned(),
             display_name: slug.to_owned(),
             contributors_branch: "main".to_owned(),
@@ -323,47 +323,38 @@ mod tests {
         let readme_path = temp.path().join("README.md");
 
         let initial_content = format!(
-            r#"# Test README
+            r"# Test README
 
 <details>
-{}
+{OPEN_SOURCE_START_MARKER}
 
-{}
+{UPDATE_MARKER}
 
 Old content here
 
-{}
+{DETAILS_END_MARKER}
 </details>
 
 <details>
-{}
+{PRIVATE_START_MARKER}
 
-{}
+{UPDATE_MARKER}
 
 Old private content
 
-{}
+{DETAILS_END_MARKER}
 </details>
 
 <details>
-{}
+{PROFILE_START_MARKER}
 
-{}
+{UPDATE_MARKER}
 
 Old profile content
 
-{}
+{DETAILS_END_MARKER}
 </details>
-"#,
-            OPEN_SOURCE_START_MARKER,
-            UPDATE_MARKER,
-            DETAILS_END_MARKER,
-            PRIVATE_START_MARKER,
-            UPDATE_MARKER,
-            DETAILS_END_MARKER,
-            PROFILE_START_MARKER,
-            UPDATE_MARKER,
-            DETAILS_END_MARKER
+"
         );
 
         fs::write(&readme_path, initial_content).expect("failed to write README");

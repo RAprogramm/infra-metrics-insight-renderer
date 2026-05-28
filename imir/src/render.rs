@@ -54,7 +54,7 @@ pub struct RepositoryInputs {
 ///
 /// # Errors
 ///
-/// Returns [`AppError`] when target_user is empty or include_private is
+/// Returns [`AppError`] when `target_user` is empty or `include_private` is
 /// invalid.
 pub fn normalize_profile_inputs(
     target_user: &str,
@@ -141,9 +141,9 @@ pub fn normalize_profile_inputs(
 /// # Arguments
 ///
 /// * `target_repo` - Repository name
-/// * `target_owner` - Repository owner (optional, uses GITHUB_REPOSITORY owner
+/// * `target_owner` - Repository owner (optional, uses `GITHUB_REPOSITORY` owner
 ///   if empty)
-/// * `github_repo` - GITHUB_REPOSITORY env var (owner/repo format)
+/// * `github_repo` - `GITHUB_REPOSITORY` env var (owner/repo format)
 /// * `target_path` - Destination path (optional)
 /// * `temp_artifact` - Temp artifact filename (optional)
 /// * `branch_name` - Branch for commits (optional)
@@ -156,7 +156,7 @@ pub fn normalize_profile_inputs(
 ///
 /// # Errors
 ///
-/// Returns [`AppError`] when target_repo is empty or contributors_branch is
+/// Returns [`AppError`] when `target_repo` is empty or `contributors_branch` is
 /// invalid.
 #[allow(clippy::too_many_arguments)]
 pub fn normalize_repository_inputs(
@@ -203,8 +203,7 @@ pub fn normalize_repository_inputs(
 
     let contrib_branch = contributors_branch
         .filter(|s| !s.is_empty())
-        .map(|s| s.trim())
-        .unwrap_or("main");
+        .map_or("main", str::trim);
 
     if contrib_branch.is_empty() {
         return Err(AppError::validation("contributors_branch cannot be empty"));

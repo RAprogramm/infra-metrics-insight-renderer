@@ -177,7 +177,7 @@ fn create_pr(
         .flat_map(|label| vec!["--label".to_string(), (*label).to_string()])
         .collect();
 
-    let label_arg_refs: Vec<&str> = label_args.iter().map(|s| s.as_str()).collect();
+    let label_arg_refs: Vec<&str> = label_args.iter().map(std::string::String::as_str).collect();
     args.extend(label_arg_refs);
 
     let output = Command::new("gh")

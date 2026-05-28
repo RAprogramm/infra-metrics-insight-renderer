@@ -186,7 +186,7 @@ mod tests {
         })
         .await;
 
-        assert!(result.is_err(), "should fail after max attempts",);
+        assert!(result.is_err(), "should fail after max attempts");
         assert_eq!(*counter.lock().unwrap(), 2);
     }
 
@@ -206,7 +206,7 @@ mod tests {
     #[test]
     fn retry_config_debug_format() {
         let config = RetryConfig::default();
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("RetryConfig"));
         assert!(debug_str.contains("max_attempts"));
         assert!(debug_str.contains("initial_delay_ms"));
@@ -238,6 +238,6 @@ mod tests {
             Err::<i32, _>(AppError::service("immediate failure"))
         })
         .await;
-        assert!(result.is_err(), "should fail immediately",);
+        assert!(result.is_err(), "should fail immediately");
     }
 }

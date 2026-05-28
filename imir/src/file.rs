@@ -73,11 +73,11 @@ pub fn move_file(source: &str, destination: &str) -> Result<FileMoveResult, AppE
     }
 
     std::fs::copy(source_path, dest_path).map_err(|e| {
-        AppError::service(format!("failed to copy {} to {}: {e}", source, destination))
+        AppError::service(format!("failed to copy {source} to {destination}: {e}"))
     })?;
 
     std::fs::remove_file(source_path)
-        .map_err(|e| AppError::service(format!("failed to remove source file {}: {e}", source)))?;
+        .map_err(|e| AppError::service(format!("failed to remove source file {source}: {e}")))?;
 
     Ok(FileMoveResult {
         destination: dest_path.to_path_buf(),
@@ -119,7 +119,7 @@ mod tests {
     fn move_file_rejects_nonexistent_source() {
         let result = move_file("/nonexistent/file.svg", "/tmp/dest.svg");
         assert!(result.is_err());
-        let error_msg = format!("{:?}", result.unwrap_err(),);
+        let error_msg = format!("{:?}", result.unwrap_err());
         assert!(error_msg.contains("source file not found"),);
     }
 
@@ -128,7 +128,7 @@ mod tests {
         let dir = tempdir().expect("failed to create tempdir");
         let result = move_file(dir.path().to_str().unwrap(), "/tmp/dest.svg");
         assert!(result.is_err());
-        let error_msg = format!("{:?}", result.unwrap_err(),);
+        let error_msg = format!("{:?}", result.unwrap_err());
         assert!(error_msg.contains("not a file"),);
     }
 

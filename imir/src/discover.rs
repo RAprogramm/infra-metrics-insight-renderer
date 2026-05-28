@@ -117,7 +117,7 @@ async fn check_repo_has_badge(
 
     let readme_result = retry_with_backoff(
         retry_config,
-        &format!("README for {}/{}", owner, repo),
+        &format!("README for {owner}/{repo}"),
         || {
             let octocrab = octocrab_clone.clone();
             let owner = owner_str.clone();
@@ -209,7 +209,7 @@ pub async fn discover_stargazer_repositories(
         let octocrab_clone = octocrab.clone();
         let stargazers = retry_with_backoff(
             &config.retry_config,
-            &format!("stargazers page {}", page),
+            &format!("stargazers page {page}"),
             || {
                 let octocrab = octocrab_clone.clone();
                 async move {
@@ -244,10 +244,10 @@ pub async fn discover_stargazer_repositories(
             debug!("Fetching repositories for user: {}", username);
 
             let octocrab_clone = octocrab.clone();
-            let username_clone = username.to_string();
+            let username_clone = username.clone();
             let user_repos = retry_with_backoff(
                 &config.retry_config,
-                &format!("repos for user {}", username),
+                &format!("repos for user {username}"),
                 || {
                     let octocrab = octocrab_clone.clone();
                     let username = username_clone.clone();
@@ -274,7 +274,7 @@ pub async fn discover_stargazer_repositories(
                     continue;
                 }
 
-                let key = (username.to_string(), repo.name.clone());
+                let key = (username.clone(), repo.name.clone());
                 if seen.contains(&key) {
                     continue;
                 }
@@ -289,7 +289,7 @@ pub async fn discover_stargazer_repositories(
                 if has_badge.is_some() {
                     seen.insert(key);
                     let repo_info = DiscoveredRepository {
-                        owner:      username.to_string(),
+                        owner:      username.clone(),
                         repository: repo.name.clone()
                     };
                     debug!("Found IMIR badge in repository: {}", repo_info);
@@ -351,6 +351,7 @@ pub async fn discover_stargazer_repositories(
 /// let repo = extract_repo_from_readme(readme);
 /// assert_eq!(repo, Some("my-repo".to_string()));
 /// ```
+#[must_use] 
 pub fn extract_repo_from_readme(readme_content: &str) -> Option<String> {
     let has_badge = readme_content.contains(BADGE_PUBLIC)
         || readme_content.contains(BADGE_PRIVATE)
@@ -388,36 +389,36 @@ mod tests {
 
     #[test]
     fn extract_repo_from_readme_finds_valid_pattern() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/test-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("test-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_returns_none_without_badge() {
-        let readme = r#"
+        let readme = r"
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/test-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, None);
     }
 
     #[test]
     fn extract_repo_from_readme_returns_none_without_metrics_link() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 Some other content
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, None);
     }
 
     #[test]
     fn extract_repo_from_readme_handles_multiline_content() {
-        let readme = r#"
+        let readme = r"
 # My Project
 
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
@@ -427,17 +428,17 @@ Some description here.
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/my-project.svg)
 
 More content.
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("my-project".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_rejects_invalid_repo_names() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/owner/repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, None);
     }
@@ -451,72 +452,72 @@ More content.
 
     #[test]
     fn extract_repo_from_readme_finds_first_valid_match() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/first-repo.svg)
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/second-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("first-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_handles_relative_path_dot_slash() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](./metrics/relative-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("relative-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_handles_relative_path_no_prefix() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](metrics/no-prefix-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("no-prefix-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_prefers_dot_slash_over_others() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](./metrics/dot-slash.svg)
 ![Metrics](metrics/no-prefix.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("dot-slash".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_detects_public_badge() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)]
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/public-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("public-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_detects_private_badge() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-private.svg)]
 ![Metrics](./metrics/private-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("private-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_detects_profile_badge() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-profile.svg)]
 ![Metrics](metrics/profile-metrics.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("profile-metrics".to_string()));
     }
@@ -545,14 +546,14 @@ More content.
     async fn discover_badge_users_fails_with_invalid_token() {
         let config = DiscoveryConfig::default();
         let result = discover_badge_users("invalid_token", &config).await;
-        assert!(result.is_err(), "should fail with invalid token",);
+        assert!(result.is_err(), "should fail with invalid token");
     }
 
     #[tokio::test]
     async fn discover_stargazer_repositories_fails_with_invalid_token() {
         let config = DiscoveryConfig::default();
         let result = discover_stargazer_repositories("invalid_token", &config).await;
-        assert!(result.is_err(), "should fail with invalid token",);
+        assert!(result.is_err(), "should fail with invalid token");
     }
 
     #[test]
@@ -591,7 +592,7 @@ More content.
     #[test]
     fn discovery_config_debug_format() {
         let config = DiscoveryConfig::default();
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("DiscoveryConfig"));
         assert!(debug_str.contains("max_pages"));
     }
@@ -618,7 +619,7 @@ More content.
             owner:      "owner".to_string(),
             repository: "repo".to_string()
         };
-        let debug_str = format!("{:?}", repo);
+        let debug_str = format!("{repo:?}");
         assert!(debug_str.contains("DiscoveredRepository"));
         assert!(debug_str.contains("owner"));
         assert!(debug_str.contains("repository"));

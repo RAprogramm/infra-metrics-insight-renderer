@@ -105,7 +105,7 @@ pub async fn fetch_contributor_activity(
 
     let stats: Vec<ContributorStats> = retry_with_backoff(
         retry_config,
-        &format!("contributor stats for {}/{}", owner, repo),
+        &format!("contributor stats for {owner}/{repo}"),
         || {
             let octocrab = octocrab_clone.clone();
             let owner = owner_str.clone();

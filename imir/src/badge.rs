@@ -68,8 +68,8 @@ pub fn generate_badge_assets(
 ) -> Result<BadgeAssets, Error> {
     fs::create_dir_all(output_dir).map_err(|source| error::badge_io_error(output_dir, source))?;
 
-    let svg_path = output_dir.join(format!("{}.svg", target.slug,));
-    let manifest_path = output_dir.join(format!("{}.json", target.slug,));
+    let svg_path = output_dir.join(format!("{}.svg", target.slug));
+    let manifest_path = output_dir.join(format!("{}.json", target.slug));
 
     write_svg(&svg_path, target)?;
     write_manifest(&manifest_path, target, &svg_path)?;
@@ -191,7 +191,7 @@ struct BadgeGradient {
     secondary: &'static str
 }
 
-fn badge_background(kind: TargetKind) -> BadgeGradient {
+const fn badge_background(kind: TargetKind) -> BadgeGradient {
     match kind {
         TargetKind::Profile => BadgeGradient {
             primary:   "#6f42c1",
@@ -331,7 +331,7 @@ mod tests {
         let result = escape_xml(input);
         match result {
             Cow::Borrowed(s) => assert_eq!(s, input),
-            Cow::Owned(_) => panic!("expected borrowed variant",)
+            Cow::Owned(_) => panic!("expected borrowed variant")
         }
     }
 
@@ -408,7 +408,7 @@ mod tests {
             svg_path:      PathBuf::from("/tmp/debug.svg"),
             manifest_path: PathBuf::from("/tmp/debug.json")
         };
-        let debug_str = format!("{:?}", assets);
+        let debug_str = format!("{assets:?}");
         assert!(debug_str.contains("BadgeAssets"));
         assert!(debug_str.contains("svg_path"));
     }

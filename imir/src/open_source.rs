@@ -394,7 +394,7 @@ mod tests {
             repository:          "test".to_owned(),
             contributors_branch: "main".to_owned()
         };
-        let debug_str = format!("{:?}", repo);
+        let debug_str = format!("{repo:?}");
         assert!(debug_str.contains("OpenSourceRepository"));
         assert!(debug_str.contains("repository"));
     }

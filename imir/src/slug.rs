@@ -19,7 +19,8 @@ impl<'input> SlugStrategy<'input> {
     ///
     /// The builder retains a borrowed view of the source to avoid allocations
     /// until [`build`](Self::build) is invoked.
-    pub fn builder(source: &'input str) -> Self {
+    #[must_use] 
+    pub const fn builder(source: &'input str) -> Self {
         Self {
             source
         }
@@ -38,6 +39,7 @@ impl<'input> SlugStrategy<'input> {
     /// let slug = SlugStrategy::builder(" Docs/Overview  ").build();
     /// assert_eq!(slug.as_deref(), Some("docs-overview"));
     /// ```
+    #[must_use] 
     pub fn build(self) -> Option<String> {
         let trimmed = self.source.trim();
         if trimmed.is_empty() {
@@ -186,7 +188,7 @@ mod tests {
     #[test]
     fn slug_strategy_debug_format() {
         let builder = SlugStrategy::builder("debug");
-        let debug_str = format!("{:?}", builder);
+        let debug_str = format!("{builder:?}");
         assert!(debug_str.contains("SlugStrategy"));
         assert!(debug_str.contains("source"));
     }

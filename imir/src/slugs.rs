@@ -74,8 +74,7 @@ pub fn detect_impacted_slugs(
     let base_exists = Command::new("git")
         .args(["rev-parse", "--verify", base_ref])
         .output()
-        .map(|output| output.status.success())
-        .unwrap_or(false);
+        .is_ok_and(|output| output.status.success());
 
     if !base_exists {
         let fetch_result = Command::new("git")
@@ -85,7 +84,7 @@ pub fn detect_impacted_slugs(
                 "--prune",
                 "--depth=1",
                 "origin",
-                &format!("+{}:{}", base_ref, base_ref)
+                &format!("+{base_ref}:{base_ref}")
             ])
             .output();
 
@@ -102,18 +101,18 @@ pub fn detect_impacted_slugs(
         }
     }
 
-    let diff_output = if !base_ref.is_empty() {
-        Command::new("git")
-            .args(["diff", "--unified=0", base_ref, head_ref, "--"])
-            .args(files)
-            .output()
-            .map_err(|e| AppError::service(format!("git diff failed: {e}")))?
-    } else {
+    let diff_output = if base_ref.is_empty() {
         Command::new("git")
             .args(["show", head_ref, "--"])
             .args(files)
             .output()
             .map_err(|e| AppError::service(format!("git show failed: {e}")))?
+    } else {
+        Command::new("git")
+            .args(["diff", "--unified=0", base_ref, head_ref, "--"])
+            .args(files)
+            .output()
+            .map_err(|e| AppError::service(format!("git diff failed: {e}")))?
     };
 
     if !diff_output.status.success() {

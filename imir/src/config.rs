@@ -126,6 +126,7 @@ impl TargetEntry {
     /// };
     /// assert_eq!(entry.resolved_slug().as_deref(), Some("metrics"));
     /// ```
+    #[must_use] 
     pub fn resolved_slug(&self) -> Option<String> {
         if let Some(custom) = self.slug.as_ref() {
             return SlugStrategy::builder(custom).build();
@@ -147,6 +148,7 @@ impl TargetEntry {
     ///
     /// Leading and trailing whitespace is trimmed. When no override is
     /// supplied, the value falls back to "profile" or the repository name.
+    #[must_use] 
     pub fn resolved_display_name(&self) -> Option<String> {
         if let Some(name) = self.display_name.as_ref() {
             let trimmed = name.trim();
