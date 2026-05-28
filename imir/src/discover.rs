@@ -187,14 +187,7 @@ pub async fn discover_stargazer_repositories(
         IMIR_REPO_OWNER, IMIR_REPO_NAME
     );
 
-    let pb = ProgressBar::new_spinner();
-    if let Ok(style) =
-        ProgressStyle::default_spinner().template("{spinner:.cyan} [{elapsed_precise}] {msg}")
-    {
-        pb.set_style(style);
-    }
-    pb.set_message("Fetching stargazers...");
-
+    let pb = stargazer_progress_bar();
     let mut discovered = Vec::with_capacity(500);
     let mut seen = HashSet::with_capacity(500);
     let mut page = 1u32;
@@ -206,102 +199,30 @@ pub async fn discover_stargazer_repositories(
         ));
         debug!("Fetching page {} of stargazers", page);
 
-        let octocrab_clone = octocrab.clone();
-        let stargazers = retry_with_backoff(
-            &config.retry_config,
-            &format!("stargazers page {page}"),
-            || {
-                let octocrab = octocrab_clone.clone();
-                async move {
-                    octocrab
-                        .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME)
-                        .list_stargazers()
-                        .per_page(100)
-                        .page(page)
-                        .send()
-                        .await
-                        .map_err(|e| AppError::service(format!("failed to fetch stargazers: {e}")))
-                }
-            }
-        )
-        .await?;
-
+        let stargazers = fetch_stargazers_page(&octocrab, page, &config.retry_config).await?;
         let items_count = stargazers.items.len();
         debug!("Processing {} stargazers on page {}", items_count, page);
 
         for (idx, stargazer) in stargazers.items.iter().enumerate() {
-            let user = match &stargazer.user {
-                Some(u) => u,
-                None => continue
+            let Some(user) = stargazer.user.as_ref() else {
+                continue;
             };
-            let username = &user.login;
             pb.set_message(format!(
                 "Processing stargazer {}/{} on page {}...",
                 idx + 1,
                 items_count,
                 page
             ));
-            debug!("Fetching repositories for user: {}", username);
-
-            let octocrab_clone = octocrab.clone();
-            let username_clone = username.clone();
-            let user_repos = retry_with_backoff(
-                &config.retry_config,
-                &format!("repos for user {username}"),
-                || {
-                    let octocrab = octocrab_clone.clone();
-                    let username = username_clone.clone();
-                    async move {
-                        octocrab
-                            .users(&username)
-                            .repos()
-                            .per_page(100)
-                            .page(1u32)
-                            .send()
-                            .await
-                            .map_err(|e| {
-                                AppError::service(format!(
-                                    "failed to fetch repos for {username}: {e}"
-                                ))
-                            })
-                    }
-                }
+            collect_user_badge_repos(
+                &octocrab,
+                &user.login,
+                config,
+                &pb,
+                page,
+                &mut seen,
+                &mut discovered
             )
             .await?;
-
-            for repo in &user_repos.items {
-                if repo.fork.unwrap_or(false) {
-                    continue;
-                }
-
-                let key = (username.clone(), repo.name.clone());
-                if seen.contains(&key) {
-                    continue;
-                }
-
-                pb.set_message(format!("Checking README in {}/{}...", username, repo.name));
-                debug!("Checking README in {}/{}", username, repo.name);
-
-                let has_badge =
-                    check_repo_has_badge(&octocrab, username, &repo.name, &config.retry_config)
-                        .await?;
-
-                if has_badge.is_some() {
-                    seen.insert(key);
-                    let repo_info = DiscoveredRepository {
-                        owner:      username.clone(),
-                        repository: repo.name.clone()
-                    };
-                    debug!("Found IMIR badge in repository: {}", repo_info);
-                    discovered.push(repo_info);
-                    pb.set_message(format!(
-                        "Found {} repositories with badge (page {}/{})...",
-                        discovered.len(),
-                        page,
-                        config.max_pages
-                    ));
-                }
-            }
         }
 
         if items_count == 0 || page >= config.max_pages {
@@ -320,6 +241,117 @@ pub async fn discover_stargazer_repositories(
         discovered.len()
     );
     Ok(discovered)
+}
+
+/// Builds the spinner-style [`ProgressBar`] used by stargazer discovery.
+fn stargazer_progress_bar() -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    if let Ok(style) =
+        ProgressStyle::default_spinner().template("{spinner:.cyan} [{elapsed_precise}] {msg}")
+    {
+        pb.set_style(style);
+    }
+    pb.set_message("Fetching stargazers...");
+    pb
+}
+
+/// Fetches one page of stargazers for the IMIR repository.
+async fn fetch_stargazers_page(
+    octocrab: &Octocrab,
+    page: u32,
+    retry_config: &RetryConfig
+) -> Result<octocrab::Page<octocrab::models::StarGazer>, AppError> {
+    let octocrab_clone = octocrab.clone();
+    retry_with_backoff(retry_config, &format!("stargazers page {page}"), || {
+        let octocrab = octocrab_clone.clone();
+        async move {
+            octocrab
+                .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME)
+                .list_stargazers()
+                .per_page(100)
+                .page(page)
+                .send()
+                .await
+                .map_err(|e| AppError::service(format!("failed to fetch stargazers: {e}")))
+        }
+    })
+    .await
+}
+
+/// Fetches the first page of repositories owned by the given user.
+async fn fetch_user_repos_first_page(
+    octocrab: &Octocrab,
+    username: &str,
+    retry_config: &RetryConfig
+) -> Result<octocrab::Page<octocrab::models::Repository>, AppError> {
+    let octocrab_clone = octocrab.clone();
+    let username_owned = username.to_owned();
+    retry_with_backoff(retry_config, &format!("repos for user {username}"), || {
+        let octocrab = octocrab_clone.clone();
+        let username = username_owned.clone();
+        async move {
+            octocrab
+                .users(&username)
+                .repos()
+                .per_page(100)
+                .page(1u32)
+                .send()
+                .await
+                .map_err(|e| {
+                    AppError::service(format!("failed to fetch repos for {username}: {e}"))
+                })
+        }
+    })
+    .await
+}
+
+/// Scans a single user's repositories for IMIR badges, appending matches to
+/// `discovered` and remembering them in `seen` to suppress duplicates.
+async fn collect_user_badge_repos(
+    octocrab: &Octocrab,
+    username: &str,
+    config: &DiscoveryConfig,
+    pb: &ProgressBar,
+    page: u32,
+    seen: &mut HashSet<(String, String)>,
+    discovered: &mut Vec<DiscoveredRepository>
+) -> Result<(), AppError> {
+    debug!("Fetching repositories for user: {}", username);
+    let user_repos = fetch_user_repos_first_page(octocrab, username, &config.retry_config).await?;
+
+    for repo in &user_repos.items {
+        if repo.fork.unwrap_or(false) {
+            continue;
+        }
+
+        let key = (username.to_owned(), repo.name.clone());
+        if seen.contains(&key) {
+            continue;
+        }
+
+        pb.set_message(format!("Checking README in {}/{}...", username, repo.name));
+        debug!("Checking README in {}/{}", username, repo.name);
+
+        let has_badge =
+            check_repo_has_badge(octocrab, username, &repo.name, &config.retry_config).await?;
+
+        if has_badge.is_some() {
+            seen.insert(key);
+            let repo_info = DiscoveredRepository {
+                owner:      username.to_owned(),
+                repository: repo.name.clone()
+            };
+            debug!("Found IMIR badge in repository: {}", repo_info);
+            discovered.push(repo_info);
+            pb.set_message(format!(
+                "Found {} repositories with badge (page {}/{})...",
+                discovered.len(),
+                page,
+                config.max_pages
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Extracts repository owner and name from README content.
