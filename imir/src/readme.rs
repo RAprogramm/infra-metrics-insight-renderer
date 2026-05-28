@@ -7,7 +7,7 @@
 /// - Profile badges
 /// - Open-source repositories
 /// - Private repositories
-use std::{fs, path::Path};
+use std::{fmt::Write as _, fs, path::Path};
 
 use masterror::AppError;
 use tracing::{debug, info};
@@ -161,12 +161,13 @@ fn generate_repository_table(targets: &[&RenderTarget]) -> String {
             target.slug
         );
 
-        table.push_str(&format!(
+        let _ = write!(
+            table,
             "\n    <tr>\n      <td><code>{}</code></td>\n      <td><img alt=\"{} metrics\" src=\"{}\" /></td>\n    </tr>",
             escape_html(&full_name),
             escape_html(repo_name),
             escape_html(&metrics_url)
-        ));
+        );
     }
 
     table.push_str("\n  </tbody>\n</table>");
@@ -190,12 +191,13 @@ fn generate_private_section(targets: &[&RenderTarget]) -> String {
             target.slug
         );
 
-        table.push_str(&format!(
+        let _ = write!(
+            table,
             "\n    <tr>\n      <td><code>{}</code></td>\n      <td><img alt=\"{} metrics\" src=\"{}\" /></td>\n    </tr>",
             escape_html(&full_name),
             escape_html(repo_name),
             escape_html(&metrics_url)
-        ));
+        );
     }
 
     table.push_str("\n  </tbody>\n</table>");
@@ -217,12 +219,13 @@ fn generate_profile_table(targets: &[&RenderTarget]) -> String {
             target.slug
         );
 
-        table.push_str(&format!(
+        let _ = write!(
+            table,
             "\n    <tr>\n      <td><code>{}</code></td>\n      <td><img alt=\"{} profile metrics\" src=\"{}\" /></td>\n    </tr>",
             escape_html(&target.owner),
             escape_html(&target.owner),
             escape_html(&metrics_url)
-        ));
+        );
     }
 
     table.push_str("\n  </tbody>\n</table>");
