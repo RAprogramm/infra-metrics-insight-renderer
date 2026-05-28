@@ -125,10 +125,13 @@ pub async fn fetch_contributor_activity(
     )
     .await?;
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| AppError::internal(format!("system time error: {e}")))?
-        .as_secs() as i64;
+    let now = i64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| AppError::internal(format!("system time error: {e}")))?
+            .as_secs()
+    )
+    .unwrap_or(i64::MAX);
 
     let thirty_days_ago = now - (30 * 24 * 60 * 60);
 
@@ -163,7 +166,7 @@ pub async fn fetch_contributor_activity(
         });
     }
 
-    activities.sort_by(|a, b| b.commits.cmp(&a.commits));
+    activities.sort_by_key(|a| std::cmp::Reverse(a.commits));
 
     info!(
         "Found {} active contributors in last 30 days for {}/{}",

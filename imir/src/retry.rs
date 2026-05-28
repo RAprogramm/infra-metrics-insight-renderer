@@ -32,6 +32,32 @@ impl Default for RetryConfig {
     }
 }
 
+/// Computes the next backoff delay, saturating to `u64::MAX` on overflow and
+/// clamping negative or non-finite `factor` to zero so a misconfigured
+/// [`RetryConfig`] cannot wrap the delay or trigger undefined cast behavior.
+fn next_backoff_delay(current_ms: u64, factor: f64) -> u64 {
+    let factor = if factor.is_finite() && factor >= 0.0 {
+        factor
+    } else {
+        0.0
+    };
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "current_ms originates from a u64 delay; factor is clamped non-negative \
+                  and finite above; overflow is detected via finite/range checks before cast"
+    )]
+    {
+        let scaled = (current_ms as f64) * factor;
+        if scaled.is_finite() && scaled < (u64::MAX as f64) {
+            scaled as u64
+        } else {
+            u64::MAX
+        }
+    }
+}
+
 /// Executes an async operation with exponential backoff retry logic.
 ///
 /// # Arguments
@@ -95,7 +121,7 @@ where
                 );
 
                 sleep(Duration::from_millis(delay_ms)).await;
-                delay_ms = (delay_ms as f64 * config.backoff_factor) as u64;
+                delay_ms = next_backoff_delay(delay_ms, config.backoff_factor);
                 attempt += 1;
             }
         }
