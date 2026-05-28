@@ -823,7 +823,11 @@ fn run_gh(args: GhArgs) -> Result<(), Error> {
                 pr_args.repo, pr_args.head, pr_args.base
             );
 
-            let label_refs: Vec<&str> = pr_args.labels.iter().map(std::string::String::as_str).collect();
+            let label_refs: Vec<&str> = pr_args
+                .labels
+                .iter()
+                .map(std::string::String::as_str)
+                .collect();
 
             let result = gh_pr_create(
                 &pr_args.repo,

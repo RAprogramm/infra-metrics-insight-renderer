@@ -218,7 +218,10 @@ fn normalize_entry(entry: &TargetEntry) -> Result<RenderTarget, Error> {
         .as_ref()
         .map(|value| value.trim())
         .filter(|value| !value.is_empty())
-        .map_or_else(|| DEFAULT_TIME_ZONE.to_owned(), std::borrow::ToOwned::to_owned);
+        .map_or_else(
+            || DEFAULT_TIME_ZONE.to_owned(),
+            std::borrow::ToOwned::to_owned
+        );
 
     let display_name = entry
         .resolved_display_name()

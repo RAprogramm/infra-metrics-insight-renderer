@@ -141,8 +141,8 @@ pub fn normalize_profile_inputs(
 /// # Arguments
 ///
 /// * `target_repo` - Repository name
-/// * `target_owner` - Repository owner (optional, uses `GITHUB_REPOSITORY` owner
-///   if empty)
+/// * `target_owner` - Repository owner (optional, uses `GITHUB_REPOSITORY`
+///   owner if empty)
 /// * `github_repo` - `GITHUB_REPOSITORY` env var (owner/repo format)
 /// * `target_path` - Destination path (optional)
 /// * `temp_artifact` - Temp artifact filename (optional)
@@ -191,9 +191,10 @@ pub fn normalize_repository_inputs(
         .filter(|s| !s.is_empty())
         .map_or_else(|| format!(".metrics-tmp/{target_repo}.svg"), str::to_string);
 
-    let branch = branch_name
-        .filter(|s| !s.is_empty())
-        .map_or_else(|| format!("ci/metrics-refresh-{target_repo}"), str::to_string);
+    let branch = branch_name.filter(|s| !s.is_empty()).map_or_else(
+        || format!("ci/metrics-refresh-{target_repo}"),
+        str::to_string
+    );
 
     let contrib_branch = contributors_branch
         .filter(|s| !s.is_empty())

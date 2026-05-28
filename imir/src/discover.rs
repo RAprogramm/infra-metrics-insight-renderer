@@ -115,10 +115,8 @@ async fn check_repo_has_badge(
     let owner_str = owner.to_string();
     let repo_str = repo.to_string();
 
-    let readme_result = retry_with_backoff(
-        retry_config,
-        &format!("README for {owner}/{repo}"),
-        || {
+    let readme_result =
+        retry_with_backoff(retry_config, &format!("README for {owner}/{repo}"), || {
             let octocrab = octocrab_clone.clone();
             let owner = owner_str.clone();
             let repo = repo_str.clone();
@@ -130,9 +128,8 @@ async fn check_repo_has_badge(
                     .await
                     .map_err(|e| AppError::service(format!("failed to fetch README: {e}")))
             }
-        }
-    )
-    .await;
+        })
+        .await;
 
     Ok(readme_result.ok().and_then(|content| {
         content
@@ -378,7 +375,7 @@ async fn collect_user_badge_repos(
 /// let repo = extract_repo_from_readme(readme);
 /// assert_eq!(repo, Some("my-repo".to_string()));
 /// ```
-#[must_use] 
+#[must_use]
 pub fn extract_repo_from_readme(readme_content: &str) -> Option<String> {
     let has_badge = readme_content.contains(BADGE_PUBLIC)
         || readme_content.contains(BADGE_PRIVATE)

@@ -195,10 +195,7 @@ fn commit_changes(message: &str) -> Result<(), AppError> {
     run_git(&["commit", "-m", message])
 }
 
-fn push_with_retry(
-    branch_name: &str,
-    upstream_before: Option<&String>
-) -> Result<bool, AppError> {
+fn push_with_retry(branch_name: &str, upstream_before: Option<&String>) -> Result<bool, AppError> {
     for attempt in 1..=3 {
         if try_push(branch_name)? {
             return Ok(true);
@@ -244,10 +241,7 @@ fn try_push(branch_name: &str) -> Result<bool, AppError> {
     Ok(output.status.success())
 }
 
-fn try_force_push(
-    branch_name: &str,
-    upstream_before: Option<&String>
-) -> Result<bool, AppError> {
+fn try_force_push(branch_name: &str, upstream_before: Option<&String>) -> Result<bool, AppError> {
     let force_arg = upstream_before.map_or_else(
         || "--force-with-lease".to_string(),
         |sha| format!("--force-with-lease=refs/heads/{branch_name}:{sha}")
