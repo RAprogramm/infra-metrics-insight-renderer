@@ -75,7 +75,7 @@ pub fn git_commit_push(
 
     commit_changes(commit_message)?;
 
-    let pushed = push_with_retry(branch_name, &upstream_before)?;
+    let pushed = push_with_retry(branch_name, upstream_before.as_ref())?;
 
     Ok(GitPushResult {
         pushed,
@@ -195,7 +195,10 @@ fn commit_changes(message: &str) -> Result<(), AppError> {
     run_git(&["commit", "-m", message])
 }
 
-fn push_with_retry(branch_name: &str, upstream_before: &Option<String>) -> Result<bool, AppError> {
+fn push_with_retry(
+    branch_name: &str,
+    upstream_before: Option<&String>
+) -> Result<bool, AppError> {
     for attempt in 1..=3 {
         if try_push(branch_name)? {
             return Ok(true);
@@ -216,7 +219,7 @@ fn push_with_retry(branch_name: &str, upstream_before: &Option<String>) -> Resul
 
         let remote_after = get_upstream_sha(branch_name)?;
 
-        if upstream_before.is_some() && remote_after != *upstream_before {
+        if upstream_before.is_some() && remote_after.as_ref() != upstream_before {
             continue;
         }
 
@@ -241,12 +244,14 @@ fn try_push(branch_name: &str) -> Result<bool, AppError> {
     Ok(output.status.success())
 }
 
-fn try_force_push(branch_name: &str, upstream_before: &Option<String>) -> Result<bool, AppError> {
-    let force_arg = if let Some(sha) = upstream_before {
-        format!("--force-with-lease=refs/heads/{branch_name}:{sha}")
-    } else {
-        "--force-with-lease".to_string()
-    };
+fn try_force_push(
+    branch_name: &str,
+    upstream_before: Option<&String>
+) -> Result<bool, AppError> {
+    let force_arg = upstream_before.map_or_else(
+        || "--force-with-lease".to_string(),
+        |sha| format!("--force-with-lease=refs/heads/{branch_name}:{sha}")
+    );
 
     let output = Command::new("git")
         .args(["push", &force_arg, "origin", branch_name])
