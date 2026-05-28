@@ -446,15 +446,15 @@ async fn run() -> Result<(), Error> {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Command::Targets(args)) => run_targets(args),
-        Some(Command::OpenSource(args)) => run_open_source(args),
+        Some(Command::Targets(args)) => run_targets(&args),
+        Some(Command::OpenSource(args)) => run_open_source(&args),
         Some(Command::Badge(args)) => run_badge(args),
         Some(Command::Discover(args)) => run_discover(args).await,
         Some(Command::Sync(args)) => run_sync(args).await,
-        Some(Command::Readme(args)) => run_readme(args),
+        Some(Command::Readme(args)) => run_readme(&args),
         Some(Command::Contributors(args)) => run_contributors(args).await,
-        Some(Command::Slugs(args)) => run_slugs(args),
-        Some(Command::Artifact(args)) => run_artifact(args),
+        Some(Command::Slugs(args)) => run_slugs(&args),
+        Some(Command::Artifact(args)) => run_artifact(&args),
         Some(Command::File(args)) => run_file(args),
         Some(Command::Git(args)) => run_git(args),
         Some(Command::Gh(args)) => run_gh(args),
@@ -464,7 +464,7 @@ async fn run() -> Result<(), Error> {
     }
 }
 
-fn run_targets(args: TargetsArgs) -> Result<(), Error> {
+fn run_targets(args: &TargetsArgs) -> Result<(), Error> {
     run_targets_from_path(&args.config, args.pretty)
 }
 
@@ -497,7 +497,7 @@ fn write_targets_document<W: io::Write>(
 ///
 /// Returns an [`Error`] when repository inputs are invalid or serialization
 /// fails.
-fn run_open_source(args: OpenSourceArgs) -> Result<(), Error> {
+fn run_open_source(args: &OpenSourceArgs) -> Result<(), Error> {
     let trimmed = args
         .input
         .as_deref()
@@ -524,12 +524,12 @@ fn run_legacy_targets(args: &LegacyTargetsArgs) -> Result<(), Error> {
 
 fn run_badge(args: BadgeArgs) -> Result<(), Error> {
     match args.command {
-        BadgeCommand::Generate(arguments) => run_badge_generate(arguments),
-        BadgeCommand::GenerateAll(arguments) => run_badge_generate_all(arguments)
+        BadgeCommand::Generate(arguments) => run_badge_generate(&arguments),
+        BadgeCommand::GenerateAll(arguments) => run_badge_generate_all(&arguments)
     }
 }
 
-fn run_badge_generate(args: BadgeGenerateArgs) -> Result<(), Error> {
+fn run_badge_generate(args: &BadgeGenerateArgs) -> Result<(), Error> {
     let document = load_targets(&args.config)?;
     let target = document
         .targets
@@ -542,7 +542,7 @@ fn run_badge_generate(args: BadgeGenerateArgs) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_badge_generate_all(args: BadgeGenerateAllArgs) -> Result<(), Error> {
+fn run_badge_generate_all(args: &BadgeGenerateAllArgs) -> Result<(), Error> {
     use rayon::prelude::*;
     use tracing::{debug, info};
 
@@ -693,7 +693,7 @@ async fn run_sync(args: SyncArgs) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_readme(args: ReadmeArgs) -> Result<(), Error> {
+fn run_readme(args: &ReadmeArgs) -> Result<(), Error> {
     use imir::update_readme;
 
     info!("Loading targets from {}", args.config.display());
@@ -732,7 +732,7 @@ async fn run_contributors(args: ContributorsArgs) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_slugs(args: SlugsArgs) -> Result<(), Error> {
+fn run_slugs(args: &SlugsArgs) -> Result<(), Error> {
     info!(
         "Detecting impacted slugs: base={}, head={}, files={:?}",
         args.base_ref, args.head_ref, args.files
@@ -759,7 +759,7 @@ fn run_slugs(args: SlugsArgs) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_artifact(args: ArtifactArgs) -> Result<(), Error> {
+fn run_artifact(args: &ArtifactArgs) -> Result<(), Error> {
     info!(
         "Locating artifact: temp={}, workspace={}",
         args.temp_artifact, args.workspace
@@ -1127,7 +1127,7 @@ targets:
             other => panic!("unexpected command variant: {other:?}")
         };
 
-        let result = super::run_targets(args);
+        let result = super::run_targets(&args);
         assert!(result.is_err(), "should fail for missing file");
     }
 
@@ -1150,7 +1150,7 @@ targets:
             other => panic!("unexpected command variant: {other:?}")
         };
 
-        let result = super::run_targets(args);
+        let result = super::run_targets(&args);
         assert!(result.is_err(), "should fail for invalid YAML");
     }
 
