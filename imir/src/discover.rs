@@ -648,4 +648,12 @@ More content.
         assert!(debug_str.contains("owner"));
         assert!(debug_str.contains("repository"));
     }
+
+    #[test]
+    fn stargazer_progress_bar_initialises_with_fetching_message() {
+        let pb = stargazer_progress_bar();
+        assert_eq!(pb.message(), "Fetching stargazers...");
+        assert!(!pb.is_finished());
+        pb.finish_and_clear();
+    }
 }

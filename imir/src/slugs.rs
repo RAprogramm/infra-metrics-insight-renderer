@@ -183,4 +183,21 @@ mod tests {
         assert_eq!(result.slugs, cloned.slugs);
         assert_eq!(result.has_any, cloned.has_any);
     }
+
+    #[test]
+    fn empty_base_ref_returns_all_slugs() {
+        let all_slugs = vec!["profile".to_string(), "masterror".to_string()];
+        let result = detect_impacted_slugs("", "HEAD", &["README.md"], &all_slugs)
+            .expect("empty base ref should short-circuit successfully");
+        assert!(result.has_any);
+        assert_eq!(result.slugs, all_slugs);
+    }
+
+    #[test]
+    fn empty_base_ref_with_no_slugs_reports_none() {
+        let result = detect_impacted_slugs("", "HEAD", &["README.md"], &[])
+            .expect("short-circuit must succeed even with empty slug set");
+        assert!(!result.has_any);
+        assert!(result.slugs.is_empty());
+    }
 }

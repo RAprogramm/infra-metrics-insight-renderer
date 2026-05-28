@@ -280,4 +280,40 @@ mod tests {
         .await;
         assert!(result.is_err(), "should fail immediately");
     }
+
+    #[test]
+    fn next_backoff_delay_doubles_with_factor_two() {
+        assert_eq!(next_backoff_delay(100, 2.0), 200);
+        assert_eq!(next_backoff_delay(1, 2.0), 2);
+        assert_eq!(next_backoff_delay(0, 2.0), 0);
+    }
+
+    #[test]
+    fn next_backoff_delay_preserves_with_factor_one() {
+        assert_eq!(next_backoff_delay(500, 1.0), 500);
+    }
+
+    #[test]
+    fn next_backoff_delay_saturates_on_overflow() {
+        assert_eq!(next_backoff_delay(u64::MAX, 2.0), u64::MAX);
+        assert_eq!(next_backoff_delay(u64::MAX / 2, 10.0), u64::MAX);
+    }
+
+    #[test]
+    fn next_backoff_delay_clamps_negative_factor_to_zero() {
+        assert_eq!(next_backoff_delay(1000, -1.5), 0);
+        assert_eq!(next_backoff_delay(1000, -0.0001), 0);
+    }
+
+    #[test]
+    fn next_backoff_delay_clamps_non_finite_factor_to_zero() {
+        assert_eq!(next_backoff_delay(1000, f64::NAN), 0);
+        assert_eq!(next_backoff_delay(1000, f64::INFINITY), 0);
+        assert_eq!(next_backoff_delay(1000, f64::NEG_INFINITY), 0);
+    }
+
+    #[test]
+    fn next_backoff_delay_with_zero_factor_returns_zero() {
+        assert_eq!(next_backoff_delay(1_000_000, 0.0), 0);
+    }
 }

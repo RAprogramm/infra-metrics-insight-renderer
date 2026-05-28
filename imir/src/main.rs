@@ -1042,6 +1042,95 @@ targets:
     }
 
     #[test]
+    fn badge_generate_all_writes_assets_for_every_target() {
+        let temp = tempdir().expect("failed to create tempdir");
+        let config_path = temp.path().join("targets.yaml");
+        let output_dir = temp.path().join("artifacts");
+        let yaml = r"
+targets:
+  - owner: example
+    repository: alpha
+    type: open_source
+    slug: example-alpha
+  - owner: example
+    repository: beta
+    type: open_source
+    slug: example-beta
+";
+        fs::write(&config_path, yaml).expect("failed to write config");
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "badge",
+            "generate-all",
+            "--config",
+            config_path.to_str().expect("utf8"),
+            "--output",
+            output_dir.to_str().expect("utf8")
+        ])
+        .expect("failed to parse badge generate-all command");
+
+        let args = match cli.command.expect("missing command") {
+            Command::Badge(arguments) => arguments,
+            other => panic!("unexpected command variant: {other:?}")
+        };
+
+        run_badge(args).expect("batch badge generation failed");
+
+        for slug in ["example-alpha", "example-beta"] {
+            assert!(output_dir.join(format!("{slug}.svg")).exists());
+            assert!(output_dir.join(format!("{slug}.json")).exists());
+        }
+    }
+
+    #[test]
+    fn badge_generate_all_reports_failed_slugs_in_error() {
+        let temp = tempdir().expect("failed to create tempdir");
+        let config_path = temp.path().join("targets.yaml");
+        let blocker_path = temp.path().join("blocker");
+        fs::write(&blocker_path, "occupied").expect("failed to write blocker");
+
+        let yaml = r"
+targets:
+  - owner: example
+    repository: alpha
+    type: open_source
+    slug: example-alpha
+";
+        fs::write(&config_path, yaml).expect("failed to write config");
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "badge",
+            "generate-all",
+            "--config",
+            config_path.to_str().expect("utf8"),
+            "--output",
+            blocker_path.to_str().expect("utf8")
+        ])
+        .expect("failed to parse badge generate-all command");
+
+        let args = match cli.command.expect("missing command") {
+            Command::Badge(arguments) => arguments,
+            other => panic!("unexpected command variant: {other:?}")
+        };
+
+        let error = run_badge(args).expect_err("expected batch failure");
+        match error {
+            imir::Error::Validation {
+                message
+            } => {
+                assert!(
+                    message.contains("example-alpha"),
+                    "error must name the failing slug, got: {message}"
+                );
+                assert!(message.contains("1 badge(s) failed to generate"));
+            }
+            other => panic!("unexpected error variant: {other:?}")
+        }
+    }
+
+    #[test]
     fn badge_generate_reports_missing_target() {
         let temp = tempdir().expect("failed to create tempdir");
         let config_path = temp.path().join("targets.yaml");
