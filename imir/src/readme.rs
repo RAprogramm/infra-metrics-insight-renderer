@@ -283,9 +283,9 @@ mod tests {
     fn generate_repository_table_creates_valid_html() {
         let target1 = sample_target("user1", Some("repo1"), TargetKind::OpenSource, "repo1");
         let target2 = sample_target("user2", Some("repo2"), TargetKind::OpenSource, "repo2");
-        let targets = vec![&target1, &target2];
+        let target_refs = vec![&target1, &target2];
 
-        let table = generate_repository_table(&targets);
+        let table = generate_repository_table(&target_refs);
         assert!(table.contains("<table>"));
         assert!(table.contains("user1/repo1"));
         assert!(table.contains("user2/repo2"));

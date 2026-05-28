@@ -962,9 +962,8 @@ mod tests {
         ])
         .expect("failed to parse CLI");
 
-        let args = match cli.command.expect("missing targets command") {
-            Command::Targets(args) => args,
-            _ => panic!("unexpected command variant")
+        let Command::Targets(args) = cli.command.expect("missing targets command") else {
+            panic!("unexpected command variant")
         };
         assert!(args.pretty);
 

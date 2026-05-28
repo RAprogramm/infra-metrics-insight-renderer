@@ -135,6 +135,10 @@ mod tests {
     use super::*;
 
     #[test]
+    #[expect(
+        clippy::float_cmp,
+        reason = "2.0 has an exact IEEE-754 representation; comparison is deterministic"
+    )]
     fn retry_config_default_values() {
         let config = RetryConfig::default();
         assert_eq!(config.max_attempts, 3);
@@ -143,6 +147,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::float_cmp,
+        reason = "1.5 has an exact IEEE-754 representation; comparison is deterministic"
+    )]
     fn retry_config_custom_values() {
         let config = RetryConfig {
             max_attempts:     5,
@@ -205,8 +213,10 @@ mod tests {
         let result = retry_with_backoff(&config, "test", move || {
             let counter = counter_clone.clone();
             async move {
-                let mut count = counter.lock().unwrap();
-                *count += 1;
+                {
+                    let mut count = counter.lock().unwrap();
+                    *count += 1;
+                }
                 Err::<i32, _>(AppError::service("persistent failure"))
             }
         })
@@ -217,6 +227,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::float_cmp,
+        reason = "Clone must preserve the exact bit pattern of backoff_factor"
+    )]
     fn retry_config_clone_creates_independent_copy() {
         let config1 = RetryConfig {
             max_attempts:     7,
