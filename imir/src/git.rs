@@ -322,4 +322,80 @@ mod tests {
         assert_eq!(result.pushed, cloned.pushed);
         assert_eq!(result.default_base, cloned.default_base);
     }
+
+    fn make_test_repo() -> (tempfile::TempDir, tempfile::TempDir) {
+        let upstream = tempfile::tempdir().expect("upstream tempdir");
+        let local = tempfile::tempdir().expect("local tempdir");
+
+        Command::new("git")
+            .args(["init", "--quiet", "--bare", "--initial-branch=main"])
+            .current_dir(upstream.path())
+            .status()
+            .expect("git init --bare");
+
+        Command::new("git")
+            .args(["init", "--quiet", "--initial-branch=main"])
+            .current_dir(local.path())
+            .status()
+            .expect("git init");
+
+        let upstream_url = upstream.path().to_str().expect("utf8 upstream path");
+        for args in [
+            ["config", "user.name", "Test"].as_slice(),
+            ["config", "user.email", "test@example.com"].as_slice(),
+            ["config", "commit.gpgsign", "false"].as_slice(),
+            ["remote", "add", "origin", upstream_url].as_slice()
+        ] {
+            Command::new("git")
+                .args(args)
+                .current_dir(local.path())
+                .status()
+                .expect("git config/remote");
+        }
+
+        std::fs::write(local.path().join("seed.txt"), "seed\n").expect("write seed");
+        for args in [
+            ["add", "seed.txt"].as_slice(),
+            ["commit", "--quiet", "-m", "seed"].as_slice(),
+            ["push", "--quiet", "-u", "origin", "main"].as_slice()
+        ] {
+            Command::new("git")
+                .args(args)
+                .current_dir(local.path())
+                .status()
+                .expect("git add/commit/push");
+        }
+
+        (upstream, local)
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn git_commit_push_creates_branch_and_pushes_changes() {
+        let (_upstream, local) = make_test_repo();
+        let prev_cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(local.path()).expect("cd local");
+
+        std::fs::write(local.path().join("metrics.svg"), "<svg/>\n").expect("write metrics");
+        let result = git_commit_push("ci/metrics-refresh-demo", "metrics.svg", "chore: refresh");
+
+        std::env::set_current_dir(&prev_cwd).expect("restore cwd");
+        let result = result.expect("commit+push should succeed");
+        assert!(result.pushed);
+        assert!(!result.default_base.is_empty());
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn git_commit_push_returns_unpushed_when_no_changes() {
+        let (_upstream, local) = make_test_repo();
+        let prev_cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(local.path()).expect("cd local");
+
+        let result = git_commit_push("ci/metrics-refresh-noop", "seed.txt", "chore: noop");
+
+        std::env::set_current_dir(&prev_cwd).expect("restore cwd");
+        let result = result.expect("no-op invocation should not error");
+        assert!(!result.pushed);
+    }
 }

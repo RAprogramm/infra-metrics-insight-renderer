@@ -656,4 +656,198 @@ More content.
         assert!(!pb.is_finished());
         pb.finish_and_clear();
     }
+
+    fn fast_retry() -> RetryConfig {
+        RetryConfig {
+            max_attempts:     1,
+            initial_delay_ms: 0,
+            backoff_factor:   1.0
+        }
+    }
+
+    fn mock_octocrab(server: &wiremock::MockServer) -> Octocrab {
+        Octocrab::builder()
+            .personal_token("test-token")
+            .base_uri(server.uri())
+            .expect("base_uri")
+            .build()
+            .expect("octocrab build")
+    }
+
+    fn user_json(login: &str) -> String {
+        format!(
+            r#"{{"login":"{login}","id":1,"node_id":"u","avatar_url":"https://example.com/a","gravatar_id":"","url":"https://example.com/u","html_url":"https://example.com/u","followers_url":"https://example.com/x","following_url":"https://example.com/x","gists_url":"https://example.com/x","starred_url":"https://example.com/x","subscriptions_url":"https://example.com/x","organizations_url":"https://example.com/x","repos_url":"https://example.com/x","events_url":"https://example.com/x","received_events_url":"https://example.com/x","type":"User","site_admin":false}}"#
+        )
+    }
+
+    fn repo_json(owner: &str, name: &str, fork: bool) -> String {
+        let user = user_json(owner);
+        format!(
+            r#"{{"id":1,"node_id":"r","name":"{name}","full_name":"{owner}/{name}","private":false,"owner":{user},"html_url":"https://example.com/{owner}/{name}","description":null,"fork":{fork},"url":"https://example.com/{owner}/{name}","archive_url":"https://example.com/x","assignees_url":"https://example.com/x","blobs_url":"https://example.com/x","branches_url":"https://example.com/x","collaborators_url":"https://example.com/x","comments_url":"https://example.com/x","commits_url":"https://example.com/x","compare_url":"https://example.com/x","contents_url":"https://example.com/x","contributors_url":"https://example.com/x","deployments_url":"https://example.com/x","downloads_url":"https://example.com/x","events_url":"https://example.com/x","forks_url":"https://example.com/x","git_commits_url":"https://example.com/x","git_refs_url":"https://example.com/x","git_tags_url":"https://example.com/x","issue_comment_url":"https://example.com/x","issue_events_url":"https://example.com/x","issues_url":"https://example.com/x","keys_url":"https://example.com/x","labels_url":"https://example.com/x","languages_url":"https://example.com/x","merges_url":"https://example.com/x","milestones_url":"https://example.com/x","notifications_url":"https://example.com/x","pulls_url":"https://example.com/x","releases_url":"https://example.com/x","stargazers_url":"https://example.com/x","statuses_url":"https://example.com/x","subscribers_url":"https://example.com/x","subscription_url":"https://example.com/x","tags_url":"https://example.com/x","teams_url":"https://example.com/x","trees_url":"https://example.com/x","hooks_url":"https://example.com/x"}}"#
+        )
+    }
+
+    fn readme_json(content: &str) -> String {
+        use base64::Engine as _;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(content);
+        format!(
+            r#"{{"name":"README.md","path":"README.md","sha":"https://example.com/x","size":{size},"url":"https://example.com/x","html_url":"https://example.com/x","git_url":"https://example.com/x","download_url":"https://example.com/x","type":"file","content":"{encoded}","encoding":"base64","_links":{{"self":"https://example.com/x","git":"https://example.com/x","html":"https://example.com/x"}}}}"#,
+            size = content.len()
+        )
+    }
+
+    #[tokio::test]
+    async fn fetch_stargazers_page_returns_decoded_items() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let body = format!(
+            r#"[{{"starred_at":"2026-01-02T00:00:00Z","user":{}}}]"#,
+            user_json("alice")
+        );
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/repos/{IMIR_REPO_OWNER}/{IMIR_REPO_NAME}/stargazers"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let page = fetch_stargazers_page(&octocrab, 1, &fast_retry())
+            .await
+            .expect("fetch should succeed");
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(
+            page.items[0].user.as_ref().expect("stargazer user").login,
+            "alice"
+        );
+    }
+
+    #[tokio::test]
+    async fn fetch_user_repos_first_page_parses_repos() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let body = format!("[{}]", repo_json("alice", "demo", false));
+        Mock::given(method("GET"))
+            .and(path("/users/alice/repos"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let page = fetch_user_repos_first_page(&octocrab, "alice", &fast_retry())
+            .await
+            .expect("fetch should succeed");
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.items[0].name, "demo");
+        assert_eq!(page.items[0].fork, Some(false));
+    }
+
+    #[tokio::test]
+    async fn check_repo_has_badge_returns_some_when_readme_contains_badge() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let readme = "[![IMIR](imir-badge-simple-public.svg)]\n![M](metrics/demo.svg)\n";
+        Mock::given(method("GET"))
+            .and(path("/repos/alice/demo/readme/"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_raw(readme_json(readme), "application/json")
+            )
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let badge = check_repo_has_badge(&octocrab, "alice", "demo", &fast_retry())
+            .await
+            .expect("fetch should succeed");
+        assert_eq!(badge.as_deref(), Some("demo"));
+    }
+
+    #[tokio::test]
+    async fn check_repo_has_badge_returns_none_when_readme_missing() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/repos/alice/demo/readme/"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let badge = check_repo_has_badge(&octocrab, "alice", "demo", &fast_retry())
+            .await
+            .expect("404 is not an error path");
+        assert!(badge.is_none());
+    }
+
+    #[tokio::test]
+    async fn collect_user_badge_repos_skips_forks_and_records_badged_repos() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let repos = format!(
+            "[{},{}]",
+            repo_json("alice", "real", false),
+            repo_json("alice", "fork", true)
+        );
+        Mock::given(method("GET"))
+            .and(path("/users/alice/repos"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(repos, "application/json"))
+            .mount(&server)
+            .await;
+
+        let readme = "[![IMIR](imir-badge-simple-public.svg)]\n![M](metrics/real.svg)\n";
+        Mock::given(method("GET"))
+            .and(path("/repos/alice/real/readme/"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_raw(readme_json(readme), "application/json")
+            )
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let config = DiscoveryConfig {
+            max_pages:    1,
+            retry_config: fast_retry()
+        };
+        let pb = stargazer_progress_bar();
+        let mut seen = HashSet::new();
+        let mut discovered = Vec::new();
+        collect_user_badge_repos(
+            &octocrab,
+            "alice",
+            &config,
+            &pb,
+            1,
+            &mut seen,
+            &mut discovered
+        )
+        .await
+        .expect("collect should succeed");
+        pb.finish_and_clear();
+
+        assert_eq!(discovered.len(), 1);
+        assert_eq!(discovered[0].owner, "alice");
+        assert_eq!(discovered[0].repository, "real");
+        assert!(seen.contains(&("alice".to_string(), "real".to_string())));
+    }
 }

@@ -27,6 +27,9 @@ regex = "1"
 proptest = "1"
 tempfile = "3"
 criterion = { version = "0.8", features = ["html_reports"] }
+wiremock = "0.6"
+serial_test = "3"
+base64 = "0.22"
 
 [[bench]]
 name = "benchmarks"

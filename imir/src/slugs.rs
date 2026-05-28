@@ -200,4 +200,84 @@ mod tests {
         assert!(!result.has_any);
         assert!(result.slugs.is_empty());
     }
+
+    fn init_repo_with_two_commits() -> tempfile::TempDir {
+        use std::process::Command;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        for args in [
+            ["init", "--quiet", "--initial-branch=main"].as_slice(),
+            ["config", "user.name", "Test"].as_slice(),
+            ["config", "user.email", "test@example.com"].as_slice(),
+            ["config", "commit.gpgsign", "false"].as_slice()
+        ] {
+            Command::new("git")
+                .args(args)
+                .current_dir(dir.path())
+                .status()
+                .expect("git init/config");
+        }
+        std::fs::create_dir_all(dir.path().join("metrics")).expect("mkdir metrics");
+        std::fs::write(dir.path().join("README.md"), "initial\n").expect("write readme");
+        for args in [
+            ["add", "."].as_slice(),
+            ["commit", "--quiet", "-m", "init"].as_slice()
+        ] {
+            Command::new("git")
+                .args(args)
+                .current_dir(dir.path())
+                .status()
+                .expect("git add/commit init");
+        }
+        std::fs::write(dir.path().join("metrics/profile.svg"), "<svg/>\n").expect("write svg");
+        std::fs::write(
+            dir.path().join("README.md"),
+            "updated link metrics/profile.svg\n"
+        )
+        .expect("update readme");
+        for args in [
+            ["add", "."].as_slice(),
+            ["commit", "--quiet", "-m", "add profile"].as_slice()
+        ] {
+            Command::new("git")
+                .args(args)
+                .current_dir(dir.path())
+                .status()
+                .expect("git add/commit add profile");
+        }
+        dir
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn detects_slug_referenced_between_two_commits() {
+        let repo = init_repo_with_two_commits();
+        let prev_cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(repo.path()).expect("cd repo");
+
+        let all_slugs = vec!["profile".to_string(), "masterror".to_string()];
+        let result = detect_impacted_slugs("HEAD~1", "HEAD", &["README.md"], &all_slugs);
+
+        std::env::set_current_dir(&prev_cwd).expect("restore cwd");
+        let result = result.expect("detection should succeed");
+        assert!(result.has_any);
+        assert_eq!(result.slugs, vec!["profile".to_string()]);
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn missing_base_ref_with_unreachable_remote_falls_back_to_all_slugs() {
+        let repo = init_repo_with_two_commits();
+        let prev_cwd = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(repo.path()).expect("cd repo");
+
+        let all_slugs = vec!["profile".to_string()];
+        let result =
+            detect_impacted_slugs("nonexistent-ref-zzzz", "HEAD", &["README.md"], &all_slugs);
+
+        std::env::set_current_dir(&prev_cwd).expect("restore cwd");
+        let result = result.expect("missing base must fall back to all slugs");
+        assert!(result.has_any);
+        assert_eq!(result.slugs, all_slugs);
+    }
 }
