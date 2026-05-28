@@ -554,28 +554,26 @@ fn run_badge_generate_all(args: BadgeGenerateAllArgs) -> Result<(), Error> {
         document.targets.len()
     );
 
-    let results: Vec<_> = document
+    let failed: Vec<String> = document
         .targets
         .par_iter()
-        .map(|target| {
+        .filter_map(|target| {
             debug!("Generating badge for {}", target.slug);
-            generate_badge_assets(target, output_dir).map(|_| target.slug.clone())
+            match generate_badge_assets(target, output_dir) {
+                Ok(_) => None,
+                Err(e) => {
+                    eprintln!("Failed to generate badge for {}: {e}", target.slug);
+                    Some(format!("{}: {e}", target.slug))
+                }
+            }
         })
         .collect();
 
-    let mut error_count = 0;
-    let mut failed_targets = Vec::new();
-    for result in results {
-        if let Err(e) = result {
-            eprintln!("Failed to generate badge: {e}");
-            error_count += 1;
-            failed_targets.push(e.to_string());
-        }
-    }
-
-    if error_count > 0 {
+    if !failed.is_empty() {
         return Err(Error::validation(format!(
-            "{error_count} badge(s) failed to generate"
+            "{} badge(s) failed to generate: {}",
+            failed.len(),
+            failed.join("; ")
         )));
     }
 
