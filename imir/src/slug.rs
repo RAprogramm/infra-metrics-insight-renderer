@@ -59,12 +59,6 @@ impl<'input> SlugStrategy<'input> {
                     slug.push(candidate);
                     previous_hyphen = false;
                 }
-                '-' | '_' | ' ' | '.' | '/' => {
-                    if !previous_hyphen && !slug.is_empty() {
-                        slug.push('-');
-                        previous_hyphen = true;
-                    }
-                }
                 _ => {
                     if !previous_hyphen && !slug.is_empty() {
                         slug.push('-');
