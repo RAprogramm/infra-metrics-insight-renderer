@@ -115,10 +115,8 @@ async fn check_repo_has_badge(
     let owner_str = owner.to_string();
     let repo_str = repo.to_string();
 
-    let readme_result = retry_with_backoff(
-        retry_config,
-        &format!("README for {}/{}", owner, repo),
-        || {
+    let readme_result =
+        retry_with_backoff(retry_config, &format!("README for {owner}/{repo}"), || {
             let octocrab = octocrab_clone.clone();
             let owner = owner_str.clone();
             let repo = repo_str.clone();
@@ -130,20 +128,14 @@ async fn check_repo_has_badge(
                     .await
                     .map_err(|e| AppError::service(format!("failed to fetch README: {e}")))
             }
-        }
-    )
-    .await;
+        })
+        .await;
 
-    match readme_result {
-        Ok(content) => {
-            if let Some(decoded) = content.decoded_content() {
-                Ok(extract_repo_from_readme(&decoded))
-            } else {
-                Ok(None)
-            }
-        }
-        Err(_) => Ok(None)
-    }
+    Ok(readme_result.ok().and_then(|content| {
+        content
+            .decoded_content()
+            .and_then(|decoded| extract_repo_from_readme(&decoded))
+    }))
 }
 
 /// Discovers repositories from users who starred the IMIR repository.
@@ -187,14 +179,7 @@ pub async fn discover_stargazer_repositories(
         IMIR_REPO_OWNER, IMIR_REPO_NAME
     );
 
-    let pb = ProgressBar::new_spinner();
-    if let Ok(style) =
-        ProgressStyle::default_spinner().template("{spinner:.cyan} [{elapsed_precise}] {msg}")
-    {
-        pb.set_style(style);
-    }
-    pb.set_message("Fetching stargazers...");
-
+    let pb = stargazer_progress_bar();
     let mut discovered = Vec::with_capacity(500);
     let mut seen = HashSet::with_capacity(500);
     let mut page = 1u32;
@@ -206,102 +191,30 @@ pub async fn discover_stargazer_repositories(
         ));
         debug!("Fetching page {} of stargazers", page);
 
-        let octocrab_clone = octocrab.clone();
-        let stargazers = retry_with_backoff(
-            &config.retry_config,
-            &format!("stargazers page {}", page),
-            || {
-                let octocrab = octocrab_clone.clone();
-                async move {
-                    octocrab
-                        .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME)
-                        .list_stargazers()
-                        .per_page(100)
-                        .page(page)
-                        .send()
-                        .await
-                        .map_err(|e| AppError::service(format!("failed to fetch stargazers: {e}")))
-                }
-            }
-        )
-        .await?;
-
+        let stargazers = fetch_stargazers_page(&octocrab, page, &config.retry_config).await?;
         let items_count = stargazers.items.len();
         debug!("Processing {} stargazers on page {}", items_count, page);
 
         for (idx, stargazer) in stargazers.items.iter().enumerate() {
-            let user = match &stargazer.user {
-                Some(u) => u,
-                None => continue
+            let Some(user) = stargazer.user.as_ref() else {
+                continue;
             };
-            let username = &user.login;
             pb.set_message(format!(
                 "Processing stargazer {}/{} on page {}...",
                 idx + 1,
                 items_count,
                 page
             ));
-            debug!("Fetching repositories for user: {}", username);
-
-            let octocrab_clone = octocrab.clone();
-            let username_clone = username.to_string();
-            let user_repos = retry_with_backoff(
-                &config.retry_config,
-                &format!("repos for user {}", username),
-                || {
-                    let octocrab = octocrab_clone.clone();
-                    let username = username_clone.clone();
-                    async move {
-                        octocrab
-                            .users(&username)
-                            .repos()
-                            .per_page(100)
-                            .page(1u32)
-                            .send()
-                            .await
-                            .map_err(|e| {
-                                AppError::service(format!(
-                                    "failed to fetch repos for {username}: {e}"
-                                ))
-                            })
-                    }
-                }
+            collect_user_badge_repos(
+                &octocrab,
+                &user.login,
+                config,
+                &pb,
+                page,
+                &mut seen,
+                &mut discovered
             )
             .await?;
-
-            for repo in &user_repos.items {
-                if repo.fork.unwrap_or(false) {
-                    continue;
-                }
-
-                let key = (username.to_string(), repo.name.clone());
-                if seen.contains(&key) {
-                    continue;
-                }
-
-                pb.set_message(format!("Checking README in {}/{}...", username, repo.name));
-                debug!("Checking README in {}/{}", username, repo.name);
-
-                let has_badge =
-                    check_repo_has_badge(&octocrab, username, &repo.name, &config.retry_config)
-                        .await?;
-
-                if has_badge.is_some() {
-                    seen.insert(key);
-                    let repo_info = DiscoveredRepository {
-                        owner:      username.to_string(),
-                        repository: repo.name.clone()
-                    };
-                    debug!("Found IMIR badge in repository: {}", repo_info);
-                    discovered.push(repo_info);
-                    pb.set_message(format!(
-                        "Found {} repositories with badge (page {}/{})...",
-                        discovered.len(),
-                        page,
-                        config.max_pages
-                    ));
-                }
-            }
         }
 
         if items_count == 0 || page >= config.max_pages {
@@ -320,6 +233,117 @@ pub async fn discover_stargazer_repositories(
         discovered.len()
     );
     Ok(discovered)
+}
+
+/// Builds the spinner-style [`ProgressBar`] used by stargazer discovery.
+fn stargazer_progress_bar() -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    if let Ok(style) =
+        ProgressStyle::default_spinner().template("{spinner:.cyan} [{elapsed_precise}] {msg}")
+    {
+        pb.set_style(style);
+    }
+    pb.set_message("Fetching stargazers...");
+    pb
+}
+
+/// Fetches one page of stargazers for the IMIR repository.
+async fn fetch_stargazers_page(
+    octocrab: &Octocrab,
+    page: u32,
+    retry_config: &RetryConfig
+) -> Result<octocrab::Page<octocrab::models::StarGazer>, AppError> {
+    let octocrab_clone = octocrab.clone();
+    retry_with_backoff(retry_config, &format!("stargazers page {page}"), || {
+        let octocrab = octocrab_clone.clone();
+        async move {
+            octocrab
+                .repos(IMIR_REPO_OWNER, IMIR_REPO_NAME)
+                .list_stargazers()
+                .per_page(100)
+                .page(page)
+                .send()
+                .await
+                .map_err(|e| AppError::service(format!("failed to fetch stargazers: {e}")))
+        }
+    })
+    .await
+}
+
+/// Fetches the first page of repositories owned by the given user.
+async fn fetch_user_repos_first_page(
+    octocrab: &Octocrab,
+    username: &str,
+    retry_config: &RetryConfig
+) -> Result<octocrab::Page<octocrab::models::Repository>, AppError> {
+    let octocrab_clone = octocrab.clone();
+    let username_owned = username.to_owned();
+    retry_with_backoff(retry_config, &format!("repos for user {username}"), || {
+        let octocrab = octocrab_clone.clone();
+        let username = username_owned.clone();
+        async move {
+            octocrab
+                .users(&username)
+                .repos()
+                .per_page(100)
+                .page(1u32)
+                .send()
+                .await
+                .map_err(|e| {
+                    AppError::service(format!("failed to fetch repos for {username}: {e}"))
+                })
+        }
+    })
+    .await
+}
+
+/// Scans a single user's repositories for IMIR badges, appending matches to
+/// `discovered` and remembering them in `seen` to suppress duplicates.
+async fn collect_user_badge_repos(
+    octocrab: &Octocrab,
+    username: &str,
+    config: &DiscoveryConfig,
+    pb: &ProgressBar,
+    page: u32,
+    seen: &mut HashSet<(String, String)>,
+    discovered: &mut Vec<DiscoveredRepository>
+) -> Result<(), AppError> {
+    debug!("Fetching repositories for user: {}", username);
+    let user_repos = fetch_user_repos_first_page(octocrab, username, &config.retry_config).await?;
+
+    for repo in &user_repos.items {
+        if repo.fork.unwrap_or(false) {
+            continue;
+        }
+
+        let key = (username.to_owned(), repo.name.clone());
+        if seen.contains(&key) {
+            continue;
+        }
+
+        pb.set_message(format!("Checking README in {}/{}...", username, repo.name));
+        debug!("Checking README in {}/{}", username, repo.name);
+
+        let has_badge =
+            check_repo_has_badge(octocrab, username, &repo.name, &config.retry_config).await?;
+
+        if has_badge.is_some() {
+            seen.insert(key);
+            let repo_info = DiscoveredRepository {
+                owner:      username.to_owned(),
+                repository: repo.name.clone()
+            };
+            debug!("Found IMIR badge in repository: {}", repo_info);
+            discovered.push(repo_info);
+            pb.set_message(format!(
+                "Found {} repositories with badge (page {}/{})...",
+                discovered.len(),
+                page,
+                config.max_pages
+            ));
+        }
+    }
+    Ok(())
 }
 
 /// Extracts repository owner and name from README content.
@@ -351,6 +375,7 @@ pub async fn discover_stargazer_repositories(
 /// let repo = extract_repo_from_readme(readme);
 /// assert_eq!(repo, Some("my-repo".to_string()));
 /// ```
+#[must_use]
 pub fn extract_repo_from_readme(readme_content: &str) -> Option<String> {
     let has_badge = readme_content.contains(BADGE_PUBLIC)
         || readme_content.contains(BADGE_PRIVATE)
@@ -388,36 +413,36 @@ mod tests {
 
     #[test]
     fn extract_repo_from_readme_finds_valid_pattern() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/test-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("test-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_returns_none_without_badge() {
-        let readme = r#"
+        let readme = r"
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/test-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, None);
     }
 
     #[test]
     fn extract_repo_from_readme_returns_none_without_metrics_link() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 Some other content
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, None);
     }
 
     #[test]
     fn extract_repo_from_readme_handles_multiline_content() {
-        let readme = r#"
+        let readme = r"
 # My Project
 
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
@@ -427,17 +452,17 @@ Some description here.
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/my-project.svg)
 
 More content.
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("my-project".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_rejects_invalid_repo_names() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/owner/repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, None);
     }
@@ -451,72 +476,72 @@ More content.
 
     #[test]
     fn extract_repo_from_readme_finds_first_valid_match() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/first-repo.svg)
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/second-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("first-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_handles_relative_path_dot_slash() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](./metrics/relative-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("relative-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_handles_relative_path_no_prefix() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](metrics/no-prefix-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("no-prefix-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_prefers_dot_slash_over_others() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/badge.svg)]
 ![Metrics](./metrics/dot-slash.svg)
 ![Metrics](metrics/no-prefix.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("dot-slash".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_detects_public_badge() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-public.svg)]
 ![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/public-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("public-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_detects_private_badge() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-private.svg)]
 ![Metrics](./metrics/private-repo.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("private-repo".to_string()));
     }
 
     #[test]
     fn extract_repo_from_readme_detects_profile_badge() {
-        let readme = r#"
+        let readme = r"
 [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-profile.svg)]
 ![Metrics](metrics/profile-metrics.svg)
-"#;
+";
         let result = extract_repo_from_readme(readme);
         assert_eq!(result, Some("profile-metrics".to_string()));
     }
@@ -545,14 +570,14 @@ More content.
     async fn discover_badge_users_fails_with_invalid_token() {
         let config = DiscoveryConfig::default();
         let result = discover_badge_users("invalid_token", &config).await;
-        assert!(result.is_err(), "should fail with invalid token",);
+        assert!(result.is_err(), "should fail with invalid token");
     }
 
     #[tokio::test]
     async fn discover_stargazer_repositories_fails_with_invalid_token() {
         let config = DiscoveryConfig::default();
         let result = discover_stargazer_repositories("invalid_token", &config).await;
-        assert!(result.is_err(), "should fail with invalid token",);
+        assert!(result.is_err(), "should fail with invalid token");
     }
 
     #[test]
@@ -591,7 +616,7 @@ More content.
     #[test]
     fn discovery_config_debug_format() {
         let config = DiscoveryConfig::default();
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("DiscoveryConfig"));
         assert!(debug_str.contains("max_pages"));
     }
@@ -618,9 +643,211 @@ More content.
             owner:      "owner".to_string(),
             repository: "repo".to_string()
         };
-        let debug_str = format!("{:?}", repo);
+        let debug_str = format!("{repo:?}");
         assert!(debug_str.contains("DiscoveredRepository"));
         assert!(debug_str.contains("owner"));
         assert!(debug_str.contains("repository"));
+    }
+
+    #[test]
+    fn stargazer_progress_bar_initialises_with_fetching_message() {
+        let pb = stargazer_progress_bar();
+        assert_eq!(pb.message(), "Fetching stargazers...");
+        assert!(!pb.is_finished());
+        pb.finish_and_clear();
+    }
+
+    fn fast_retry() -> RetryConfig {
+        RetryConfig {
+            max_attempts:     1,
+            initial_delay_ms: 0,
+            backoff_factor:   1.0
+        }
+    }
+
+    fn mock_octocrab(server: &wiremock::MockServer) -> Octocrab {
+        Octocrab::builder()
+            .personal_token("test-token")
+            .base_uri(server.uri())
+            .expect("base_uri")
+            .build()
+            .expect("octocrab build")
+    }
+
+    fn user_json(login: &str) -> String {
+        format!(
+            r#"{{"login":"{login}","id":1,"node_id":"u","avatar_url":"https://example.com/a","gravatar_id":"","url":"https://example.com/u","html_url":"https://example.com/u","followers_url":"https://example.com/x","following_url":"https://example.com/x","gists_url":"https://example.com/x","starred_url":"https://example.com/x","subscriptions_url":"https://example.com/x","organizations_url":"https://example.com/x","repos_url":"https://example.com/x","events_url":"https://example.com/x","received_events_url":"https://example.com/x","type":"User","site_admin":false}}"#
+        )
+    }
+
+    fn repo_json(owner: &str, name: &str, fork: bool) -> String {
+        let user = user_json(owner);
+        format!(
+            r#"{{"id":1,"node_id":"r","name":"{name}","full_name":"{owner}/{name}","private":false,"owner":{user},"html_url":"https://example.com/{owner}/{name}","description":null,"fork":{fork},"url":"https://example.com/{owner}/{name}","archive_url":"https://example.com/x","assignees_url":"https://example.com/x","blobs_url":"https://example.com/x","branches_url":"https://example.com/x","collaborators_url":"https://example.com/x","comments_url":"https://example.com/x","commits_url":"https://example.com/x","compare_url":"https://example.com/x","contents_url":"https://example.com/x","contributors_url":"https://example.com/x","deployments_url":"https://example.com/x","downloads_url":"https://example.com/x","events_url":"https://example.com/x","forks_url":"https://example.com/x","git_commits_url":"https://example.com/x","git_refs_url":"https://example.com/x","git_tags_url":"https://example.com/x","issue_comment_url":"https://example.com/x","issue_events_url":"https://example.com/x","issues_url":"https://example.com/x","keys_url":"https://example.com/x","labels_url":"https://example.com/x","languages_url":"https://example.com/x","merges_url":"https://example.com/x","milestones_url":"https://example.com/x","notifications_url":"https://example.com/x","pulls_url":"https://example.com/x","releases_url":"https://example.com/x","stargazers_url":"https://example.com/x","statuses_url":"https://example.com/x","subscribers_url":"https://example.com/x","subscription_url":"https://example.com/x","tags_url":"https://example.com/x","teams_url":"https://example.com/x","trees_url":"https://example.com/x","hooks_url":"https://example.com/x"}}"#
+        )
+    }
+
+    fn readme_json(content: &str) -> String {
+        use base64::Engine as _;
+        let encoded = base64::engine::general_purpose::STANDARD.encode(content);
+        format!(
+            r#"{{"name":"README.md","path":"README.md","sha":"https://example.com/x","size":{size},"url":"https://example.com/x","html_url":"https://example.com/x","git_url":"https://example.com/x","download_url":"https://example.com/x","type":"file","content":"{encoded}","encoding":"base64","_links":{{"self":"https://example.com/x","git":"https://example.com/x","html":"https://example.com/x"}}}}"#,
+            size = content.len()
+        )
+    }
+
+    #[tokio::test]
+    async fn fetch_stargazers_page_returns_decoded_items() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let body = format!(
+            r#"[{{"starred_at":"2026-01-02T00:00:00Z","user":{}}}]"#,
+            user_json("alice")
+        );
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/repos/{IMIR_REPO_OWNER}/{IMIR_REPO_NAME}/stargazers"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let page = fetch_stargazers_page(&octocrab, 1, &fast_retry())
+            .await
+            .expect("fetch should succeed");
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(
+            page.items[0].user.as_ref().expect("stargazer user").login,
+            "alice"
+        );
+    }
+
+    #[tokio::test]
+    async fn fetch_user_repos_first_page_parses_repos() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let body = format!("[{}]", repo_json("alice", "demo", false));
+        Mock::given(method("GET"))
+            .and(path("/users/alice/repos"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let page = fetch_user_repos_first_page(&octocrab, "alice", &fast_retry())
+            .await
+            .expect("fetch should succeed");
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.items[0].name, "demo");
+        assert_eq!(page.items[0].fork, Some(false));
+    }
+
+    #[tokio::test]
+    async fn check_repo_has_badge_returns_some_when_readme_contains_badge() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let readme = "[![IMIR](imir-badge-simple-public.svg)]\n![M](metrics/demo.svg)\n";
+        Mock::given(method("GET"))
+            .and(path("/repos/alice/demo/readme/"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_raw(readme_json(readme), "application/json")
+            )
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let badge = check_repo_has_badge(&octocrab, "alice", "demo", &fast_retry())
+            .await
+            .expect("fetch should succeed");
+        assert_eq!(badge.as_deref(), Some("demo"));
+    }
+
+    #[tokio::test]
+    async fn check_repo_has_badge_returns_none_when_readme_missing() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/repos/alice/demo/readme/"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let badge = check_repo_has_badge(&octocrab, "alice", "demo", &fast_retry())
+            .await
+            .expect("404 is not an error path");
+        assert!(badge.is_none());
+    }
+
+    #[tokio::test]
+    async fn collect_user_badge_repos_skips_forks_and_records_badged_repos() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let repos = format!(
+            "[{},{}]",
+            repo_json("alice", "real", false),
+            repo_json("alice", "fork", true)
+        );
+        Mock::given(method("GET"))
+            .and(path("/users/alice/repos"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(repos, "application/json"))
+            .mount(&server)
+            .await;
+
+        let readme = "[![IMIR](imir-badge-simple-public.svg)]\n![M](metrics/real.svg)\n";
+        Mock::given(method("GET"))
+            .and(path("/repos/alice/real/readme/"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_raw(readme_json(readme), "application/json")
+            )
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let config = DiscoveryConfig {
+            max_pages:    1,
+            retry_config: fast_retry()
+        };
+        let pb = stargazer_progress_bar();
+        let mut seen = HashSet::new();
+        let mut discovered = Vec::new();
+        collect_user_badge_repos(
+            &octocrab,
+            "alice",
+            &config,
+            &pb,
+            1,
+            &mut seen,
+            &mut discovered
+        )
+        .await
+        .expect("collect should succeed");
+        pb.finish_and_clear();
+
+        assert_eq!(discovered.len(), 1);
+        assert_eq!(discovered[0].owner, "alice");
+        assert_eq!(discovered[0].repository, "real");
+        assert!(seen.contains(&("alice".to_string(), "real".to_string())));
     }
 }

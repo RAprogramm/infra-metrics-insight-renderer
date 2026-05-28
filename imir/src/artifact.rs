@@ -5,7 +5,10 @@
 ///
 /// Searches multiple candidate locations where lowlighter/metrics may have
 /// written the generated SVG artifact.
-use std::path::{Path, PathBuf};
+use std::{
+    fmt::Write as _,
+    path::{Path, PathBuf}
+};
 
 use masterror::AppError;
 use serde::{Deserialize, Serialize};
@@ -22,7 +25,7 @@ pub struct ArtifactLocation {
 /// # Arguments
 ///
 /// * `temp_artifact` - Expected filename or relative path
-/// * `workspace` - GitHub workspace directory (usually GITHUB_WORKSPACE)
+/// * `workspace` - GitHub workspace directory (usually `GITHUB_WORKSPACE`)
 ///
 /// # Returns
 ///
@@ -88,7 +91,7 @@ pub fn locate_artifact(
         if let Ok(entries) = std::fs::read_dir(metrics_renders) {
             for entry in entries.flatten() {
                 if let Ok(path) = entry.path().canonicalize() {
-                    error_msg.push_str(&format!("  - {}\n", path.display()));
+                    let _ = writeln!(error_msg, "  - {}", path.display());
                 }
             }
         }
@@ -125,7 +128,7 @@ mod tests {
     fn locate_artifact_rejects_empty_temp_artifact() {
         let result = locate_artifact("", "/workspace");
         assert!(result.is_err());
-        let error_msg = format!("{:?}", result.unwrap_err(),);
+        let error_msg = format!("{:?}", result.unwrap_err());
         assert!(error_msg.contains("temp_artifact"),);
     }
 
@@ -133,7 +136,7 @@ mod tests {
     fn locate_artifact_rejects_invalid_filename() {
         let result = locate_artifact("/", "/workspace");
         assert!(result.is_err());
-        let error_msg = format!("{:?}", result.unwrap_err(),);
+        let error_msg = format!("{:?}", result.unwrap_err());
         assert!(error_msg.contains("filename"),);
     }
 }

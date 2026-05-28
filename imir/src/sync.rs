@@ -89,7 +89,9 @@ pub fn sync_targets(
     for repo in discovered {
         let key = (repo.owner.clone(), Some(repo.repository.clone()));
 
-        if !existing_repos.contains(&key) {
+        if existing_repos.contains(&key) {
+            debug!("Skipping existing repository: {}", repo);
+        } else {
             debug!("Adding new repository: {}", repo);
             let new_entry = TargetEntry {
                 owner:               repo.owner.clone(),
@@ -108,9 +110,7 @@ pub fn sync_targets(
 
             config.targets.push(new_entry);
             added_count += 1;
-            pb.set_message(format!("Added {} new repositories...", added_count));
-        } else {
-            debug!("Skipping existing repository: {}", repo);
+            pb.set_message(format!("Added {added_count} new repositories..."));
         }
     }
 
@@ -147,8 +147,7 @@ pub fn sync_targets(
         })?;
 
         pb.finish_with_message(format!(
-            "Sync complete: {} new repositories added",
-            added_count
+            "Sync complete: {added_count} new repositories added"
         ));
     } else {
         pb.finish_with_message("Sync complete: no new repositories to add");
@@ -316,7 +315,7 @@ targets:
         }];
 
         let result = sync_targets(&config_path, &discovered);
-        assert!(result.is_err(), "should fail on invalid YAML",);
+        assert!(result.is_err(), "should fail on invalid YAML");
     }
 
     #[test]
@@ -330,7 +329,7 @@ targets:
         }];
 
         let result = sync_targets(&config_path, &discovered);
-        assert!(result.is_err(), "should fail when file doesn't exist",);
+        assert!(result.is_err(), "should fail when file doesn't exist");
     }
 
     #[test]

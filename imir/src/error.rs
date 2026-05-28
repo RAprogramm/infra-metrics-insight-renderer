@@ -30,7 +30,7 @@ pub enum Error {
     /// Wraps YAML decoding errors.
     #[error("failed to parse configuration: {source}")]
     Parse {
-        /// Source decoding error from serde_yaml.
+        /// Source decoding error from `serde_yaml`.
         source: serde_yaml::Error
     },
     /// Returned when the configuration violates invariants.
@@ -109,6 +109,7 @@ impl Error {
     /// This method is primarily intended for CLI contexts where the variant
     /// name does not add value to end users. The returned string matches the
     /// [`std::fmt::Display`] implementation.
+    #[must_use]
     pub fn to_display_string(&self) -> String {
         format!("{self}")
     }
@@ -144,6 +145,7 @@ impl From<masterror::AppError> for Error {
 ///
 /// * `path` - Location of the configuration file that triggered the error.
 /// * `source` - I/O error reported by the operating system.
+#[must_use]
 pub fn io_error(path: &Path, source: std::io::Error) -> Error {
     Error::Io {
         path: path.to_path_buf(),

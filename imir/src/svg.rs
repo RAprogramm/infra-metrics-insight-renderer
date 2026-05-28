@@ -80,7 +80,7 @@ pub fn optimize_svg(path: &Path) -> Result<SvgOptimizeResult, Error> {
 }
 
 fn optimize_svg_content(content: &str) -> Result<(String, bool), Error> {
-    let svg_tag_pattern = Regex::new(r#"(?s)<svg\s+([^>]*?)>"#).map_err(|e| Error::SvgParse {
+    let svg_tag_pattern = Regex::new(r"(?s)<svg\s+([^>]*?)>").map_err(|e| Error::SvgParse {
         message: format!("failed to compile SVG tag regex: {e}")
     })?;
 
@@ -281,7 +281,7 @@ mod tests {
             path:     "/tmp/debug.svg".to_owned(),
             modified: true
         };
-        let debug_str = format!("{:?}", result);
+        let debug_str = format!("{result:?}");
         assert!(debug_str.contains("SvgOptimizeResult"));
         assert!(debug_str.contains("path"));
         assert!(debug_str.contains("modified"));
@@ -295,7 +295,7 @@ mod tests {
             Err(Error::SvgIo {
                 ..
             }) => {}
-            other => panic!("expected SvgIo error, got {:?}", other)
+            other => panic!("expected SvgIo error, got {other:?}")
         }
     }
 

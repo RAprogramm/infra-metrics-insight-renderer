@@ -32,6 +32,32 @@ impl Default for RetryConfig {
     }
 }
 
+/// Computes the next backoff delay, saturating to `u64::MAX` on overflow and
+/// clamping negative or non-finite `factor` to zero so a misconfigured
+/// [`RetryConfig`] cannot wrap the delay or trigger undefined cast behavior.
+fn next_backoff_delay(current_ms: u64, factor: f64) -> u64 {
+    let factor = if factor.is_finite() && factor >= 0.0 {
+        factor
+    } else {
+        0.0
+    };
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "current_ms originates from a u64 delay; factor is clamped non-negative \
+                  and finite above; overflow is detected via finite/range checks before cast"
+    )]
+    {
+        let scaled = (current_ms as f64) * factor;
+        if scaled.is_finite() && scaled < (u64::MAX as f64) {
+            scaled as u64
+        } else {
+            u64::MAX
+        }
+    }
+}
+
 /// Executes an async operation with exponential backoff retry logic.
 ///
 /// # Arguments
@@ -95,7 +121,7 @@ where
                 );
 
                 sleep(Duration::from_millis(delay_ms)).await;
-                delay_ms = (delay_ms as f64 * config.backoff_factor) as u64;
+                delay_ms = next_backoff_delay(delay_ms, config.backoff_factor);
                 attempt += 1;
             }
         }
@@ -109,6 +135,10 @@ mod tests {
     use super::*;
 
     #[test]
+    #[expect(
+        clippy::float_cmp,
+        reason = "2.0 has an exact IEEE-754 representation; comparison is deterministic"
+    )]
     fn retry_config_default_values() {
         let config = RetryConfig::default();
         assert_eq!(config.max_attempts, 3);
@@ -117,6 +147,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::float_cmp,
+        reason = "1.5 has an exact IEEE-754 representation; comparison is deterministic"
+    )]
     fn retry_config_custom_values() {
         let config = RetryConfig {
             max_attempts:     5,
@@ -179,18 +213,24 @@ mod tests {
         let result = retry_with_backoff(&config, "test", move || {
             let counter = counter_clone.clone();
             async move {
-                let mut count = counter.lock().unwrap();
-                *count += 1;
+                {
+                    let mut count = counter.lock().unwrap();
+                    *count += 1;
+                }
                 Err::<i32, _>(AppError::service("persistent failure"))
             }
         })
         .await;
 
-        assert!(result.is_err(), "should fail after max attempts",);
+        assert!(result.is_err(), "should fail after max attempts");
         assert_eq!(*counter.lock().unwrap(), 2);
     }
 
     #[test]
+    #[expect(
+        clippy::float_cmp,
+        reason = "Clone must preserve the exact bit pattern of backoff_factor"
+    )]
     fn retry_config_clone_creates_independent_copy() {
         let config1 = RetryConfig {
             max_attempts:     7,
@@ -206,7 +246,7 @@ mod tests {
     #[test]
     fn retry_config_debug_format() {
         let config = RetryConfig::default();
-        let debug_str = format!("{:?}", config);
+        let debug_str = format!("{config:?}");
         assert!(debug_str.contains("RetryConfig"));
         assert!(debug_str.contains("max_attempts"));
         assert!(debug_str.contains("initial_delay_ms"));
@@ -238,6 +278,42 @@ mod tests {
             Err::<i32, _>(AppError::service("immediate failure"))
         })
         .await;
-        assert!(result.is_err(), "should fail immediately",);
+        assert!(result.is_err(), "should fail immediately");
+    }
+
+    #[test]
+    fn next_backoff_delay_doubles_with_factor_two() {
+        assert_eq!(next_backoff_delay(100, 2.0), 200);
+        assert_eq!(next_backoff_delay(1, 2.0), 2);
+        assert_eq!(next_backoff_delay(0, 2.0), 0);
+    }
+
+    #[test]
+    fn next_backoff_delay_preserves_with_factor_one() {
+        assert_eq!(next_backoff_delay(500, 1.0), 500);
+    }
+
+    #[test]
+    fn next_backoff_delay_saturates_on_overflow() {
+        assert_eq!(next_backoff_delay(u64::MAX, 2.0), u64::MAX);
+        assert_eq!(next_backoff_delay(u64::MAX / 2, 10.0), u64::MAX);
+    }
+
+    #[test]
+    fn next_backoff_delay_clamps_negative_factor_to_zero() {
+        assert_eq!(next_backoff_delay(1000, -1.5), 0);
+        assert_eq!(next_backoff_delay(1000, -0.0001), 0);
+    }
+
+    #[test]
+    fn next_backoff_delay_clamps_non_finite_factor_to_zero() {
+        assert_eq!(next_backoff_delay(1000, f64::NAN), 0);
+        assert_eq!(next_backoff_delay(1000, f64::INFINITY), 0);
+        assert_eq!(next_backoff_delay(1000, f64::NEG_INFINITY), 0);
+    }
+
+    #[test]
+    fn next_backoff_delay_with_zero_factor_returns_zero() {
+        assert_eq!(next_backoff_delay(1_000_000, 0.0), 0);
     }
 }

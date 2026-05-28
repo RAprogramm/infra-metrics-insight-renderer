@@ -105,7 +105,7 @@ pub async fn fetch_contributor_activity(
 
     let stats: Vec<ContributorStats> = retry_with_backoff(
         retry_config,
-        &format!("contributor stats for {}/{}", owner, repo),
+        &format!("contributor stats for {owner}/{repo}"),
         || {
             let octocrab = octocrab_clone.clone();
             let owner = owner_str.clone();
@@ -125,10 +125,13 @@ pub async fn fetch_contributor_activity(
     )
     .await?;
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(|e| AppError::internal(format!("system time error: {e}")))?
-        .as_secs() as i64;
+    let now = i64::try_from(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|e| AppError::internal(format!("system time error: {e}")))?
+            .as_secs()
+    )
+    .unwrap_or(i64::MAX);
 
     let thirty_days_ago = now - (30 * 24 * 60 * 60);
 
@@ -163,7 +166,7 @@ pub async fn fetch_contributor_activity(
         });
     }
 
-    activities.sort_by(|a, b| b.commits.cmp(&a.commits));
+    activities.sort_by_key(|a| std::cmp::Reverse(a.commits));
 
     info!(
         "Found {} active contributors in last 30 days for {}/{}",
@@ -229,5 +232,109 @@ mod tests {
         };
 
         assert!(bot_activity.is_bot);
+    }
+
+    fn fast_retry() -> RetryConfig {
+        RetryConfig {
+            max_attempts:     1,
+            initial_delay_ms: 0,
+            backoff_factor:   1.0
+        }
+    }
+
+    fn mock_octocrab(server: &wiremock::MockServer) -> Octocrab {
+        Octocrab::builder()
+            .personal_token("test-token")
+            .base_uri(server.uri())
+            .expect("base_uri")
+            .build()
+            .expect("octocrab build")
+    }
+
+    #[tokio::test]
+    async fn fetch_contributor_activity_aggregates_recent_weeks() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let now_secs = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time")
+            .as_secs();
+        let recent_week = now_secs.saturating_sub(7 * 86400);
+        let stale_week = now_secs.saturating_sub(60 * 86400);
+        let body = format!(
+            r#"[
+                {{
+                    "author": {{ "login": "alice", "avatar_url": "https://example.com/a.png", "type": "User" }},
+                    "weeks": [
+                        {{ "w": {recent_week}, "a": 100, "d": 20, "c": 5 }},
+                        {{ "w": {stale_week}, "a": 999, "d": 999, "c": 99 }}
+                    ]
+                }},
+                {{
+                    "author": {{ "login": "bot[bot]", "avatar_url": "https://example.com/b.png", "type": "Bot" }},
+                    "weeks": [
+                        {{ "w": {recent_week}, "a": 1, "d": 1, "c": 1 }}
+                    ]
+                }}
+            ]"#
+        );
+        Mock::given(method("GET"))
+            .and(path("/repos/octo/cat/stats/contributors"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let activities = fetch_contributor_activity(&octocrab, "octo", "cat", &fast_retry())
+            .await
+            .expect("fetch should succeed");
+
+        assert_eq!(activities.len(), 2);
+        assert_eq!(activities[0].login, "alice");
+        assert_eq!(activities[0].commits, 5);
+        assert_eq!(activities[0].additions, 100);
+        assert!(!activities[0].is_bot);
+        assert_eq!(activities[1].login, "bot[bot]");
+        assert!(activities[1].is_bot);
+    }
+
+    #[tokio::test]
+    async fn fetch_contributor_activity_skips_contributors_without_recent_commits() {
+        use wiremock::{
+            Mock, MockServer, ResponseTemplate,
+            matchers::{method, path}
+        };
+
+        let server = MockServer::start().await;
+        let stale_week = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time")
+            .as_secs()
+            .saturating_sub(120 * 86400);
+        let body = format!(
+            r#"[
+                {{
+                    "author": {{ "login": "ghost", "avatar_url": "https://example.com/g.png", "type": "User" }},
+                    "weeks": [
+                        {{ "w": {stale_week}, "a": 1, "d": 1, "c": 7 }}
+                    ]
+                }}
+            ]"#
+        );
+        Mock::given(method("GET"))
+            .and(path("/repos/octo/cat/stats/contributors"))
+            .respond_with(ResponseTemplate::new(200).set_body_raw(body, "application/json"))
+            .mount(&server)
+            .await;
+
+        let octocrab = mock_octocrab(&server);
+        let activities = fetch_contributor_activity(&octocrab, "octo", "cat", &fast_retry())
+            .await
+            .expect("fetch should succeed");
+        assert!(activities.is_empty());
     }
 }

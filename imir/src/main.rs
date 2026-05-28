@@ -222,7 +222,7 @@ struct SlugsArgs {
     #[arg(long = "config", value_name = "PATH")]
     config: PathBuf,
 
-    /// Event name (schedule, push, pull_request).
+    /// Event name (schedule, push, `pull_request`).
     #[arg(long = "event", value_name = "EVENT")]
     event: Option<String>
 }
@@ -446,15 +446,15 @@ async fn run() -> Result<(), Error> {
     let cli = Cli::parse();
 
     match cli.command {
-        Some(Command::Targets(args)) => run_targets(args),
-        Some(Command::OpenSource(args)) => run_open_source(args),
+        Some(Command::Targets(args)) => run_targets(&args),
+        Some(Command::OpenSource(args)) => run_open_source(&args),
         Some(Command::Badge(args)) => run_badge(args),
         Some(Command::Discover(args)) => run_discover(args).await,
         Some(Command::Sync(args)) => run_sync(args).await,
-        Some(Command::Readme(args)) => run_readme(args),
+        Some(Command::Readme(args)) => run_readme(&args),
         Some(Command::Contributors(args)) => run_contributors(args).await,
-        Some(Command::Slugs(args)) => run_slugs(args),
-        Some(Command::Artifact(args)) => run_artifact(args),
+        Some(Command::Slugs(args)) => run_slugs(&args),
+        Some(Command::Artifact(args)) => run_artifact(&args),
         Some(Command::File(args)) => run_file(args),
         Some(Command::Git(args)) => run_git(args),
         Some(Command::Gh(args)) => run_gh(args),
@@ -464,7 +464,7 @@ async fn run() -> Result<(), Error> {
     }
 }
 
-fn run_targets(args: TargetsArgs) -> Result<(), Error> {
+fn run_targets(args: &TargetsArgs) -> Result<(), Error> {
     run_targets_from_path(&args.config, args.pretty)
 }
 
@@ -497,7 +497,7 @@ fn write_targets_document<W: io::Write>(
 ///
 /// Returns an [`Error`] when repository inputs are invalid or serialization
 /// fails.
-fn run_open_source(args: OpenSourceArgs) -> Result<(), Error> {
+fn run_open_source(args: &OpenSourceArgs) -> Result<(), Error> {
     let trimmed = args
         .input
         .as_deref()
@@ -524,12 +524,12 @@ fn run_legacy_targets(args: &LegacyTargetsArgs) -> Result<(), Error> {
 
 fn run_badge(args: BadgeArgs) -> Result<(), Error> {
     match args.command {
-        BadgeCommand::Generate(arguments) => run_badge_generate(arguments),
-        BadgeCommand::GenerateAll(arguments) => run_badge_generate_all(arguments)
+        BadgeCommand::Generate(arguments) => run_badge_generate(&arguments),
+        BadgeCommand::GenerateAll(arguments) => run_badge_generate_all(&arguments)
     }
 }
 
-fn run_badge_generate(args: BadgeGenerateArgs) -> Result<(), Error> {
+fn run_badge_generate(args: &BadgeGenerateArgs) -> Result<(), Error> {
     let document = load_targets(&args.config)?;
     let target = document
         .targets
@@ -542,7 +542,7 @@ fn run_badge_generate(args: BadgeGenerateArgs) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_badge_generate_all(args: BadgeGenerateAllArgs) -> Result<(), Error> {
+fn run_badge_generate_all(args: &BadgeGenerateAllArgs) -> Result<(), Error> {
     use rayon::prelude::*;
     use tracing::{debug, info};
 
@@ -554,29 +554,26 @@ fn run_badge_generate_all(args: BadgeGenerateAllArgs) -> Result<(), Error> {
         document.targets.len()
     );
 
-    let results: Vec<_> = document
+    let failed: Vec<String> = document
         .targets
         .par_iter()
-        .map(|target| {
+        .filter_map(|target| {
             debug!("Generating badge for {}", target.slug);
-            generate_badge_assets(target, output_dir).map(|_| target.slug.clone())
+            match generate_badge_assets(target, output_dir) {
+                Ok(_) => None,
+                Err(e) => {
+                    eprintln!("Failed to generate badge for {}: {e}", target.slug);
+                    Some(format!("{}: {e}", target.slug))
+                }
+            }
         })
         .collect();
 
-    let mut error_count = 0;
-    let mut failed_targets = Vec::new();
-    for result in results {
-        if let Err(e) = result {
-            eprintln!("Failed to generate badge: {}", e);
-            error_count += 1;
-            failed_targets.push(e.to_string());
-        }
-    }
-
-    if error_count > 0 {
+    if !failed.is_empty() {
         return Err(Error::validation(format!(
-            "{} badge(s) failed to generate",
-            error_count
+            "{} badge(s) failed to generate: {}",
+            failed.len(),
+            failed.join("; ")
         )));
     }
 
@@ -696,7 +693,7 @@ async fn run_sync(args: SyncArgs) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_readme(args: ReadmeArgs) -> Result<(), Error> {
+fn run_readme(args: &ReadmeArgs) -> Result<(), Error> {
     use imir::update_readme;
 
     info!("Loading targets from {}", args.config.display());
@@ -735,7 +732,7 @@ async fn run_contributors(args: ContributorsArgs) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_slugs(args: SlugsArgs) -> Result<(), Error> {
+fn run_slugs(args: &SlugsArgs) -> Result<(), Error> {
     info!(
         "Detecting impacted slugs: base={}, head={}, files={:?}",
         args.base_ref, args.head_ref, args.files
@@ -744,7 +741,7 @@ fn run_slugs(args: SlugsArgs) -> Result<(), Error> {
     let document = load_targets(&args.config)?;
     let all_slugs: Vec<String> = document.targets.iter().map(|t| t.slug.clone()).collect();
 
-    let files: Vec<&str> = args.files.iter().map(|s| s.as_str()).collect();
+    let files: Vec<&str> = args.files.iter().map(std::string::String::as_str).collect();
 
     let base_ref = if args.event == Some("schedule".to_string()) {
         ""
@@ -762,7 +759,7 @@ fn run_slugs(args: SlugsArgs) -> Result<(), Error> {
     Ok(())
 }
 
-fn run_artifact(args: ArtifactArgs) -> Result<(), Error> {
+fn run_artifact(args: &ArtifactArgs) -> Result<(), Error> {
     info!(
         "Locating artifact: temp={}, workspace={}",
         args.temp_artifact, args.workspace
@@ -826,7 +823,11 @@ fn run_gh(args: GhArgs) -> Result<(), Error> {
                 pr_args.repo, pr_args.head, pr_args.base
             );
 
-            let label_refs: Vec<&str> = pr_args.labels.iter().map(|s| s.as_str()).collect();
+            let label_refs: Vec<&str> = pr_args
+                .labels
+                .iter()
+                .map(std::string::String::as_str)
+                .collect();
 
             let result = gh_pr_create(
                 &pr_args.repo,
@@ -965,9 +966,8 @@ mod tests {
         ])
         .expect("failed to parse CLI");
 
-        let args = match cli.command.expect("missing targets command") {
-            Command::Targets(args) => args,
-            _ => panic!("unexpected command variant")
+        let Command::Targets(args) = cli.command.expect("missing targets command") else {
+            panic!("unexpected command variant")
         };
         assert!(args.pretty);
 
@@ -1039,6 +1039,95 @@ targets:
         let manifest_path = output_dir.join("example-repo.json");
         assert!(svg_path.exists());
         assert!(manifest_path.exists());
+    }
+
+    #[test]
+    fn badge_generate_all_writes_assets_for_every_target() {
+        let temp = tempdir().expect("failed to create tempdir");
+        let config_path = temp.path().join("targets.yaml");
+        let output_dir = temp.path().join("artifacts");
+        let yaml = r"
+targets:
+  - owner: example
+    repository: alpha
+    type: open_source
+    slug: example-alpha
+  - owner: example
+    repository: beta
+    type: open_source
+    slug: example-beta
+";
+        fs::write(&config_path, yaml).expect("failed to write config");
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "badge",
+            "generate-all",
+            "--config",
+            config_path.to_str().expect("utf8"),
+            "--output",
+            output_dir.to_str().expect("utf8")
+        ])
+        .expect("failed to parse badge generate-all command");
+
+        let args = match cli.command.expect("missing command") {
+            Command::Badge(arguments) => arguments,
+            other => panic!("unexpected command variant: {other:?}")
+        };
+
+        run_badge(args).expect("batch badge generation failed");
+
+        for slug in ["example-alpha", "example-beta"] {
+            assert!(output_dir.join(format!("{slug}.svg")).exists());
+            assert!(output_dir.join(format!("{slug}.json")).exists());
+        }
+    }
+
+    #[test]
+    fn badge_generate_all_reports_failed_slugs_in_error() {
+        let temp = tempdir().expect("failed to create tempdir");
+        let config_path = temp.path().join("targets.yaml");
+        let blocker_path = temp.path().join("blocker");
+        fs::write(&blocker_path, "occupied").expect("failed to write blocker");
+
+        let yaml = r"
+targets:
+  - owner: example
+    repository: alpha
+    type: open_source
+    slug: example-alpha
+";
+        fs::write(&config_path, yaml).expect("failed to write config");
+
+        let cli = Cli::try_parse_from([
+            env!("CARGO_PKG_NAME"),
+            "badge",
+            "generate-all",
+            "--config",
+            config_path.to_str().expect("utf8"),
+            "--output",
+            blocker_path.to_str().expect("utf8")
+        ])
+        .expect("failed to parse badge generate-all command");
+
+        let args = match cli.command.expect("missing command") {
+            Command::Badge(arguments) => arguments,
+            other => panic!("unexpected command variant: {other:?}")
+        };
+
+        let error = run_badge(args).expect_err("expected batch failure");
+        match error {
+            imir::Error::Validation {
+                message
+            } => {
+                assert!(
+                    message.contains("example-alpha"),
+                    "error must name the failing slug, got: {message}"
+                );
+                assert!(message.contains("1 badge(s) failed to generate"));
+            }
+            other => panic!("unexpected error variant: {other:?}")
+        }
     }
 
     #[test]
@@ -1130,8 +1219,8 @@ targets:
             other => panic!("unexpected command variant: {other:?}")
         };
 
-        let result = super::run_targets(args);
-        assert!(result.is_err(), "should fail for missing file",);
+        let result = super::run_targets(&args);
+        assert!(result.is_err(), "should fail for missing file");
     }
 
     #[test]
@@ -1153,8 +1242,8 @@ targets:
             other => panic!("unexpected command variant: {other:?}")
         };
 
-        let result = super::run_targets(args);
-        assert!(result.is_err(), "should fail for invalid YAML",);
+        let result = super::run_targets(&args);
+        assert!(result.is_err(), "should fail for invalid YAML");
     }
 
     #[test]

@@ -7,7 +7,7 @@
 /// - Profile badges
 /// - Open-source repositories
 /// - Private repositories
-use std::{fs, path::Path};
+use std::{fmt::Write as _, fs, path::Path};
 
 use masterror::AppError;
 use tracing::{debug, info};
@@ -97,7 +97,9 @@ pub fn update_readme(readme_path: &Path, document: &TargetsDocument) -> Result<(
         &generate_profile_table(&profiles)
     )?;
 
-    if updated != content {
+    if updated == content {
+        info!("No changes to README");
+    } else {
         info!("Writing updated README to {}", readme_path.display());
         fs::write(readme_path, updated).map_err(|e| {
             AppError::service(format!(
@@ -106,8 +108,6 @@ pub fn update_readme(readme_path: &Path, document: &TargetsDocument) -> Result<(
             ))
         })?;
         info!("README updated successfully");
-    } else {
-        info!("No changes to README");
     }
 
     Ok(())
@@ -161,12 +161,13 @@ fn generate_repository_table(targets: &[&RenderTarget]) -> String {
             target.slug
         );
 
-        table.push_str(&format!(
+        let _ = write!(
+            table,
             "\n    <tr>\n      <td><code>{}</code></td>\n      <td><img alt=\"{} metrics\" src=\"{}\" /></td>\n    </tr>",
             escape_html(&full_name),
             escape_html(repo_name),
             escape_html(&metrics_url)
-        ));
+        );
     }
 
     table.push_str("\n  </tbody>\n</table>");
@@ -190,12 +191,13 @@ fn generate_private_section(targets: &[&RenderTarget]) -> String {
             target.slug
         );
 
-        table.push_str(&format!(
+        let _ = write!(
+            table,
             "\n    <tr>\n      <td><code>{}</code></td>\n      <td><img alt=\"{} metrics\" src=\"{}\" /></td>\n    </tr>",
             escape_html(&full_name),
             escape_html(repo_name),
             escape_html(&metrics_url)
-        ));
+        );
     }
 
     table.push_str("\n  </tbody>\n</table>");
@@ -217,12 +219,13 @@ fn generate_profile_table(targets: &[&RenderTarget]) -> String {
             target.slug
         );
 
-        table.push_str(&format!(
+        let _ = write!(
+            table,
             "\n    <tr>\n      <td><code>{}</code></td>\n      <td><img alt=\"{} profile metrics\" src=\"{}\" /></td>\n    </tr>",
             escape_html(&target.owner),
             escape_html(&target.owner),
             escape_html(&metrics_url)
-        ));
+        );
     }
 
     table.push_str("\n  </tbody>\n</table>");
@@ -259,8 +262,8 @@ mod tests {
             repository: repo.map(String::from),
             kind,
             branch_name: "main".to_owned(),
-            target_path: format!("metrics/{}.svg", slug),
-            temp_artifact: format!(".metrics-tmp/{}.svg", slug),
+            target_path: format!("metrics/{slug}.svg"),
+            temp_artifact: format!(".metrics-tmp/{slug}.svg"),
             time_zone: "UTC".to_owned(),
             display_name: slug.to_owned(),
             contributors_branch: "main".to_owned(),
@@ -280,9 +283,9 @@ mod tests {
     fn generate_repository_table_creates_valid_html() {
         let target1 = sample_target("user1", Some("repo1"), TargetKind::OpenSource, "repo1");
         let target2 = sample_target("user2", Some("repo2"), TargetKind::OpenSource, "repo2");
-        let targets = vec![&target1, &target2];
+        let target_refs = vec![&target1, &target2];
 
-        let table = generate_repository_table(&targets);
+        let table = generate_repository_table(&target_refs);
         assert!(table.contains("<table>"));
         assert!(table.contains("user1/repo1"));
         assert!(table.contains("user2/repo2"));
@@ -323,47 +326,38 @@ mod tests {
         let readme_path = temp.path().join("README.md");
 
         let initial_content = format!(
-            r#"# Test README
+            r"# Test README
 
 <details>
-{}
+{OPEN_SOURCE_START_MARKER}
 
-{}
+{UPDATE_MARKER}
 
 Old content here
 
-{}
+{DETAILS_END_MARKER}
 </details>
 
 <details>
-{}
+{PRIVATE_START_MARKER}
 
-{}
+{UPDATE_MARKER}
 
 Old private content
 
-{}
+{DETAILS_END_MARKER}
 </details>
 
 <details>
-{}
+{PROFILE_START_MARKER}
 
-{}
+{UPDATE_MARKER}
 
 Old profile content
 
-{}
+{DETAILS_END_MARKER}
 </details>
-"#,
-            OPEN_SOURCE_START_MARKER,
-            UPDATE_MARKER,
-            DETAILS_END_MARKER,
-            PRIVATE_START_MARKER,
-            UPDATE_MARKER,
-            DETAILS_END_MARKER,
-            PROFILE_START_MARKER,
-            UPDATE_MARKER,
-            DETAILS_END_MARKER
+"
         );
 
         fs::write(&readme_path, initial_content).expect("failed to write README");
