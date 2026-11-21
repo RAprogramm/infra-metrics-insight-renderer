@@ -252,6 +252,17 @@ runs:
         "${HOME}/.local/bin/imir" svg check \
           --path "${TARGET_PATH}"
 
+    - name: Create issue on failure
+      if: failure()
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.classic_token }}
+      run: |
+        gh issue create \
+          --repo "${{ github.repository }}" \
+          --title "Metrics render failed ($(date -u +%Y-%m-%d))" \
+          --body "Workflow: ${{ github.workflow }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" || true
+
     - name: Commit metrics update
       shell: bash
       run: |
