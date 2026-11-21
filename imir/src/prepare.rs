@@ -13,6 +13,65 @@ use serde::Serialize;
 
 use crate::error::Error;
 
+/// Status of GitHub API rate limits.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct RateLimitStatus {
+    /// Core API limit.
+    pub core_limit:        usize,
+    /// Remaining core API requests.
+    pub core_remaining:    usize,
+    /// Core API reset timestamp (unix seconds).
+    pub core_reset:        u64,
+    /// Search API limit.
+    pub search_limit:      usize,
+    /// Remaining search API requests.
+    pub search_remaining:  usize,
+    /// Search API reset timestamp (unix seconds).
+    pub search_reset:      u64,
+    /// GraphQL API limit (if available).
+    pub graphql_limit:     Option<usize>,
+    /// Remaining GraphQL API requests (if available).
+    pub graphql_remaining: Option<usize>,
+    /// GraphQL API reset timestamp (if available).
+    pub graphql_reset:     Option<u64>
+}
+
+/// Checks the current GitHub API rate limits.
+///
+/// # Errors
+///
+/// Returns an error when the rate limit cannot be fetched.
+pub async fn check_rate_limit(token: Option<&str>) -> Result<RateLimitStatus, Error> {
+    let octocrab = if let Some(token) = token {
+        Octocrab::builder()
+            .personal_token(token.to_string())
+            .build()
+            .map_err(|error| Error::service(format!("failed to build GitHub client: {error}")))?
+    } else {
+        Octocrab::builder()
+            .build()
+            .map_err(|error| Error::service(format!("failed to build GitHub client: {error}")))?
+    };
+
+    let rate = octocrab
+        .ratelimit()
+        .get()
+        .await
+        .map_err(|error| Error::service(format!("failed to fetch rate limit: {error}")))?;
+
+    Ok(RateLimitStatus {
+        core_limit:        rate.resources.core.limit,
+        core_remaining:    rate.resources.core.remaining,
+        core_reset:        rate.resources.core.reset,
+        search_limit:      rate.resources.search.limit,
+        search_remaining:  rate.resources.search.remaining,
+        search_reset:      rate.resources.search.reset,
+        graphql_limit:     rate.resources.graphql.as_ref().map(|value| value.limit),
+        graphql_remaining: rate.resources.graphql.as_ref().map(|value| value.remaining),
+        graphql_reset:     rate.resources.graphql.as_ref().map(|value| value.reset)
+    })
+}
+
 /// Result of preparing the metrics Docker image.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PrepareMetricsImageResult {

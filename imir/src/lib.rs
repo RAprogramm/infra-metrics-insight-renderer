@@ -80,7 +80,9 @@ pub use normalizer::{
 pub use open_source::{
     OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets
 };
-pub use prepare::{PrepareMetricsImageResult, prepare_metrics_image};
+pub use prepare::{
+    PrepareMetricsImageResult, RateLimitStatus, check_rate_limit, prepare_metrics_image
+};
 pub use readme::update_readme;
 pub use render::{
     ProfileInputs, RepositoryInputs, normalize_profile_inputs, normalize_repository_inputs

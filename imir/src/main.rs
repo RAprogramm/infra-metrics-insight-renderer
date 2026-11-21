@@ -15,7 +15,7 @@ use std::{
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
-    DiscoveryConfig, Error, TargetsDocument, check_svg, detect_impacted_slugs,
+    DiscoveryConfig, Error, TargetsDocument, check_rate_limit, check_svg, detect_impacted_slugs,
     discover_badge_users, discover_stargazer_repositories, generate_badge_assets, gh_pr_create,
     git_commit_push, load_targets, locate_artifact, move_file, normalize_profile_inputs,
     normalize_repository_inputs, optimize_svg, prepare_metrics_image,
@@ -70,7 +70,9 @@ enum Command {
     Svg(SvgArgs),
     /// Prepare the lowlighter/metrics Docker image.
     #[command(name = "prepare-metrics-image")]
-    PrepareMetricsImage(PrepareMetricsImageArgs)
+    PrepareMetricsImage(PrepareMetricsImageArgs),
+    /// Check GitHub API rate limits.
+    Health(HealthArgs)
 }
 
 #[derive(Debug, Args)]
@@ -447,6 +449,13 @@ struct PrepareMetricsImageArgs {
     actor: Option<String>
 }
 
+#[derive(Debug, Args)]
+struct HealthArgs {
+    /// GitHub token used for the rate-limit check.
+    #[arg(long = "token", value_name = "TOKEN")]
+    token: Option<String>
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main() {
@@ -489,6 +498,7 @@ async fn run() -> Result<(), Error> {
         Some(Command::Render(args)) => run_render(args),
         Some(Command::Svg(args)) => run_svg(args),
         Some(Command::PrepareMetricsImage(args)) => run_prepare_metrics_image(args).await,
+        Some(Command::Health(args)) => run_health(args).await,
         None => run_legacy_targets(&cli.legacy)
     }
 }
@@ -968,6 +978,17 @@ fn run_svg(args: SvgArgs) -> Result<(), Error> {
 
 async fn run_prepare_metrics_image(args: PrepareMetricsImageArgs) -> Result<(), Error> {
     let result = prepare_metrics_image(args.token.as_deref(), args.actor.as_deref()).await?;
+
+    let json = serde_json::to_string(&result)
+        .map_err(|error| Error::service(format!("failed to serialize result: {error}")))?;
+
+    println!("{json}");
+
+    Ok(())
+}
+
+async fn run_health(args: HealthArgs) -> Result<(), Error> {
+    let result = check_rate_limit(args.token.as_deref()).await?;
 
     let json = serde_json::to_string(&result)
         .map_err(|error| Error::service(format!("failed to serialize result: {error}")))?;
