@@ -14,6 +14,7 @@ SPDX-License-Identifier: MIT
 <p align="center">
   <a href="https://github.com/RAprogramm/infra-metrics-insight-renderer/actions/workflows/ci.yml">
     <img src="https://github.com/RAprogramm/infra-metrics-insight-renderer/actions/workflows/ci.yml/badge.svg" alt="CI Status" />
+    <img src="https://github.com/RAprogramm/infra-metrics-insight-renderer/actions/workflows/render-all.yml/badge.svg" alt="Metrics Render" />
   </a>
   <a href="https://codecov.io/gh/RAprogramm/infra-metrics-insight-renderer">
     <img src="https://codecov.io/gh/RAprogramm/infra-metrics-insight-renderer/branch/main/graph/badge.svg" alt="Coverage" />
