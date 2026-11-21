@@ -1175,6 +1175,7 @@ dependencies = [
  "clap",
  "criterion",
  "indicatif",
+ "jsonwebtoken",
  "masterror",
  "octocrab",
  "proptest",

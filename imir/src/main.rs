@@ -72,7 +72,9 @@ enum Command {
     #[command(name = "prepare-metrics-image")]
     PrepareMetricsImage(PrepareMetricsImageArgs),
     /// Check GitHub API rate limits.
-    Health(HealthArgs)
+    Health(HealthArgs),
+    /// GitHub App authentication helpers.
+    App(AppArgs)
 }
 
 #[derive(Debug, Args)]
@@ -456,6 +458,32 @@ struct HealthArgs {
     token: Option<String>
 }
 
+#[derive(Debug, Args)]
+struct AppArgs {
+    #[command(subcommand)]
+    command: AppCommand
+}
+
+#[derive(Debug, Subcommand)]
+enum AppCommand {
+    /// Mint a GitHub App installation access token.
+    #[command(name = "installation-token")]
+    InstallationToken(AppInstallationTokenArgs)
+}
+
+#[derive(Debug, Args)]
+struct AppInstallationTokenArgs {
+    /// GitHub App ID.
+    #[arg(long = "app-id", value_name = "ID", required = true)]
+    app_id:          u64,
+    /// Path to the App private key PEM file.
+    #[arg(long = "private-key", value_name = "PATH", required = true)]
+    private_key:     PathBuf,
+    /// Installation ID to mint a token for.
+    #[arg(long = "installation-id", value_name = "ID", required = true)]
+    installation_id: u64
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main() {
@@ -499,6 +527,7 @@ async fn run() -> Result<(), Error> {
         Some(Command::Svg(args)) => run_svg(args),
         Some(Command::PrepareMetricsImage(args)) => run_prepare_metrics_image(args).await,
         Some(Command::Health(args)) => run_health(args).await,
+        Some(Command::App(args)) => run_app(args).await,
         None => run_legacy_targets(&cli.legacy)
     }
 }
@@ -995,6 +1024,42 @@ async fn run_health(args: HealthArgs) -> Result<(), Error> {
 
     println!("{json}");
 
+    Ok(())
+}
+
+async fn run_app(args: AppArgs) -> Result<(), Error> {
+    match args.command {
+        AppCommand::InstallationToken(args) => run_app_installation_token(args).await
+    }
+}
+
+async fn run_app_installation_token(args: AppInstallationTokenArgs) -> Result<(), Error> {
+    let key_pem = std::fs::read_to_string(&args.private_key).map_err(|e| {
+        Error::service(format!(
+            "failed to read private key {}: {e}",
+            args.private_key.display()
+        ))
+    })?;
+
+    let encoding_key = jsonwebtoken::EncodingKey::from_rsa_pem(key_pem.as_bytes())
+        .map_err(|e| Error::service(format!("invalid private key PEM: {e}")))?;
+
+    let octocrab = octocrab::Octocrab::builder()
+        .app(args.app_id.into(), encoding_key)
+        .build()
+        .map_err(|e| Error::service(format!("failed to build GitHub App client: {e}")))?;
+
+    let installation_id = octocrab::models::InstallationId(args.installation_id);
+    let token = octocrab
+        .apps()
+        .create_installation_access_token(
+            installation_id,
+            &octocrab::models::apps::CreateInstallationAccessToken::default()
+        )
+        .await
+        .map_err(|e| Error::service(format!("failed to mint installation token: {e}")))?;
+
+    println!("{}", token.token);
     Ok(())
 }
 
