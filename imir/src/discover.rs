@@ -13,7 +13,10 @@ use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info};
 
-use crate::retry::{RetryConfig, retry_with_backoff};
+use crate::{
+    TargetKind,
+    retry::{RetryConfig, retry_with_backoff}
+};
 
 const BADGE_PUBLIC: &str = "imir-badge-simple-public.svg";
 const BADGE_PRIVATE: &str = "imir-badge-simple-private.svg";
@@ -43,7 +46,13 @@ impl Default for DiscoveryConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiscoveredRepository {
     pub owner:      String,
-    pub repository: String
+    pub repository: String,
+    #[serde(default = "default_target_kind")]
+    pub kind:       TargetKind
+}
+
+const fn default_target_kind() -> TargetKind {
+    TargetKind::OpenSource
 }
 
 impl std::fmt::Display for DiscoveredRepository {
@@ -110,7 +119,7 @@ async fn check_repo_has_badge(
     owner: &str,
     repo: &str,
     retry_config: &RetryConfig
-) -> Result<Option<String>, AppError> {
+) -> Result<Option<TargetKind>, AppError> {
     let octocrab_clone = octocrab.clone();
     let owner_str = owner.to_string();
     let repo_str = repo.to_string();
@@ -134,7 +143,7 @@ async fn check_repo_has_badge(
     Ok(readme_result.ok().and_then(|content| {
         content
             .decoded_content()
-            .and_then(|decoded| extract_repo_from_readme(&decoded))
+            .and_then(|decoded| detect_badge_kind(&decoded))
     }))
 }
 
@@ -327,11 +336,12 @@ async fn collect_user_badge_repos(
         let has_badge =
             check_repo_has_badge(octocrab, username, &repo.name, &config.retry_config).await?;
 
-        if has_badge.is_some() {
+        if let Some(kind) = has_badge {
             seen.insert(key);
             let repo_info = DiscoveredRepository {
-                owner:      username.to_owned(),
-                repository: repo.name.clone()
+                owner: username.to_owned(),
+                repository: repo.name.clone(),
+                kind
             };
             debug!("Found IMIR badge in repository: {}", repo_info);
             discovered.push(repo_info);
@@ -405,6 +415,23 @@ pub fn extract_repo_from_readme(readme_content: &str) -> Option<String> {
     }
 
     None
+}
+
+/// Detects the badge kind from README content.
+///
+/// Returns the [`TargetKind`] corresponding to the first badge found
+/// in the README, or `None` if no badge is present.
+#[must_use]
+pub fn detect_badge_kind(readme_content: &str) -> Option<TargetKind> {
+    if readme_content.contains(BADGE_PRIVATE) {
+        Some(TargetKind::PrivateProject)
+    } else if readme_content.contains(BADGE_PROFILE) {
+        Some(TargetKind::Profile)
+    } else if readme_content.contains(BADGE_PUBLIC) || readme_content.contains(LEGACY_BADGE) {
+        Some(TargetKind::OpenSource)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -550,7 +577,8 @@ More content.
     fn discovered_repository_display() {
         let repo = DiscoveredRepository {
             owner:      "testowner".to_string(),
-            repository: "testrepo".to_string()
+            repository: "testrepo".to_string(),
+            kind:       TargetKind::OpenSource
         };
         assert_eq!(repo.to_string(), "testowner/testrepo");
     }
@@ -559,7 +587,8 @@ More content.
     fn discovered_repository_clone() {
         let repo = DiscoveredRepository {
             owner:      "owner".to_string(),
-            repository: "repo".to_string()
+            repository: "repo".to_string(),
+            kind:       TargetKind::OpenSource
         };
         let cloned = repo.clone();
         assert_eq!(repo.owner, cloned.owner);
@@ -625,7 +654,8 @@ More content.
     fn discovered_repository_serialization() {
         let repo = DiscoveredRepository {
             owner:      "testowner".to_string(),
-            repository: "testrepo".to_string()
+            repository: "testrepo".to_string(),
+            kind:       TargetKind::OpenSource
         };
         let json = serde_json::to_string(&repo).expect("serialization failed");
         assert!(json.contains("testowner"));
@@ -641,7 +671,8 @@ More content.
     fn discovered_repository_debug_format() {
         let repo = DiscoveredRepository {
             owner:      "owner".to_string(),
-            repository: "repo".to_string()
+            repository: "repo".to_string(),
+            kind:       TargetKind::OpenSource
         };
         let debug_str = format!("{repo:?}");
         assert!(debug_str.contains("DiscoveredRepository"));
@@ -772,7 +803,7 @@ More content.
         let badge = check_repo_has_badge(&octocrab, "alice", "demo", &fast_retry())
             .await
             .expect("fetch should succeed");
-        assert_eq!(badge.as_deref(), Some("demo"));
+        assert_eq!(badge, Some(TargetKind::OpenSource));
     }
 
     #[tokio::test]

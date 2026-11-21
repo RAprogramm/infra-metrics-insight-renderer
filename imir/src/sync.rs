@@ -29,17 +29,19 @@ use crate::{DiscoveredRepository, TargetConfig, TargetEntry, TargetKind};
 /// ```no_run
 /// use std::path::Path;
 ///
-/// use imir::{DiscoveredRepository, sync_targets};
+/// use imir::{DiscoveredRepository, TargetKind, sync_targets};
 ///
 /// # async fn example() -> Result<(), masterror::AppError> {
 /// let discovered = vec![DiscoveredRepository {
 ///     owner:      "user".to_string(),
-///     repository: "repo".to_string()
+///     repository: "repo".to_string(),
+///     kind:       TargetKind::OpenSource
 /// }];
 /// sync_targets(Path::new("targets/targets.yaml"), &discovered)?;
 /// # Ok(())
 /// # }
 /// ```
+#[allow(clippy::too_many_lines)]
 pub fn sync_targets(
     config_path: &Path,
     discovered: &[DiscoveredRepository]
@@ -87,28 +89,30 @@ pub fn sync_targets(
     ));
     info!("Processing {} discovered repositories", discovered.len());
     for repo in discovered {
-        let key = (repo.owner.clone(), Some(repo.repository.clone()));
+        let (repository, slug) = if repo.kind == TargetKind::Profile {
+            (None, Some(repo.repository.clone()))
+        } else {
+            (Some(repo.repository.clone()), None)
+        };
+        let key = (repo.owner.clone(), repository.clone());
 
         if existing_repos.contains(&key) {
             debug!("Skipping existing repository: {}", repo);
         } else {
-            debug!("Adding new repository: {}", repo);
-            let new_entry = TargetEntry {
-                owner:               repo.owner.clone(),
-                repository:          Some(repo.repository.clone()),
-                target_type:         TargetKind::OpenSource,
-                branch_name:         None,
+            config.targets.push(TargetEntry {
+                owner: repo.owner.clone(),
+                repository,
+                target_type: repo.kind,
+                branch_name: None,
                 contributors_branch: None,
-                target_path:         None,
-                temp_artifact:       None,
-                time_zone:           None,
-                slug:                None,
-                display_name:        None,
-                include_private:     None,
-                badge:               None
-            };
-
-            config.targets.push(new_entry);
+                target_path: None,
+                temp_artifact: None,
+                time_zone: None,
+                slug,
+                display_name: None,
+                include_private: None,
+                badge: None
+            });
             added_count += 1;
             pb.set_message(format!("Added {added_count} new repositories..."));
         }
@@ -179,7 +183,8 @@ targets:
 
         let discovered = vec![DiscoveredRepository {
             owner:      "newuser".to_string(),
-            repository: "newrepo".to_string()
+            repository: "newrepo".to_string(),
+            kind:       TargetKind::OpenSource
         }];
 
         let added = sync_targets(&config_path, &discovered).expect("sync failed");
@@ -204,7 +209,8 @@ targets:
 
         let discovered = vec![DiscoveredRepository {
             owner:      "existing".to_string(),
-            repository: "repo".to_string()
+            repository: "repo".to_string(),
+            kind:       TargetKind::OpenSource
         }];
 
         let added = sync_targets(&config_path, &discovered).expect("sync failed");
@@ -226,15 +232,18 @@ targets:
         let discovered = vec![
             DiscoveredRepository {
                 owner:      "user1".to_string(),
-                repository: "repo1".to_string()
+                repository: "repo1".to_string(),
+                kind:       TargetKind::OpenSource
             },
             DiscoveredRepository {
                 owner:      "user2".to_string(),
-                repository: "repo2".to_string()
+                repository: "repo2".to_string(),
+                kind:       TargetKind::OpenSource
             },
             DiscoveredRepository {
                 owner:      "user1".to_string(),
-                repository: "repo3".to_string()
+                repository: "repo3".to_string(),
+                kind:       TargetKind::OpenSource
             },
         ];
 
@@ -265,7 +274,8 @@ targets:
 
         let discovered = vec![DiscoveredRepository {
             owner:      "newuser".to_string(),
-            repository: "newrepo".to_string()
+            repository: "newrepo".to_string(),
+            kind:       TargetKind::OpenSource
         }];
 
         sync_targets(&config_path, &discovered).expect("sync failed");
@@ -289,7 +299,8 @@ targets:
 
         let discovered = vec![DiscoveredRepository {
             owner:      "alpha".to_string(),
-            repository: "repo".to_string()
+            repository: "repo".to_string(),
+            kind:       TargetKind::OpenSource
         }];
 
         sync_targets(&config_path, &discovered).expect("sync failed");
@@ -311,7 +322,8 @@ targets:
 
         let discovered = vec![DiscoveredRepository {
             owner:      "user".to_string(),
-            repository: "repo".to_string()
+            repository: "repo".to_string(),
+            kind:       TargetKind::OpenSource
         }];
 
         let result = sync_targets(&config_path, &discovered);
@@ -325,7 +337,8 @@ targets:
 
         let discovered = vec![DiscoveredRepository {
             owner:      "user".to_string(),
-            repository: "repo".to_string()
+            repository: "repo".to_string(),
+            kind:       TargetKind::OpenSource
         }];
 
         let result = sync_targets(&config_path, &discovered);
