@@ -37,7 +37,7 @@ Discovery process:
 1. **Stargazers check**: Fetch users who starred `infra-metrics-insight-renderer`
 2. **README analysis**: For each stargazer, fetch and parse their repository README
 3. **Badge detection**: Search for IMIR badge URLs in README content
-4. **Badge type identification**: Determine metrics type based on badge color/filename
+4. **Badge detection**: Confirm IMIR badge presence (badge type is not distinguished; all discovered targets are registered as open-source)
 
 ### Step 5: IMIR finds badge in user repository
 
@@ -49,11 +49,11 @@ When badge is detected:
 
 ### Step 6: IMIR generates metrics
 
-Based on badge type, IMIR generates appropriate metrics using `lowlighter/metrics`:
+IMIR generates metrics using `lowlighter/metrics` for each registered target:
 
-- **Public repositories**: Languages, traffic, contributors
-- **Private repositories**: Private insights (requires token with private access)
+- **Open-source repositories**: Languages, traffic, contributors
 - **Profiles**: GitHub profile dashboard
+- **Private repositories**: not distinguished at discovery time; treated as open-source targets
 
 **Future enhancement**: Support query parameters in badge URL to customize displayed metrics.
 
@@ -71,7 +71,7 @@ Generated metrics workflow:
 After successful initial generation:
 
 1. Add target to `targets/targets.yaml` configuration
-2. Target included in daily scheduled refresh (04:00 UTC)
+2. Target included in daily scheduled refresh (03:19 UTC)
 3. Metrics automatically updated once per day
 4. User always sees fresh metrics without manual intervention
 
@@ -117,7 +117,7 @@ See `.github/workflows/` for automated rendering workflows:
 - `render-all.yml`: Daily scheduled refresh for all targets
 - `render-repository.yml`: Reusable workflow for repository metrics
 - `render-open-source.yml`: Bundled workflow for public repositories
-- `badge-sync.yml`: Synchronizes lightweight badge placeholders
+- `badge-sync.yml`: Generates badge SVGs into `assets/badges/generated` for changed slugs
 
 ## Future Enhancements
 

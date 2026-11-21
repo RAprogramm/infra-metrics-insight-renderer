@@ -19,12 +19,6 @@ SPDX-License-Identifier: MIT
   <a href="https://codecov.io/gh/RAprogramm/infra-metrics-insight-renderer">
     <img src="https://codecov.io/gh/RAprogramm/infra-metrics-insight-renderer/branch/main/graph/badge.svg" alt="Coverage" />
   </a>
-  <a href="https://crates.io/crates/imir">
-    <img src="https://img.shields.io/crates/v/imir.svg" alt="Crate Version" />
-  </a>
-  <a href="https://docs.rs/imir">
-    <img src="https://docs.rs/imir/badge.svg" alt="Documentation" />
-  </a>
   <a href="./LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
   </a>
@@ -43,8 +37,8 @@ SPDX-License-Identifier: MIT
 
 IMIR is a Rust CLI tool for automated GitHub metrics generation and repository discovery. It provides commands for:
 
-- **GitHub CLI operations**: Create PRs, manage issues via `gh` integration
-- **Git automation**: Commit, push, branch management
+- **GitHub CLI operations**: Create pull requests via `gh` integration
+- **Git automation**: Commit and push changes
 - **Metrics generation**: Render repository and profile dashboards using [lowlighter/metrics](https://github.com/lowlighter/metrics)
 - **Discovery**: Automatically detect repositories using IMIR badges
 - **Badge generation**: Create lightweight SVG badges for discovered targets
@@ -91,7 +85,7 @@ See [WORKFLOW.md](WORKFLOW.md) for detailed discovery and metrics generation flo
 
 ## Registered Users
 
-IMIR automatically discovers and tracks users who add badges to their repositories.
+IMIR discovers repositories by scanning stargazers of this repository and checking their README files for IMIR badges. Only the first page of each user's repositories is scanned.
 
 <details>
 <summary>Profile badges</summary>
@@ -262,7 +256,19 @@ metrics-renderer/
 │   │   ├── badge.rs        # Badge SVG generation
 │   │   ├── readme.rs       # README table updates
 │   │   ├── gh.rs           # GitHub CLI operations
-│   │   └── git.rs          # Git operations
+│   │   ├── git.rs          # Git operations
+│   │   ├── render.rs       # Render input normalization
+│   │   ├── svg.rs          # SVG optimization and checks
+│   │   ├── sync.rs         # Target synchronization
+│   │   ├── prepare.rs      # Metrics image preparation
+│   │   ├── artifact.rs     # Artifact handling
+│   │   ├── file.rs         # File operations
+│   │   ├── slug.rs         # Slug generation
+│   │   ├── slugs.rs        # Slug diffing
+│   │   ├── open_source.rs  # Open-source normalization
+│   │   ├── contributors.rs # Contributor handling
+│   │   ├── retry.rs        # Retry logic
+│   │   └── error.rs        # Error types
 │   └── Cargo.toml
 ├── targets/
 │   └── targets.yaml        # Metrics targets configuration
@@ -285,13 +291,7 @@ metrics-renderer/
 
 ## Release Process
 
-1. Ensure all CI checks pass on main branch
-2. Bump version in `imir/Cargo.toml`
-3. Create annotated tag: `git tag -a v0.1.0 -m "Release v0.1.0"`
-4. Push tag: `git push origin v0.1.0`
-5. Create GitHub release (triggers automated build workflow)
-6. Workflow builds and uploads `imir-x86_64-unknown-linux-gnu.tar.gz` binary
-7. Binary is automatically downloaded by downstream workflows
+Releases are created automatically. Pushing changes under `imir/` to `main` triggers `auto-release-imir.yml`, which bumps the patch version in `imir/Cargo.toml`, runs tests, builds the release binary, commits the version bump, and creates a GitHub release with the binary attached. No manual tagging or version bumping is required.
 
 ## License
 
