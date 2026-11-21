@@ -99,6 +99,26 @@ imir badge generate \
   --output metrics/
 ```
 
+### Render Diagnostics
+
+Check GitHub API rate limits before rendering:
+
+```bash
+imir health --token $GITHUB_TOKEN
+```
+
+Validate a rendered SVG for rate-limit or plugin errors:
+
+```bash
+imir svg check --path metrics/profile.svg
+```
+
+Prepare the lowlighter/metrics Docker image:
+
+```bash
+imir prepare-metrics-image --token $GITHUB_TOKEN
+```
+
 ### Workflow Automation Commands
 
 Commands designed for GitHub Actions workflows:
