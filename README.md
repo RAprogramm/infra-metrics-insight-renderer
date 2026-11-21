@@ -73,13 +73,9 @@ Add IMIR badge to your repository README:
 > [![IMIR](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/assets/badges/imir-badge-simple-profile.svg)](https://github.com/RAprogramm/infra-metrics-insight-renderer)
 > ```
 
-Add metrics placeholder:
+Install the IMIR GitHub App on your account (choose the repositories you want metrics for). The app opens a pull request adding the badge and metrics placeholder to your README automatically.
 
-```markdown
-![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/<repo-name>.svg)
-```
-
-Star this repository and wait for automatic discovery (runs daily at 02:00 UTC).
+Star this repository so IMIR discovers your account during the daily scan (runs at 02:00 UTC).
 
 See [WORKFLOW.md](WORKFLOW.md) for detailed discovery and metrics generation flow.
 
