@@ -6,7 +6,7 @@ name: Render metrics for selected targets
 
 on:
   schedule:
-    - cron: "19 3 * * *"
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:
