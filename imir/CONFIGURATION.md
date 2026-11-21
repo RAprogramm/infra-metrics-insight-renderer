@@ -6,6 +6,12 @@ SPDX-License-Identifier: MIT
 
 # Configuration Guide
 
+## Profile render profiles
+
+Use a light profile for frequent updates (fewer plugins, lower `*_load`) and a
+full profile for occasional deep renders. Keep `include_private` disabled unless
+required to reduce GitHub API usage.
+
 This document describes all configuration options available in `imir`.
 
 ## Table of Contents

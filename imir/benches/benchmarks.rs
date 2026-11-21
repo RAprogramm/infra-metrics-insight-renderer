@@ -4,8 +4,8 @@
 
 use std::{fmt::Write as _, hint::black_box};
 
-use criterion::{Criterion, criterion_group, criterion_main};
-use imir::parse_targets;
+use criterion::{criterion_group, criterion_main, Criterion};
+use imir::{normalize_profile_inputs, parse_targets};
 
 fn benchmark_parse_targets(c: &mut Criterion) {
     let yaml = r"
@@ -92,11 +92,29 @@ targets:
     });
 }
 
+fn benchmark_normalize_profile_inputs(c: &mut Criterion) {
+    c.bench_function("normalize_profile_inputs", |b| {
+        b.iter(|| {
+            normalize_profile_inputs(
+                black_box("octocat"),
+                Some("main"),
+                Some("metrics/profile.svg"),
+                Some(".metrics-tmp/profile.svg"),
+                Some("UTC"),
+                Some("profile"),
+                Some("true"),
+            )
+            .expect("normalize failed")
+        });
+    });
+}
+
 criterion_group!(
     benches,
     benchmark_parse_targets,
     benchmark_target_normalization,
     benchmark_large_config_parse,
-    benchmark_yaml_parsing
+    benchmark_yaml_parsing,
+    benchmark_normalize_profile_inputs
 );
 criterion_main!(benches);
