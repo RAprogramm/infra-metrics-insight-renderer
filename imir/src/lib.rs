@@ -85,5 +85,5 @@ pub use render::{
 };
 pub use slug::SlugStrategy;
 pub use slugs::{SlugDetectionResult, detect_impacted_slugs};
-pub use svg::{SvgOptimizeResult, optimize_svg};
+pub use svg::{SvgCheckResult, SvgOptimizeResult, check_svg, optimize_svg};
 pub use sync::sync_targets;

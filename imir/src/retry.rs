@@ -135,22 +135,14 @@ mod tests {
     use super::*;
 
     #[test]
-    #[expect(
-        clippy::float_cmp,
-        reason = "2.0 has an exact IEEE-754 representation; comparison is deterministic"
-    )]
     fn retry_config_default_values() {
         let config = RetryConfig::default();
         assert_eq!(config.max_attempts, 3);
         assert_eq!(config.initial_delay_ms, 1000);
-        assert_eq!(config.backoff_factor, 2.0);
+        assert_eq!(config.backoff_factor.to_bits(), 2.0_f64.to_bits());
     }
 
     #[test]
-    #[expect(
-        clippy::float_cmp,
-        reason = "1.5 has an exact IEEE-754 representation; comparison is deterministic"
-    )]
     fn retry_config_custom_values() {
         let config = RetryConfig {
             max_attempts:     5,
@@ -159,7 +151,7 @@ mod tests {
         };
         assert_eq!(config.max_attempts, 5);
         assert_eq!(config.initial_delay_ms, 500);
-        assert_eq!(config.backoff_factor, 1.5);
+        assert_eq!(config.backoff_factor.to_bits(), 1.5_f64.to_bits());
     }
 
     #[tokio::test]
@@ -227,10 +219,6 @@ mod tests {
     }
 
     #[test]
-    #[expect(
-        clippy::float_cmp,
-        reason = "Clone must preserve the exact bit pattern of backoff_factor"
-    )]
     fn retry_config_clone_creates_independent_copy() {
         let config1 = RetryConfig {
             max_attempts:     7,
@@ -240,7 +228,10 @@ mod tests {
         let config2 = config1.clone();
         assert_eq!(config1.max_attempts, config2.max_attempts);
         assert_eq!(config1.initial_delay_ms, config2.initial_delay_ms);
-        assert_eq!(config1.backoff_factor, config2.backoff_factor);
+        assert_eq!(
+            config1.backoff_factor.to_bits(),
+            config2.backoff_factor.to_bits()
+        );
     }
 
     #[test]

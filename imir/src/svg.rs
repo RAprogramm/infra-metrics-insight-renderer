@@ -79,6 +79,52 @@ pub fn optimize_svg(path: &Path) -> Result<SvgOptimizeResult, Error> {
     })
 }
 
+/// Result of an SVG health check.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SvgCheckResult {
+    /// Path to the checked SVG file.
+    pub path:       String,
+    /// Whether any issue markers were found.
+    pub has_issues: bool,
+    /// Issue markers detected in the file.
+    pub issues:     Vec<String>
+}
+
+/// Checks an SVG file for common render error markers.
+///
+/// This is useful in CI to detect partial metric renders caused by GitHub API
+/// rate limits or missing token scopes. The check is non-destructive and does
+/// not modify the file.
+///
+/// # Errors
+///
+/// Returns [`Error::SvgIo`] when the file cannot be read.
+pub fn check_svg(path: &Path) -> Result<SvgCheckResult, Error> {
+    let content = fs::read_to_string(path).map_err(|source| error::svg_io_error(path, source))?;
+
+    let lower = content.to_ascii_lowercase();
+    let markers = [
+        "429",
+        "too many requests",
+        "unexpected error",
+        "plugin error",
+        "rate limit"
+    ];
+
+    let mut issues = Vec::new();
+    for marker in markers {
+        if lower.contains(marker) {
+            issues.push(marker.to_string());
+        }
+    }
+
+    Ok(SvgCheckResult {
+        path: path.to_string_lossy().into_owned(),
+        has_issues: !issues.is_empty(),
+        issues
+    })
+}
+
 fn optimize_svg_content(content: &str) -> Result<(String, bool), Error> {
     let svg_tag_pattern = Regex::new(r"(?s)<svg\s+([^>]*?)>").map_err(|e| Error::SvgParse {
         message: format!("failed to compile SVG tag regex: {e}")
@@ -122,13 +168,7 @@ fn optimize_svg_content(content: &str) -> Result<(String, bool), Error> {
 
     let fixed_width = "880";
     let actual_height = height
-        .and_then(|h| {
-            if h.ends_with('%') || h.contains("auto") {
-                None
-            } else {
-                Some(h)
-            }
-        })
+        .filter(|h| !(h.ends_with('%') || h.contains("auto")))
         .unwrap_or("2048");
     let viewbox_value = format!("0 0 {fixed_width} {actual_height}");
 

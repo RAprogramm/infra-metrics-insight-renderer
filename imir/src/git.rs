@@ -382,7 +382,7 @@ mod tests {
         std::env::set_current_dir(&prev_cwd).expect("restore cwd");
         let result = result.expect("commit+push should succeed");
         assert!(result.pushed);
-        assert!(!result.default_base.is_empty());
+        assert_ne!(result.default_base, "");
     }
 
     #[test]

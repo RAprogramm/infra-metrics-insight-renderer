@@ -59,7 +59,8 @@ brew install openssl pkg-config
 
 ### Rate Limiting
 
-**Problem**: Discovery or sync operations fail with rate limit errors.
+**Problem**: Discovery or sync operations fail with rate limit errors, or rendered
+SVG contains `429`/`Unexpected error` markers.
 
 ```
 Error: GitHub API rate limit exceeded
@@ -86,6 +87,22 @@ Error: GitHub API rate limit exceeded
 4. **Use retry logic** (built-in):
    - Default: 3 attempts with exponential backoff
    - Automatically retries on transient failures
+
+### Profile render rate limits (lowlighter/metrics)
+
+**Problem**: `metrics/profile.svg` contains `429`, `Unexpected error`, or missing
+sections after rendering.
+
+**Cause**: too many plugins and high `*_load` values generate parallel GitHub API
+requests that hit the secondary rate limit.
+
+**Solution**:
+1. Reduce `repositories` (base) to 30 or lower.
+2. Lower `plugin_*_load` and `plugin_*_limit` values.
+3. Disable the heaviest plugins: `skyline`, `pagespeed`, `traffic`, `code`,
+   `lines`, `reactions`.
+4. Use a classic PAT with the minimum required scopes.
+5. Run `imir svg check --path metrics/profile.svg` after rendering.
 
 ### Authentication Failures
 

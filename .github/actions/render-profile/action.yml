@@ -98,8 +98,17 @@ runs:
         base_hireable: yes
         base_indepth: yes
         base_skip: yes
+        repositories: 30
         config_display: large
         config_padding: 100%, 0
+        retries: 3
+        retries_delay: 10
+        plugins_errors_fatal: no
+        quota_required_rest: 1000
+        quota_required_graphql: 100
+        quota_required_search: 10
+        optimize: yes
+        debug: no
         config_octicon: yes
         config_timezone: ${{ env.TIME_ZONE }}
         config_twemoji: yes
@@ -112,13 +121,13 @@ runs:
         plugin_activity_days: 14
         plugin_activity_filter: all
         plugin_activity_limit: 5
-        plugin_activity_load: 300
+        plugin_activity_load: 100
         plugin_activity_timestamps: yes
         plugin_activity_visibility: ${{ env.PLUGIN_ACTIVITY_VISIBILITY }}
         plugin_code: yes
         plugin_code_days: 3
         plugin_code_lines: 12
-        plugin_code_load: 400
+        plugin_code_load: 100
         plugin_code_visibility: ${{ env.PLUGIN_CODE_VISIBILITY }}
         plugin_discussions: yes
         plugin_discussions_categories: yes
@@ -131,7 +140,7 @@ runs:
         plugin_habits_charts: no
         plugin_habits_days: 14
         plugin_habits_facts: yes
-        plugin_habits_from: 200
+        plugin_habits_from: 100
         plugin_habits_languages_limit: 8
         plugin_habits_languages_threshold: "0%"
         plugin_habits_trim: yes
@@ -148,12 +157,12 @@ runs:
         plugin_languages_indepth: yes
         plugin_languages_recent_categories: data, markup, programming, prose
         plugin_languages_recent_days: 14
-        plugin_languages_recent_load: 300
-        plugin_languages_sections: "most-used, recently-used"
+        plugin_languages_recent_load: 100
+        plugin_languages_sections: "most-used"
         plugin_languages_threshold: "0%"
         plugin_lines: yes
         plugin_lines_history_limit: 1
-        plugin_lines_repositories_limit: 4
+        plugin_lines_repositories_limit: 2
         plugin_lines_sections: "base,repositories,history"
         plugin_notable: yes
         plugin_notable_from: organization
@@ -161,39 +170,24 @@ runs:
         plugin_notable_repositories: yes
         plugin_notable_self: yes
         plugin_notable_types: commit
-        plugin_pagespeed: yes
-        plugin_pagespeed_detailed: yes
-        plugin_pagespeed_pwa: yes
-        plugin_pagespeed_screenshot: yes
-        plugin_pagespeed_url: .user.website
+        plugin_pagespeed: no
         plugin_people: yes
-        plugin_people_limit: 24
+        plugin_people_limit: 12
         plugin_people_size: 28
         plugin_people_types: "followers, following, sponsoring, sponsors"
         plugin_projects: yes
         plugin_projects_limit: 4
         plugin_reactions: yes
         plugin_reactions_display: absolute
-        plugin_reactions_limit: 200
-        plugin_reactions_limit_discussions: 100
-        plugin_reactions_limit_discussions_comments: 100
-        plugin_reactions_limit_issues: 100
+        plugin_reactions_limit: 50
+        plugin_reactions_limit_discussions: 50
+        plugin_reactions_limit_discussions_comments: 50
+        plugin_reactions_limit_issues: 50
         plugin_repositories: yes
         plugin_repositories_featured: "RustManifest,masterror, telegram-webapp-sdk"
         plugin_repositories_order: "featured, pinned, starred, random"
         plugin_repositories_affiliations: ${{ env.PLUGIN_REPOSITORIES_AFFILIATIONS }}
-        plugin_skyline: yes
-        plugin_skyline_compatibility: yes
-        plugin_skyline_frames: 60
-        plugin_skyline_quality: 0.5
-        plugin_skyline_settings: |
-          {
-            "url": "https://skyline.github.com/${login}/${year}",
-            "ready": "[...document.querySelectorAll('span')].map(span => span.innerText).includes('Share on Twitter')",
-            "wait": 1,
-            "hide": "button, footer, a"
-          }
-        plugin_skyline_year: 2025
+        plugin_skyline: no
         plugin_sponsors: yes
         plugin_sponsors_past: yes
         plugin_sponsors_sections: "goal, list, about"
@@ -202,11 +196,11 @@ runs:
         plugin_stargazers: yes
         plugin_stargazers_charts: yes
         plugin_stargazers_charts_type: classic
-        plugin_stargazers_days: 14
+        plugin_stargazers_days: 7
         plugin_stars: yes
         plugin_stars_limit: 8
         plugin_support: yes
-        plugin_traffic: yes
+        plugin_traffic: no
         repositories_forks: yes
 
     - name: Locate generated artifact
@@ -237,6 +231,15 @@ runs:
         set -euo pipefail
 
         "${HOME}/.local/bin/imir" svg optimize \
+          --path "${TARGET_PATH}"
+
+    - name: Check SVG for render issues
+      continue-on-error: true
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        "${HOME}/.local/bin/imir" svg check \
           --path "${TARGET_PATH}"
 
     - name: Commit metrics update

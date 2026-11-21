@@ -15,9 +15,9 @@ use std::{
 
 use clap::{ArgAction, Args, Parser, Subcommand};
 use imir::{
-    DiscoveryConfig, Error, TargetsDocument, detect_impacted_slugs, discover_badge_users,
-    discover_stargazer_repositories, generate_badge_assets, gh_pr_create, git_commit_push,
-    load_targets, locate_artifact, move_file, normalize_profile_inputs,
+    DiscoveryConfig, Error, TargetsDocument, check_svg, detect_impacted_slugs,
+    discover_badge_users, discover_stargazer_repositories, generate_badge_assets, gh_pr_create,
+    git_commit_push, load_targets, locate_artifact, move_file, normalize_profile_inputs,
     normalize_repository_inputs, optimize_svg, resolve_open_source_repositories, sync_targets
 };
 use tracing::info;
@@ -409,7 +409,20 @@ struct SvgArgs {
 #[derive(Debug, Subcommand)]
 enum SvgCommand {
     /// Optimize SVG for GitHub display.
-    Optimize(SvgOptimizeArgs)
+    Optimize(SvgOptimizeArgs),
+    /// Check SVG for render error markers.
+    Check(SvgCheckArgs)
+}
+
+#[derive(Debug, Args)]
+struct SvgCheckArgs {
+    /// Path to the SVG file to check.
+    #[arg(long = "path", value_name = "PATH", required = true)]
+    path: PathBuf,
+
+    /// Exit with an error if issues are found.
+    #[arg(long = "fail-on-issues", action = ArgAction::SetTrue)]
+    fail_on_issues: bool
 }
 
 #[derive(Debug, Args)]
@@ -850,7 +863,7 @@ fn run_gh(args: GhArgs) -> Result<(), Error> {
 }
 
 fn run_render(args: RenderArgs) -> Result<(), Error> {
-    match args.command {
+    let value = match args.command {
         RenderCommand::NormalizeProfile(profile_args) => {
             info!(
                 "Normalizing profile inputs: user={}",
@@ -867,12 +880,8 @@ fn run_render(args: RenderArgs) -> Result<(), Error> {
                 profile_args.include_private.as_deref()
             )?;
 
-            let json = serde_json::to_string(&result)
-                .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?;
-
-            println!("{json}");
-
-            Ok(())
+            serde_json::to_value(&result)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?
         }
         RenderCommand::NormalizeRepository(repo_args) => {
             info!(
@@ -891,31 +900,54 @@ fn run_render(args: RenderArgs) -> Result<(), Error> {
                 repo_args.time_zone.as_deref()
             )?;
 
-            let json = serde_json::to_string(&result)
-                .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?;
-
-            println!("{json}");
-
-            Ok(())
+            serde_json::to_value(&result)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?
         }
-    }
+    };
+
+    let json = serde_json::to_string(&value)
+        .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?;
+
+    println!("{json}");
+
+    Ok(())
 }
 
 fn run_svg(args: SvgArgs) -> Result<(), Error> {
-    match args.command {
+    let (value, fail_on_issues, has_issues, issues) = match args.command {
         SvgCommand::Optimize(optimize_args) => {
             info!("Optimizing SVG: path={}", optimize_args.path.display());
 
             let result = optimize_svg(&optimize_args.path)?;
-
-            let json = serde_json::to_string(&result)
+            let value = serde_json::to_value(&result)
                 .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?;
-
-            println!("{json}");
-
-            Ok(())
+            (value, false, false, Vec::new())
         }
+        SvgCommand::Check(check_args) => {
+            info!("Checking SVG: path={}", check_args.path.display());
+
+            let result = check_svg(&check_args.path)?;
+            let has_issues = result.has_issues;
+            let issues = result.issues.clone();
+            let value = serde_json::to_value(&result)
+                .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?;
+            (value, check_args.fail_on_issues, has_issues, issues)
+        }
+    };
+
+    let json = serde_json::to_string(&value)
+        .map_err(|e| Error::service(format!("failed to serialize result: {e}")))?;
+
+    println!("{json}");
+
+    if fail_on_issues && has_issues {
+        return Err(Error::service(format!(
+            "SVG contains render issues: {}",
+            issues.join(", ")
+        )));
     }
+
+    Ok(())
 }
 
 #[cfg(test)]

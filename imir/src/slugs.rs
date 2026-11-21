@@ -169,7 +169,7 @@ mod tests {
         };
 
         assert!(!result.has_any);
-        assert!(result.slugs.is_empty());
+        assert_eq!(result.slugs.len(), 0);
     }
 
     #[test]
@@ -198,7 +198,7 @@ mod tests {
         let result = detect_impacted_slugs("", "HEAD", &["README.md"], &[])
             .expect("short-circuit must succeed even with empty slug set");
         assert!(!result.has_any);
-        assert!(result.slugs.is_empty());
+        assert_eq!(result.slugs.len(), 0);
     }
 
     fn init_repo_with_two_commits() -> tempfile::TempDir {
