@@ -80,6 +80,14 @@ runs:
         set -euo pipefail
         mkdir -p "$(dirname "${TEMP_ARTIFACT}")"
 
+    - name: Check GitHub API rate limit
+      continue-on-error: true
+      shell: bash
+      run: |
+        set -euo pipefail
+        "${HOME}/.local/bin/imir" health \
+          --token "${{ inputs.classic_token }}"
+
     - name: Prepare metrics docker image
       shell: bash
       run: |
