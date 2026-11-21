@@ -21,19 +21,19 @@ pub struct ProfileInputs {
     pub plugin_repositories_affiliations: String,
     pub plugin_activity_visibility: String,
     pub plugin_code_visibility: String,
-    pub plugin_achievements_secrets: String,
+    pub plugin_achievements_secrets: String
 }
 
 /// Normalized repository render inputs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepositoryInputs {
-    pub target_owner: String,
-    pub target_repo: String,
-    pub target_path: String,
-    pub temp_artifact: String,
-    pub branch_name: String,
+    pub target_owner:        String,
+    pub target_repo:         String,
+    pub target_path:         String,
+    pub temp_artifact:       String,
+    pub branch_name:         String,
     pub contributors_branch: String,
-    pub time_zone: String,
+    pub time_zone:           String
 }
 
 /// Normalizes profile render inputs with defaults and validation.
@@ -63,7 +63,7 @@ pub fn normalize_profile_inputs(
     temp_artifact: Option<&str>,
     time_zone: Option<&str>,
     display_name: Option<&str>,
-    include_private: Option<&str>,
+    include_private: Option<&str>
 ) -> Result<ProfileInputs, AppError> {
     if target_user.is_empty() {
         return Err(AppError::validation("target_user must be provided"));
@@ -95,7 +95,7 @@ pub fn normalize_profile_inputs(
         plugin_repos_affil,
         plugin_activity_vis,
         plugin_code_vis,
-        plugin_achievements_sec,
+        plugin_achievements_sec
     ) = match private_normalized.as_str() {
         "" | "false" | "0" | "no" => (
             "false",
@@ -103,7 +103,7 @@ pub fn normalize_profile_inputs(
             "owner, organization_member",
             "public",
             "public",
-            "no",
+            "no"
         ),
         "true" | "1" | "yes" => (
             "true",
@@ -111,11 +111,11 @@ pub fn normalize_profile_inputs(
             "owner, collaborator, organization_member",
             "all",
             "all",
-            "yes",
+            "yes"
         ),
         _ => {
             return Err(AppError::validation(
-                "include_private must be a boolean value",
+                "include_private must be a boolean value"
             ));
         }
     };
@@ -132,7 +132,7 @@ pub fn normalize_profile_inputs(
         plugin_repositories_affiliations: plugin_repos_affil.to_string(),
         plugin_activity_visibility: plugin_activity_vis.to_string(),
         plugin_code_visibility: plugin_code_vis.to_string(),
-        plugin_achievements_secrets: plugin_achievements_sec.to_string(),
+        plugin_achievements_secrets: plugin_achievements_sec.to_string()
     })
 }
 
@@ -167,7 +167,7 @@ pub fn normalize_repository_inputs(
     temp_artifact: Option<&str>,
     branch_name: Option<&str>,
     contributors_branch: Option<&str>,
-    time_zone: Option<&str>,
+    time_zone: Option<&str>
 ) -> Result<RepositoryInputs, AppError> {
     if target_repo.is_empty() {
         return Err(AppError::validation("target_repo must be provided"));
@@ -193,7 +193,7 @@ pub fn normalize_repository_inputs(
 
     let branch = branch_name.filter(|s| !s.is_empty()).map_or_else(
         || format!("ci/metrics-refresh-{target_repo}"),
-        str::to_string,
+        str::to_string
     );
 
     let contrib_branch = contributors_branch
@@ -206,7 +206,7 @@ pub fn normalize_repository_inputs(
 
     if contrib_branch.contains(char::is_whitespace) {
         return Err(AppError::validation(
-            "contributors_branch cannot contain whitespace",
+            "contributors_branch cannot contain whitespace"
         ));
     }
 
@@ -215,13 +215,13 @@ pub fn normalize_repository_inputs(
         .unwrap_or("Asia/Ho_Chi_Minh");
 
     Ok(RepositoryInputs {
-        target_owner: owner,
-        target_repo: target_repo.to_string(),
-        target_path: path,
-        temp_artifact: artifact,
-        branch_name: branch,
+        target_owner:        owner,
+        target_repo:         target_repo.to_string(),
+        target_path:         path,
+        temp_artifact:       artifact,
+        branch_name:         branch,
         contributors_branch: contrib_branch.to_string(),
-        time_zone: tz.to_string(),
+        time_zone:           tz.to_string()
     })
 }
 
@@ -252,7 +252,7 @@ mod tests {
             Some("custom-tmp.svg"),
             Some("UTC"),
             Some("custom"),
-            Some("true"),
+            Some("true")
         )
         .unwrap();
 
@@ -307,7 +307,7 @@ mod tests {
             None,
             None,
             None,
-            None,
+            None
         )
         .unwrap();
 
@@ -328,7 +328,7 @@ mod tests {
             Some("custom-tmp.svg"),
             Some("custom-branch"),
             Some("develop"),
-            Some("UTC"),
+            Some("UTC")
         )
         .unwrap();
 
@@ -353,7 +353,7 @@ mod tests {
             None,
             None,
             Some("branch with spaces"),
-            None,
+            None
         );
         assert!(result.is_err());
     }

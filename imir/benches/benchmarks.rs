@@ -4,7 +4,7 @@
 
 use std::{fmt::Write as _, hint::black_box};
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use imir::{normalize_profile_inputs, parse_targets};
 
 fn benchmark_parse_targets(c: &mut Criterion) {
@@ -102,7 +102,7 @@ fn benchmark_normalize_profile_inputs(c: &mut Criterion) {
                 Some(".metrics-tmp/profile.svg"),
                 Some("UTC"),
                 Some("profile"),
-                Some("true"),
+                Some("true")
             )
             .expect("normalize failed")
         });
