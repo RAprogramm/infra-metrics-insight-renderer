@@ -6,74 +6,35 @@ SPDX-License-Identifier: MIT
 
 # IMIR Discovery and Metrics Generation Workflow
 
-This document describes the automated discovery and metrics generation flow.
+This document describes the target workflow and the current legacy implementation.
 
-## User Onboarding Flow
+## Target Flow (GitHub App)
 
-### Step 1: User adds badge to their README
+1. **Install App**: User installs the IMIR GitHub App and selects the account/repositories to include.
+2. **Star**: User stars `RAprogramm/infra-metrics-insight-renderer`.
+3. **Auto PR**: IMIR opens a pull request in the user's README with the IMIR badge and metrics block. No manual edits, no user token.
+4. **Merge**: User merges the pull request.
+5. **Render**: IMIR renders metrics (profile, open-source repository, or private repository) using a GitHub App installation token (`ghs_`) with read-only permissions.
+6. **Store & serve**: SVG is committed to `metrics/<slug>.svg` in this repository and served via `raw.githubusercontent.com`.
+7. **Refresh**: Metrics refresh once per day and on relevant push/webhook events.
 
-User adds appropriate IMIR badge to their repository README:
+## Current Flow (Legacy)
 
-- **Public repositories**: `imir-badge-simple-public.svg`
-- **Private repositories**: `imir-badge-simple-private.svg`
-- **GitHub profiles**: `imir-badge-simple-profile.svg`
+The current implementation still uses a classic PAT (`secrets.CLASSIC`) for rendering and discovery. Migration to the GitHub App flow is in progress.
 
-### Step 2: User adds metrics placeholder
+### Discovery
 
-User adds placeholder where generated metrics will be displayed:
+- Runs daily at 02:00 UTC (`sync-targets.yml`).
+- Scans stargazers of this repository.
+- Checks the first page of each stargazer's repositories for IMIR badges in README files.
+- Detected targets are added to `targets/targets.yaml`.
 
-```markdown
-![Metrics](https://raw.githubusercontent.com/RAprogramm/infra-metrics-insight-renderer/main/metrics/<repo-name>.svg)
-```
+### Rendering
 
-### Step 3: IMIR checks who needs metrics
-
-IMIR discovery system runs on schedule (daily at 02:00 UTC) to detect new users.
-
-### Step 4: IMIR discovers repositories
-
-Discovery process:
-
-1. **Stargazers check**: Fetch users who starred `infra-metrics-insight-renderer`
-2. **README analysis**: For each stargazer, fetch and parse their repository README
-3. **Badge detection**: Search for IMIR badge URLs in README content
-4. **Badge detection**: Confirm IMIR badge presence (badge type is not distinguished; all discovered targets are registered as open-source)
-
-### Step 5: IMIR finds badge in user repository
-
-When badge is detected:
-
-- Extract repository owner and name
-- Identify badge type (public/private/profile)
-- Validate repository exists and is accessible
-
-### Step 6: IMIR generates metrics
-
-IMIR generates metrics using `lowlighter/metrics` for each registered target:
-
-- **Open-source repositories**: Languages, traffic, contributors
-- **Profiles**: GitHub profile dashboard
-- **Private repositories**: not distinguished at discovery time; treated as open-source targets
-
-**Future enhancement**: Support query parameters in badge URL to customize displayed metrics.
-
-### Step 7: IMIR stores and serves metrics
-
-Generated metrics workflow:
-
-1. Render SVG dashboard via `lowlighter/metrics` Docker action
-2. Commit SVG to `metrics/<slug>.svg` in this repository
-3. User's placeholder automatically displays metrics via `raw.githubusercontent.com` URL
-4. No additional infrastructure required
-
-### Step 8: IMIR adds to daily refresh schedule
-
-After successful initial generation:
-
-1. Add target to `targets/targets.yaml` configuration
-2. Target included in daily scheduled refresh (03:19 UTC)
-3. Metrics automatically updated once per day
-4. User always sees fresh metrics without manual intervention
+- Runs daily at 03:00 UTC (`render-all.yml`).
+- Renders targets with `lowlighter/metrics`.
+- Commits SVG artifacts to `metrics/`.
+- Serves images via `raw.githubusercontent.com`.
 
 ## Configuration Files
 
