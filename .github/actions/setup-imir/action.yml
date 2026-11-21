@@ -18,7 +18,7 @@ inputs:
 outputs:
   version:
     description: 'Downloaded imir version'
-    value: ${{ steps.download.outputs.version }}
+    value: ${{ steps.version.outputs.version }}
 
 runs:
   using: composite
@@ -36,8 +36,16 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token || github.token }}
 
+    - name: Cache imir binary
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.local/bin/imir
+        key: imir-${{ steps.version.outputs.version }}-${{ runner.os }}-${{ runner.arch }}
+
     - name: Download imir binary
       id: download
+      if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         set -euo pipefail
