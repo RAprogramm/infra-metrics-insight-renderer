@@ -18,7 +18,8 @@ use imir::{
     DiscoveryConfig, Error, TargetsDocument, check_svg, detect_impacted_slugs,
     discover_badge_users, discover_stargazer_repositories, generate_badge_assets, gh_pr_create,
     git_commit_push, load_targets, locate_artifact, move_file, normalize_profile_inputs,
-    normalize_repository_inputs, optimize_svg, resolve_open_source_repositories, sync_targets
+    normalize_repository_inputs, optimize_svg, prepare_metrics_image,
+    resolve_open_source_repositories, sync_targets
 };
 use tracing::info;
 
@@ -66,7 +67,10 @@ enum Command {
     /// Render action input normalization.
     Render(RenderArgs),
     /// SVG optimization and post-processing.
-    Svg(SvgArgs)
+    Svg(SvgArgs),
+    /// Prepare the lowlighter/metrics Docker image.
+    #[command(name = "prepare-metrics-image")]
+    PrepareMetricsImage(PrepareMetricsImageArgs)
 }
 
 #[derive(Debug, Args)]
@@ -432,6 +436,17 @@ struct SvgOptimizeArgs {
     path: PathBuf
 }
 
+#[derive(Debug, Args)]
+struct PrepareMetricsImageArgs {
+    /// GitHub token used to authenticate to ghcr.io.
+    #[arg(long = "token", value_name = "TOKEN")]
+    token: Option<String>,
+
+    /// GitHub actor used for ghcr.io login.
+    #[arg(long = "actor", value_name = "ACTOR")]
+    actor: Option<String>
+}
+
 /// Entry point that reports errors and sets the appropriate exit status.
 #[tokio::main]
 async fn main() {
@@ -473,6 +488,7 @@ async fn run() -> Result<(), Error> {
         Some(Command::Gh(args)) => run_gh(args),
         Some(Command::Render(args)) => run_render(args),
         Some(Command::Svg(args)) => run_svg(args),
+        Some(Command::PrepareMetricsImage(args)) => run_prepare_metrics_image(args).await,
         None => run_legacy_targets(&cli.legacy)
     }
 }
@@ -946,6 +962,17 @@ fn run_svg(args: SvgArgs) -> Result<(), Error> {
             issues.join(", ")
         )));
     }
+
+    Ok(())
+}
+
+async fn run_prepare_metrics_image(args: PrepareMetricsImageArgs) -> Result<(), Error> {
+    let result = prepare_metrics_image(args.token.as_deref(), args.actor.as_deref()).await?;
+
+    let json = serde_json::to_string(&result)
+        .map_err(|error| Error::service(format!("failed to serialize result: {error}")))?;
+
+    println!("{json}");
 
     Ok(())
 }

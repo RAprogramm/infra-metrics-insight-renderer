@@ -49,6 +49,7 @@ mod gh;
 mod git;
 mod normalizer;
 mod open_source;
+mod prepare;
 mod readme;
 mod render;
 pub mod retry;
@@ -79,6 +80,7 @@ pub use normalizer::{
 pub use open_source::{
     OpenSourceRepository, resolve_open_source_repositories, resolve_open_source_targets
 };
+pub use prepare::{PrepareMetricsImageResult, prepare_metrics_image};
 pub use readme::update_readme;
 pub use render::{
     ProfileInputs, RepositoryInputs, normalize_profile_inputs, normalize_repository_inputs

@@ -84,7 +84,9 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        "${GITHUB_WORKSPACE}/scripts/prepare-metrics-image.sh" --token "${{ inputs.classic_token }}"
+        "${HOME}/.local/bin/imir" prepare-metrics-image \
+          --token "${{ inputs.classic_token }}" \
+          --actor "${{ github.actor }}"
 
     - name: Metrics embed
       uses: lowlighter/metrics@latest
