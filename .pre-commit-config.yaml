@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2026 RAprogramm <andrey.rozanov.vl@gmail.com>
+# SPDX-License-Identifier: MIT
+
+repos:
+  - repo: local
+    hooks:
+      - id: cargo-fmt
+        name: cargo fmt
+        entry: cargo +nightly fmt --check
+        language: system
+        files: \.rs$
+        pass_filenames: false
+        working_directory: imir
+
+      - id: cargo-clippy
+        name: cargo clippy
+        entry: cargo clippy --all-targets --all-features -- -D warnings -W clippy::pedantic -W clippy::nursery
+        language: system
+        files: \.rs$
+        pass_filenames: false
+        working_directory: imir
