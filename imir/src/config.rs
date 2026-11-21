@@ -26,7 +26,7 @@ use crate::slug::SlugStrategy;
 ///     repo: hello-world
 ///     type: open_source
 /// ";
-/// let config: TargetConfig = serde_yaml::from_str(yaml).expect("valid configuration");
+/// let config: TargetConfig = serde_yaml_rust2::from_str(yaml).expect("valid configuration");
 /// assert_eq!(config.targets.len(), 1);
 /// ```
 #[derive(Debug, Deserialize, Serialize)]
@@ -445,7 +445,7 @@ mod tests {
         ";
 
         let options: BadgeOptions =
-            serde_yaml::from_str(yaml).expect("expected badge configuration to deserialize");
+            serde_yaml_rust2::from_str(yaml).expect("expected badge configuration to deserialize");
         assert_eq!(options.style, Some(BadgeStyle::Plastic));
         let widget = options.widget.expect("expected widget options");
         assert_eq!(widget.columns, Some(2));
@@ -461,7 +461,7 @@ mod tests {
               columns: 6
         ";
 
-        let error = serde_yaml::from_str::<BadgeOptions>(yaml).unwrap_err();
+        let error = serde_yaml_rust2::from_str::<BadgeOptions>(yaml).unwrap_err();
         assert!(
             error
                 .to_string()
@@ -476,7 +476,7 @@ mod tests {
               border_radius: 64
         ";
 
-        let error = serde_yaml::from_str::<BadgeOptions>(yaml).unwrap_err();
+        let error = serde_yaml_rust2::from_str::<BadgeOptions>(yaml).unwrap_err();
         assert!(
             error
                 .to_string()

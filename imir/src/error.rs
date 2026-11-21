@@ -30,8 +30,8 @@ pub enum Error {
     /// Wraps YAML decoding errors.
     #[error("failed to parse configuration: {source}")]
     Parse {
-        /// Source decoding error from `serde_yaml`.
-        source: serde_yaml::Error
+        /// Source decoding error from `serde_yaml_rust2`.
+        source: serde_yaml_rust2::Error
     },
     /// Returned when the configuration violates invariants.
     #[error("invalid configuration: {message}")]
@@ -115,8 +115,8 @@ impl Error {
     }
 }
 
-impl From<serde_yaml::Error> for Error {
-    fn from(source: serde_yaml::Error) -> Self {
+impl From<serde_yaml_rust2::Error> for Error {
+    fn from(source: serde_yaml_rust2::Error) -> Self {
         Self::Parse {
             source
         }
@@ -221,8 +221,8 @@ mod tests {
     }
 
     #[test]
-    fn serde_yaml_conversion_maps_to_parse_variant() {
-        let error = serde_yaml::from_str::<usize>("not-a-number").unwrap_err();
+    fn serde_yaml_rust2_conversion_maps_to_parse_variant() {
+        let error = serde_yaml_rust2::from_str::<usize>("not-a-number").unwrap_err();
         let mapped: Error = error.into();
         assert!(matches!(mapped, Error::Parse { .. }));
     }

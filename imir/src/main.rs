@@ -618,7 +618,7 @@ async fn run_discover(args: DiscoverArgs) -> Result<(), Error> {
             serde_json::to_writer_pretty(&mut handle, &repositories)?;
         }
         "yaml" => {
-            serde_yaml::to_writer(&mut handle, &repositories)?;
+            serde_yaml_rust2::to_writer(&mut handle, &repositories)?;
         }
         format => {
             return Err(Error::validation(format!("unsupported format: {format}")));

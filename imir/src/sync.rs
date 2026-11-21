@@ -62,7 +62,7 @@ pub fn sync_targets(
 
     pb.set_message("Parsing YAML configuration...");
     debug!("Parsing YAML configuration");
-    let mut config: TargetConfig = serde_yaml::from_str(&yaml_content)
+    let mut config: TargetConfig = serde_yaml_rust2::from_str(&yaml_content)
         .map_err(|e| AppError::validation(format!("failed to parse targets config: {e}")))?;
 
     pb.set_message(format!(
@@ -131,7 +131,7 @@ pub fn sync_targets(
 
         pb.set_message("Serializing updated configuration...");
         debug!("Serializing updated configuration");
-        let updated_yaml = serde_yaml::to_string(&config)
+        let updated_yaml = serde_yaml_rust2::to_string(&config)
             .map_err(|e| AppError::service(format!("failed to serialize updated config: {e}")))?;
 
         pb.set_message(format!(

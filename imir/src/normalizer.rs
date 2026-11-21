@@ -116,7 +116,7 @@ pub fn load_targets(path: &Path) -> Result<TargetsDocument, Error> {
 /// and [`Error::Validation`](Error::Validation) when required entries are
 /// missing.
 pub fn parse_targets(contents: &str) -> Result<TargetsDocument, Error> {
-    let config: TargetConfig = serde_yaml::from_str(contents)?;
+    let config: TargetConfig = serde_yaml_rust2::from_str(contents)?;
     if config.targets.is_empty() {
         return Err(Error::validation(
             "configuration must include at least one target"
