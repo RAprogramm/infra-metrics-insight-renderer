@@ -84,7 +84,7 @@ jobs:
           git push origin HEAD:main
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.bump.outputs.new_version }}
           name: IMIR v${{ steps.bump.outputs.new_version }}
