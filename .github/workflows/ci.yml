@@ -205,7 +205,7 @@ jobs:
           echo "COVERAGE_PCT=${COVERAGE}" >> $GITHUB_ENV
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
